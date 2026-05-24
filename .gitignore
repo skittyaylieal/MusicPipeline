@@ -1,1 +1,10 @@
+# Never push your private YouTube session cookies to GitHub!
+Config/cookies.txt
+Config/*.txt
+
+# Ignore local test data caches
+Sandbox_Backup/
+Sandbox_Mobile/
+*.log
+
 .DS_Store
