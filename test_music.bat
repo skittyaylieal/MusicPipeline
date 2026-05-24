@@ -20,7 +20,7 @@ set "FFMPEG_EXE=C:\MusicTools\ffmpeg.exe"
 :: ==========================================
 :: 2. DEFINE SANDBOX PLAYLISTS ARRAY
 :: ==========================================
-set "TEST_PLAYLISTS="https://www.youtube.com/playlist?list=PLQcuYaDDgyad1-o1HTVnTiZKoluY5enwk""
+set "TEST_PLAYLISTS="https://www.youtube.com/playlist?list=PLqcuYaDDgyad1-o1HTVnTiZKoluY5enwk""
 
 :: ==========================================
 :: 3. MODULE EXECUTION PIPELINE
