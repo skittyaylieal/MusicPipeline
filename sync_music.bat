@@ -95,9 +95,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\CompressMusic.
 if %errorlevel% neq 0 exit /b
 
 echo ==============================================================
-echo [SUCCESS] ENTIRE PRODUCTION Repository WORKFLOW COMPLETE!
+echo [SUCCESS] ENTIRE PRODUCTION Repository WORKFLOW COMPLETE
 echo ==============================================================
 
-
-
-pause
+:: ONLY pause if you double-clicked the file manually. 
+:: If Task Scheduler or a headless engine ran it, skip the pause and exit!
+if "%1" neq "headless" (
+    pause
+)
