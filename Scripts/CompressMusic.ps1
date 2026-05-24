@@ -38,7 +38,6 @@ Get-ChildItem -LiteralPath $BackupDir -Recurse -File |
 
 # --- 2. AUDIO SCANNING ---
 Write-Host "[*] Scanning source directory for master audio tracks..." -ForegroundColor Cyan
-# Scans multi-format tracks to align perfectly with your archive rules
 $AllFiles = Get-ChildItem -LiteralPath $BackupDir -Recurse -File | 
             Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|ogg)$' }
 
@@ -54,7 +53,6 @@ Write-Host "[*] Syncing timed lyric (.lrc) files..." -ForegroundColor Cyan
 $LrcFiles = Get-ChildItem -LiteralPath $BackupDir -Filter *.lrc -Recurse -File
 
 foreach ($Lrc in $LrcFiles) {
-    # COOKIE SHIELD: If the file is secretly a cookie artifact, ignore it entirely!
     if ($Lrc.Name -like "*cookie*") { continue }
 
     $RelativePath = $Lrc.FullName.Substring($BackupDir.Length)
@@ -65,7 +63,6 @@ foreach ($Lrc in $LrcFiles) {
         New-Item -ItemType Directory -Path $DestFolder -Force | Out-Null
     }
     
-    # Only copy if missing or updated
     if (-not (Test-Path -Path $DestinationLrc) -or ($Lrc.LastWriteTime -gt (Get-Item -Path $DestinationLrc).LastWriteTime)) {
         Copy-Item -Path $Lrc.FullName -Destination $DestinationLrc -Force
         Write-Host "[LYRIC] Copied lyric layer: $($Lrc.Name)" -ForegroundColor Gray
@@ -75,16 +72,12 @@ foreach ($Lrc in $LrcFiles) {
 # --- 4. PROCESSING CODE QUEUE ---
 Write-Host "[*] Filtering out already compressed files..." -ForegroundColor Yellow
 
-# Create array of tracks that need processing
 $Queue = @()
-
 foreach ($File in $AllFiles) {
-    # Build destination path for compressed file and force extension mapping to .m4a
     $RelativePath = $File.FullName.SubString($BackupDir.Length)
     $DestinationFile = Join-Path -Path $MobileDir -ChildPath $RelativePath
     $DestinationFile = [System.IO.Path]::ChangeExtension($DestinationFile, ".m4a")
 
-    # If target file doesn't exist OR the master copy is newer, queue it up!
     if (-not (Test-Path -Path $DestinationFile) -or ($File.LastWriteTime -gt (Get-Item -Path $DestinationFile).LastWriteTime)) {
         $Queue += [PSCustomObject]@{
             Source      = $File.FullName
@@ -103,24 +96,25 @@ if ($Queue.Count -eq 0) {
 Write-Host "[+] Filtering complete! $($Queue.Count) tracks require compression." -ForegroundColor Green
 Write-Host "[+] Spawning parallel ffmpeg processing threads (Max Workers: $MaxThreads)`n" -ForegroundColor Yellow
 
-# Use ArrayList to easily scale out and drop tracking nodes on the fly
-$RunningJobs = New-Object System.Collections.ArrayList
+# Use a tracking array for processes instead of background Job monitors
+$RunningProcesses = New-Object System.Collections.ArrayList
 $CompletedCount = 0
 $TotalToProcess = $Queue.Count
 
 foreach ($Item in $Queue) {
-    # If running at max capacity, wait for a thread to finish
-    while (($RunningJobs | Where-Object { $_.State -eq 'Running' }).Count -ge $MaxThreads) {
+    # Throttling Loop: Wait if we hit MaxThreads limit
+    while ($RunningProcesses.Count -ge $MaxThreads) {
         Start-Sleep -Milliseconds 200
 
-        # Clean up completed jobs and update progress counter
-        $Finished = $RunningJobs | Where-Object { $_.State -ne 'Running' }
-        foreach ($Job in $Finished) {
-            $CompletedCount++
-            $Percent = [Math]::Round(($CompletedCount / $TotalToProcess) * 100)
-            Write-Host "[$Percent%] Completed $CompletedCount of $TotalToProcess tracks" -ForegroundColor Gray
-            Remove-Job -Job $Job
-            [void]$RunningJobs.Remove($Job)
+        # Check for completed processes
+        for ($i = $RunningProcesses.Count - 1; $i -ge 0; $i--) {
+            if ($RunningProcesses[$i].HasExited) {
+                $CompletedCount++
+                $Percent = [Math]::Round(($CompletedCount / $TotalToProcess) * 100)
+                Write-Host "[$Percent%] Completed $CompletedCount of $TotalToProcess tracks" -ForegroundColor Gray
+                
+                $RunningProcesses.RemoveAt($i)
+            }
         }
     }
 
@@ -130,27 +124,32 @@ foreach ($Item in $Queue) {
         New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
     }
 
-    # Display the file currently being dispatched
     Write-Host "[LAUNCH] $($Item.Name) -> Mobile VBR AAC" -ForegroundColor Green
 
-    # ScriptBlock mapping your accurate artwork and tag conservation rules
-    $ScriptBlock = {
-        param($FFmpeg, $Source, $Target)
-        & $FFmpeg -y -i $Source -c:a aac -vbr 4 -c:v copy -disposition:v attached_pic -map_metadata 0 -id3v2_version 3 $Target 2>$null
-    }
+    # Array style argument mapping—keeps spacing completely intact across user directories
+    $FFmpegArgs = @(
+        "-y",
+        "-i", $Item.Source,
+        "-c:a", "aac",
+        "-vbr", "4",
+        "-c:v", "copy",
+        "-disposition:v", "attached_pic",
+        "-map_metadata", "0",
+        "-id3v2_version", "3",
+        $Item.Destination
+    )
 
-    # Spawn the background script thread worker
-    $Job = Start-Job -ScriptBlock $ScriptBlock -ArgumentList $FFmpegPath, $Item.Source, $Item.Destination
-    [void]$RunningJobs.Add($Job)
+    # Launch FFmpeg as an independent background process track node
+    $Proc = Start-Process -FilePath $FFmpegPath -ArgumentList $FFmpegArgs -NoNewWindow -PassThru
+    [void]$RunningProcesses.Add($Proc)
 }
 
-# --- 5. WAIT FOR COMPLETION ---
-if ($RunningJobs.Count -gt 0) {
+# --- 5. WAIT FOR FINALIZATION ---
+if ($RunningProcesses.Count -gt 0) {
     Write-Host "`n[*] All conversions dispatched. Finalizing background threads..." -ForegroundColor Yellow
-    while (($RunningJobs | Where-Object { $_.State -eq 'Running' }).Count -gt 0) {
+    while (($RunningProcesses | Where-Object { -not $_.HasExited }).Count -gt 0) {
         Start-Sleep -Milliseconds 500
     }
-    Get-Job | Remove-Job
     Write-Host "[BAKED] Mobile library is perfectly synced and compressed!" -ForegroundColor Green
 }
 
