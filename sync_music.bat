@@ -4,13 +4,12 @@ setlocal enabledelayedexpansion
 :: ==========================================
 :: LOG ROTATION: Prevent log file from bloating
 :: ==========================================
-if exist "%~dp0pipeline.log" (
-    for %%A in ("%~dp0pipeline.log") do (
-        :: If log file is greater than 5MB (5242880 bytes), wipe it and start fresh
+if exist "C:\MusicTools\MusicPipeline\Config\pipeline.log" (
+    for %%A in ("C:\MusicTools\MusicPipeline\Config\pipeline.log") do (
         if %%~zA gtr 5242880 (
-            echo ========================================== > "%~dp0pipeline.log"
-            echo [INFO] Log rotated due to size restrictions >> "%~dp0pipeline.log"
-            echo ========================================== >> "%~dp0pipeline.log"
+            echo ========================================== > "C:\MusicTools\MusicPipeline\Config\pipeline.log"
+            echo [INFO] Log rotated due to size restrictions >> "C:\MusicTools\MusicPipeline\Config\pipeline.log"
+            echo ========================================== >> "C:\MusicTools\MusicPipeline\Config\pipeline.log"
         )
     )
 )
@@ -21,9 +20,15 @@ if exist "%~dp0pipeline.log" (
 :: ==========================================
 set "SCRIPT_DIR=C:\MusicTools\MusicPipeline\Scripts"
 set "CONFIG_DIR=C:\MusicTools\MusicPipeline\Config"
-set "BACKUP_DIR=%USERPROFILE%\Music\YT_Music_Backup"
-set "MOBILE_DIR=%USERPROFILE%\Music\YT_Music_Mobile"
+set "BACKUP_DIR=.\YT_Music_Backup"
+set "MOBILE_DIR=.YT_Music_Mobile"
 
+:: Load private paths from the local .env file if it exists
+if exist "%~dp0Config\.env" (
+    for /f "usebackq delims== tokens=1,2" %%A in ("%~dp0Config\.env") do (
+        set "%%A=%%B"
+    )
+)
 
 set "COOKIE_FILE=%CONFIG_DIR%\cookies.txt"
 set "HISTORY_FILE=%CONFIG_DIR%\downloaded_history.txt"
