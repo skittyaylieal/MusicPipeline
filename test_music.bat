@@ -6,8 +6,9 @@ setlocal enabledelayedexpansion
 :: ==========================================
 set "SCRIPT_DIR=C:\MusicTools\MusicPipeline\Scripts"
 set "CONFIG_DIR=C:\MusicTools\MusicPipeline\Config"
-set "BACKUP_DIR=C:\MusicTools\MusicPipeline\Sandbox_Backup"
-set "MOBILE_DIR=C:\MusicTools\MusicPipeline\Sandbox_Mobile"
+set "SANDBOX_DIR"=C:\MusicTools\MusicPipeline\Sandbox"
+set "BACKUP_DIR=%SANDBOX_DIR%\Sandbox_Backup"
+set "MOBILE_DIR=%SANDBOX_DIR%\Sandbox_Mobile"
 
 set "COOKIE_FILE=%CONFIG_DIR%\cookies.txt"
 set "HISTORY_FILE=%BACKUP_DIR%\downloaded_history.txt"

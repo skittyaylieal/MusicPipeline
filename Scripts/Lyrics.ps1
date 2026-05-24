@@ -26,8 +26,9 @@ Start-Sleep -Seconds 3 # Tiny breather for foobar to register the folder mapping
 
 Write-Host "[*] Triggering automated Lyric Show Panel 3 query via foo_runcmd..." -ForegroundColor Cyan
 
-# 2. Fire the playlist item query using foo_runcmd syntax
-& $FoobarPath /runcmd-playlist="Lyric Show Panel 3/Search for lyrics"
+# 2. FIXED: Store the switch as a single literal string argument so foobar can parse it without errors
+$RunCmdArg = '/runcmd-playlist="Lyric Show Panel 3/Search for lyrics"'
+& $FoobarPath $RunCmdArg
 
 Write-Host "[*] Monitoring sandbox folder activity. Script will advance when tags stabilize..." -ForegroundColor Yellow
 Write-Host "Timeout Threshold: 10 minutes (600 seconds) of total file system idling." -ForegroundColor DarkGray
