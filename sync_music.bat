@@ -11,7 +11,7 @@ set "MOBILE_DIR=C:\Users\filip\Music\YT_Music_Mobile"
 
 
 set "COOKIE_FILE=%CONFIG_DIR%\cookies.txt"
-set "HISTORY_FILE=%BACKUP_DIR%\downloaded_history.txt"
+set "HISTORY_FILE=%CONFIG_DIR%\downloaded_history.txt"
 set "YTDLP_EXE=C:\MusicTools\yt-dlp.exe"
 set "CHECK_URL=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 set "FIREFOX_EXE=C:\Program Files\Mozilla Firefox\firefox.exe"

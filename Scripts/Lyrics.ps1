@@ -21,7 +21,7 @@ Write-Host "[*] Purging old foobar2000 active queues and loading fresh files..."
 Write-Host "Target Directory: $BackupDir" -ForegroundColor DarkGray
 
 # Clean active view memory and map files immediately to prevent 300k song bloat
-& "C:\Program Files\foobar2000\foobar2000.exe" --immediate "$BackupDir"
+& "C:\Program Files\foobar2000\foobar2000.exe" /command:Clear /add "$BackupDir"
 Start-Sleep -Seconds 5 # Tiny breather for foobar to register the folder mapping
 
 Write-Host "[*] Triggering automated Lyric Show Panel 3 query" -ForegroundColor Cyan
