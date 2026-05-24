@@ -13,6 +13,7 @@ set "MOBILE_DIR=%USERPROFILE%\Music\YT_Music_Mobile"
 set "COOKIE_FILE=%CONFIG_DIR%\cookies.txt"
 set "HISTORY_FILE=%CONFIG_DIR%\downloaded_history.txt"
 set "YTDLP_EXE=C:\MusicTools\yt-dlp.exe"
+set "FFMPEG_EXE=C:\MusicTools\ffmpeg.exe"
 set "CHECK_URL=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 set "FIREFOX_EXE=C:\Program Files\Mozilla Firefox\firefox.exe"
 
@@ -64,7 +65,6 @@ if %errorlevel% neq 0 exit /b
 
 
 echo [STEP 5/5] Launching Production Audio Compression Engine...
-set "FFMPEG_EXE=C:\MusicTools\ffmpeg.exe"
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\CompressMusic.ps1" ^
   -BackupDir "%BACKUP_DIR%" ^
