@@ -4,10 +4,11 @@ setlocal enabledelayedexpansion
 :: ==========================================
 :: 1. DEFINE PRODUCTION WORKING PATHS
 :: ==========================================
-set "SCRIPT_DIR=C:\MusicTools\Scripts"
-set "CONFIG_DIR=C:\MusicTools\Config"
+set "SCRIPT_DIR=C:\MusicTools\MusicPipeline\Scripts"
+set "CONFIG_DIR=C:\MusicTools\MusicPipeline\Config"
 set "BACKUP_DIR=C:\Users\filip\Music\YT_Music_Backup"
 set "MOBILE_DIR=C:\Users\filip\Music\YT_Music_Mobile"
+
 
 set "COOKIE_FILE=%CONFIG_DIR%\cookies.txt"
 set "HISTORY_FILE=%BACKUP_DIR%\downloaded_history.txt"
@@ -62,5 +63,23 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Lyrics.ps1" ^
   -FoobarPath "%FB2K_EXE%"
 
 if %errorlevel% neq 0 exit /b
+
+
+echo [STEP 5/5] Launching Production Audio Compression Engine...
+set "FFMPEG_EXE=C:\MusicTools\ffmpeg.exe"
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\CompressMusic.ps1" ^
+  -BackupDir "%BACKUP_DIR%" ^
+  -MobileDir "%MOBILE_DIR%" ^
+  -FFmpegPath "%FFMPEG_EXE%" ^
+  -MaxThreads 3
+
+if %errorlevel% neq 0 exit /b
+
+echo ==============================================================
+echo [SUCCESS] ENTIRE PRODUCTION Repository WORKFLOW COMPLETE!
+echo ==============================================================
+
+
 
 pause

@@ -1,7 +1,7 @@
 param (
 	[string]$CookiePath,
 	[string]$YTDLPPath,
-
+	[string]$TestURL
 )
 
 # Clear screen for clean console output
