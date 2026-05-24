@@ -36,6 +36,19 @@ $PlaylistIndex = 1
 
 foreach ($PlaylistURL in $PlaylistURLs) {
 
+
+    # Fix CMD array flattening: split by comma if they got joined as one string
+    if ($PlaylistURL -match ',http') {
+        # Re-inject the elements back into the execution loop safely
+        $SubURLs = $PlaylistURL -split ','
+        foreach ($SubURL in $SubURLs) {
+            # Run the existing loop logic for each cleanly separated URL
+            Invoke-Expression -Command (Get-Content -Path $MyInvocation.MyCommand.Path -Raw) 
+        }
+        continue
+    }
+
+
     # Generate new error log
     $ErrorLogPath = Join-Path -Path $ConfigDir -ChildPath "playlist${PlaylistIndex}_errors.txt"
 

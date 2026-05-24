@@ -37,11 +37,14 @@ set "FFMPEG_EXE=C:\MusicTools\ffmpeg.exe"
 set "CHECK_URL=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 set "FIREFOX_EXE=C:\Program Files\Mozilla Firefox\firefox.exe"
 
+
 :: ==========================================
 :: 2. DEFINE PRODUCTION PLAYLISTS ARRAY
 :: ==========================================
-:: All three production playlists are passed as a comma-separated array string
-set "PROD_PLAYLISTS="https://www.youtube.com/playlist?list=PLqcuYaDDgyacWpBG6ib-2EKOuQa6aGjZJ","https://www.youtube.com/playlist?list=PLqcuYaDDgyaeHKssVjz_Nw3qUDwfrwL09","https://www.youtube.com/playlist?list=PLqcuYaDDgyad_i19iLheoQJLLKJUtwlAr""
+:: Define each URL cleanly in its own quotes, separated by commas
+set PROD_PLAYLISTS="https://www.youtube.com/playlist?list=PLqcuYaDDgyacWpBG6ib-2EKOuQa6aGjZJ","https://www.youtube.com/playlist?list=PLqcuYaDDgyaeHKssVjz_Nw3qUDwfrwL09","https://www.youtube.com/playlist?list=PLqcuYaDDgyad_i19iLheoQJLLKJUtwlAr"
+
+
 
 :: ==========================================
 :: 3. MODULE EXECUTION PIPELINE
@@ -55,18 +58,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\CookieCheck.ps
 
 if %errorlevel% neq 0 exit /b
 
+
 echo [STEP 2/5] Launching Playlist Download Pipeline...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Download.ps1" ^
   -BackupDir "%BACKUP_DIR%" ^
   -YTDLPPath "%YTDLP_EXE%" ^
   -CookiePath "%COOKIE_FILE%" ^
   -HistoryPath "%HISTORY_FILE%" ^
-  -PlaylistURLs %PROD_PLAYLISTS% ^
+  -PlaylistURLs "%PROD_PLAYLISTS%" ^
   -ConfigDir "%CONFIG_DIR%" ^
   -SleepInterval 4 ^
   -MaxSleepInterval 12 ^
   -SleepRequests 3
-
 if %errorlevel% neq 0 exit /b
 
 echo [STEP 3/5] Launching Error Parser and Repair Tool...
