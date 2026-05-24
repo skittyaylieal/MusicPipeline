@@ -6,8 +6,8 @@ setlocal enabledelayedexpansion
 :: ==========================================
 set "SCRIPT_DIR=C:\MusicTools\MusicPipeline\Scripts"
 set "CONFIG_DIR=C:\MusicTools\MusicPipeline\Config"
-set "BACKUP_DIR=C:\MusicTools\Sandbox_Backup"
-set "MOBILE_DIR=C:\MusicTools\Sandbox_Mobile"
+set "BACKUP_DIR=C:\MusicTools\MusicPipeline\Sandbox_Backup"
+set "MOBILE_DIR=C:\MusicTools\MusicPipeline\Sandbox_Mobile"
 
 set "COOKIE_FILE=%CONFIG_DIR%\cookies.txt"
 set "HISTORY_FILE=%BACKUP_DIR%\downloaded_history.txt"
@@ -16,6 +16,19 @@ set "CHECK_URL=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 set "FIREFOX_EXE=C:\Program Files\Mozilla Firefox\firefox.exe"
 set "FB2K_EXE=C:\Program Files\foobar2000\foobar2000.exe"
 set "FFMPEG_EXE=C:\MusicTools\ffmpeg.exe"
+
+
+
+:: --- PRE-RUN CLEANUP ---
+echo [*] Initializing Sandbox Environment...
+if exist "%SANDBOX_DIR%" (
+    echo [*] Wiping previous sandbox audio and metadata assets...
+    del /q /f /s "%SANDBOX_DIR%\*.*" >nul 2>&1
+) else (
+    echo [*] Creating fresh isolated sandbox directory...
+    mkdir "%SANDBOX_DIR%"
+)
+
 
 :: ==========================================
 :: 2. DEFINE SANDBOX PLAYLISTS ARRAY
