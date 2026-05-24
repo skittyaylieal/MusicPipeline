@@ -6,8 +6,8 @@ setlocal enabledelayedexpansion
 :: ==========================================
 set "SCRIPT_DIR=C:\MusicTools\MusicPipeline\Scripts"
 set "CONFIG_DIR=C:\MusicTools\MusicPipeline\Config"
-set "BACKUP_DIR=C:\Users\filip\Music\YT_Music_Backup"
-set "MOBILE_DIR=C:\Users\filip\Music\YT_Music_Mobile"
+set "BACKUP_DIR=%USERPROFILE%\Music\YT_Music_Backup"
+set "MOBILE_DIR=%USERPROFILE%\Music\YT_Music_Mobile"
 
 
 set "COOKIE_FILE=%CONFIG_DIR%\cookies.txt"
