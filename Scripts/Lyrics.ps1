@@ -15,10 +15,9 @@ if (-not (Test-Path -Path $BackupDir -PathType Container)) {
     Exit 1
 }
 
-# Verify syncedlyrics installation
-if (-not (Get-Command syncedlyrics -ErrorAction SilentlyContinue)) {
-    Write-Host "[ERROR] 'syncedlyrics' CLI utility is not installed or not in PATH." -ForegroundColor Red
-    Write-Host "Please run: pip install syncedlyrics" -ForegroundColor Yellow
+# Verify Python accessibility
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    Write-Host "[ERROR] Python could not be found globally. Please ensure Python is installed and in your system PATH." -ForegroundColor Red
     Exit 1
 }
 
@@ -36,32 +35,35 @@ Write-Host "---------------------------------------------" -ForegroundColor Dark
 foreach ($File in $AudioFiles) {
     Write-Host "[*] Processing: $($File.Name)" -ForegroundColor Cyan
     
-    # 1. Use the file name as a fallback search query (Cleaned up)
-    # Assumes format "Artist - Title" or "Title". Adjust regex if your naming convention varies.
-    $SearchQuery = $File.BaseName
+    # Clean up file name to use as a fallback search query
+    # Drops track numbers (e.g., "01 - Track" becomes "Track") and removes extra spaces
+    $SearchQuery = $File.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' '
     
-    Write-Host "    -> Querying repositories for '$SearchQuery'..." -ForegroundColor DarkGray
+    Write-Host "    -> Querying repositories via python -m syncedlyrics for '$SearchQuery'..." -ForegroundColor DarkGray
     
-    # 2. Define the output lyrics file path (e.g., song.lrc or song.txt)
+    # Define the output lyrics file path (matching the audio file location)
     $OutputFile = Join-Path -Path $File.DirectoryName -ChildPath "$($File.BaseName).lrc"
     
-    # 3. Execute syncedlyrics CLI
-    # Reaches out to Musixmatch, Genius, LRCLIB, etc.
+    # 3. Execute syncedlyrics via Python module wrapper to bypass AppData %PATH% missing linkages
     $Arguments = @(
+        "-m", "syncedlyrics",
         "`"$SearchQuery`"",
         "-o", "`"$OutputFile`""
     )
     
-    $Process = Start-Process -FilePath "syncedlyrics" -ArgumentList $Arguments -Wait -NoNewWindow -PassThru
+    $Process = Start-Process -FilePath "python" -ArgumentList $Arguments -Wait -NoNewWindow -PassThru
     
     # 4. Check if a lyric file was successfully created
     if (Test-Path -Path $OutputFile) {
         Write-Host "    [+] Success! Lyrics saved to: $($File.BaseName).lrc" -ForegroundColor Green
-        
-        # Optional: If you want to explicitly embed the lyric file directly into the FLAC metadata 
-        # using 'metaflac' or similar tool, that logic can be appended right here.
     } else {
-        Write-Host "    [-] No matching lyrics found across scanned repositories." -ForegroundColor Yellow
+        # Fallback check: Sometimes syncedlyrics drops plain text files if synced timestamps aren't found
+        $TxtFallback = Join-Path -Path $File.DirectoryName -ChildPath "$($File.BaseName).txt"
+        if (Test-Path -Path $TxtFallback) {
+             Write-Host "    [+] Success! Plain text lyrics saved to: $($File.BaseName).txt" -ForegroundColor Green
+        } else {
+             Write-Host "    [-] No matching lyrics found across scanned repositories." -ForegroundColor Yellow
+        }
     }
     Write-Host "---------------------------------------------" -ForegroundColor DarkGray
 }
