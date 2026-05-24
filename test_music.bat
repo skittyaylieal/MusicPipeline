@@ -15,8 +15,6 @@ set "HISTORY_FILE=%BACKUP_DIR%\downloaded_history.txt"
 set "YTDLP_EXE=C:\MusicTools\yt-dlp.exe"
 set "CHECK_URL=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 set "FIREFOX_EXE=C:\Program Files\Mozilla Firefox\firefox.exe"
-set "FB2K_EXE=C:\Program Files\foobar2000\foobar2000.exe"
-set "FFMPEG_EXE=C:\MusicTools\ffmpeg.exe"
 
 
 
@@ -72,8 +70,8 @@ if %errorlevel% neq 0 exit /b
 
 echo [STEP 4/5] Launching Sandbox Lyric Search and Automated Embedding...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Lyrics.ps1" ^
-  -BackupDir "%BACKUP_DIR%" ^
-  -FoobarPath "%FB2K_EXE%"
+  -BackupDir "%BACKUP_DIR%" 
+
 
 if %errorlevel% neq 0 exit /b
 
