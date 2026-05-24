@@ -24,11 +24,14 @@ Write-Host "Target Directory: $BackupDir" -ForegroundColor DarkGray
 & $FoobarPath /command:Clear /add "$BackupDir"
 Start-Sleep -Seconds 3 # Tiny breather for foobar to register the folder mapping
 
-Write-Host "[*] Triggering automated Lyric Show Panel 3 query via foo_runcmd..." -ForegroundColor Cyan
+Write-Host "[*] Triggering automated Lyric Show Panel 3 query via native context routing..." -ForegroundColor Cyan
 
-# 2. FIXED: Store the switch as a single literal string argument so foobar can parse it without errors
-$RunCmdArg = '/runcmd-playlist="Lyric Show Panel 3/Search for lyrics"'
-& $FoobarPath $RunCmdArg
+# 2. FIXED: Select all tracks and fire the search natively to bypass foo_runcmd parsing quirks
+& $FoobarPath /command:"Select all"
+Start-Sleep -Milliseconds 500
+
+$ContextArg = '/context_command:"Search for lyrics"'
+& $FoobarPath $ContextArg
 
 Write-Host "[*] Monitoring sandbox folder activity. Script will advance when tags stabilize..." -ForegroundColor Yellow
 Write-Host "Timeout Threshold: 10 minutes (600 seconds) of total file system idling." -ForegroundColor DarkGray
@@ -43,6 +46,7 @@ while ($IsProcessing) {
     Start-Sleep -Seconds $LoopIntervalSec
     
     # Check if Foobar was closed manually by a user (emergency breakout)
+    # FIXED: Replaced invalid "Orange" console color with standard "DarkYellow"
     if (-not (Get-Process -Name "foobar2000" -ErrorAction SilentlyContinue)) {
         Write-Host "[-] foobar2000 process terminated externally. Breaking monitor loop." -ForegroundColor DarkYellow
         $IsProcessing = $false
