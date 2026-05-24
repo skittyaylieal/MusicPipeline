@@ -49,18 +49,38 @@ foreach ($File in $AudioFiles) {
     if ($TargetLyricFile) {
         Write-Host "    [+] Scraped successfully. Embedding tags..." -ForegroundColor DarkGray
 
-        # Double-escape paths for Python syntax safety
-        $EscapedAudioPath = $File.FullName -replace '\\', '\\\\' -replace '"', '\\"'
-        $EscapedLyricPath = $TargetLyricFile -replace '\\', '\\\\' -replace '"', '\\"'
+        # Double-escape paths specifically for Python raw string handling
+        $EscapedAudioPath = $File.FullName -replace '\\', '\\\\' -replace "'", "\'"
+        $EscapedLyricPath = $TargetLyricFile -replace '\\', '\\\\' -replace "'", "\'"
 
-        # Single line python execution to completely eliminate indentation/here-string formatting issues
-        $PythonInline = "import mutagen; from mutagen.mp4 import MP4; from mutagen.flac import FLAC; lyrics = open('$EscapedLyricPath', 'r', encoding='utf-8').read(); f = mutagen.File('$EscapedAudioPath'); f['\xa9lyr' if isinstance(f, MP4) else 'lyrics'] = lyrics; f.save()"
+        # Define a clean, multi-line Python block with proper indentation
+        $PythonCode = @"
+import mutagen
+from mutagen.mp4 import MP4
+from mutagen.flac import FLAC
 
-        # Execute the embedder command safely
-        $EmbedArgs = @("-c", $PythonInline)
-        Start-Process -FilePath "python" -ArgumentList $EmbedArgs -Wait -NoNewWindow
-        
-        Write-Host "    [+] Metadata atomic sync complete." -ForegroundColor Green
+try:
+    with open('$EscapedLyricPath', 'r', encoding='utf-8') as f_lyric:
+        lyrics_text = f_lyric.read()
+    
+    audio = mutagen.File('$EscapedAudioPath')
+    if audio is not None:
+        if isinstance(audio, MP4):
+            audio['\xa9lyr'] = [lyrics_text]
+            audio.save()
+            print('    [+] Tag written to M4A container (\xa9lyr atom).')
+        elif isinstance(audio, FLAC):
+            audio['lyrics'] = lyrics_text
+            audio.save()
+            print('    [+] Tag written to FLAC container (Vorbis comments).')
+except Exception as e:
+    print(f'    [!-ERROR] Mutagen failed: {e}')
+"@
+
+        # Run python and pipe the code directly into its standard input stream.
+        # This prevents the Windows argument parsing engine from scrambling the string layout.
+        $PythonCode | python -
+
     } else {
         Write-Host "    [-] No matching lyrics found across scanned repositories." -ForegroundColor Yellow
     }
