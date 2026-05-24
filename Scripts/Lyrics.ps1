@@ -20,26 +20,65 @@ if (-not (Test-Path -Path $FoobarPath -PathType Leaf)) {
 Write-Host "[*] Purging old foobar2000 active queues and loading fresh files..." -ForegroundColor Yellow
 Write-Host "Target Directory: $BackupDir" -ForegroundColor DarkGray
 
-# Clean active view memory and map files immediately to prevent 300k song bloat
-& "C:\Program Files\foobar2000\foobar2000.exe" /command:Clear /add "$BackupDir"
-Start-Sleep -Seconds 5 # Tiny breather for foobar to register the folder mapping
-# TEMP DEBUG PAUSE: Stops the script here so you can look at Foobar and the terminal!
-Read-Host "DEBUG: Foobar has launched. Press Enter to allow the script to continue..."
-Write-Host "[*] Triggering automated Lyric Show Panel 3 query" -ForegroundColor Cyan
+# 1. Clean active view memory and map files immediately via global executable call
+& $FoobarPath /command:Clear /add "$BackupDir"
+Start-Sleep -Seconds 3 # Tiny breather for foobar to register the folder mapping
 
-# Fixed command typo (/runcmd) and passed /exit inside arguments to force-close Foobar when finished
-$FoobarArgs = '/runcmd="Context/Lyric Show Panel 3/Search for lyrics"'
-Start-Process -FilePath $FoobarPath -ArgumentList $FoobarArgs -NoNewWindow -Wait
+Write-Host "[*] Triggering automated Lyric Show Panel 3 query via foo_runcmd..." -ForegroundColor Cyan
 
+# 2. Fire the playlist item query using foo_runcmd syntax
+& $FoobarPath /runcmd-playlist="Lyric Show Panel 3/Search for lyrics"
 
-Write-Host "[*] Monitoring scraper progress. Waiting for database completion" -ForegroundColor Yellow
-Write-Host "Do not close this window. The script will automatically advance when done." -ForegroundColor DarkGray
+Write-Host "[*] Monitoring sandbox folder activity. Script will advance when tags stabilize..." -ForegroundColor Yellow
+Write-Host "Timeout Threshold: 10 minutes (600 seconds) of total file system idling." -ForegroundColor DarkGray
 
-# Loop until foobar2000 can't be found running
-while (Get-Process -Name "foobar2000" -ErrorAction SilentlyContinue) {
-    # Check every 5 seconds for performance
-    Start-Sleep -Seconds 5
+# --- DYNAMIC SYSTEM MONITORING LOOP ---
+$IsProcessing = $true
+$LastChangeTime = [DateTime]::Now
+$LoopIntervalSec = 5
+$MaxIdleSeconds = 600 # 10 Minutes absolute cap
+
+while ($IsProcessing) {
+    Start-Sleep -Seconds $LoopIntervalSec
+    
+    # Check if Foobar was closed manually by a user (emergency breakout)
+    if (-not (Get-Process -Name "foobar2000" -ErrorAction SilentlyContinue)) {
+        Write-Host "[-] foobar2000 process terminated externally. Breaking monitor loop." -ForegroundColor Orange
+        $IsProcessing = $false
+        break
+    }
+
+    # Fetch the latest write times for target audio tracks and metadata text/lrc extensions
+    $CurrentFiles = Get-ChildItem -Path $BackupDir -Recurse | Where-Object { $_.Extension -match "flac|txt|lrc" }
+    
+    if ($CurrentFiles) {
+        $LatestFileChange = ($CurrentFiles | Measure-Object -Property LastWriteTime -Maximum).Maximum
+        
+        # Check if the lyric tagger touched files during this processing block
+        if ($LatestFileChange -gt $LastChangeTime) {
+            Write-Host "[*] Scraper active: Updating file tags..." -ForegroundColor Cyan
+            $LastChangeTime = $LatestFileChange
+        } else {
+            # Calculate current total inactivity duration
+            $TimeIdle = ([DateTime]::Now - $LastChangeTime).TotalSeconds
+            
+            if ($TimeIdle -ge $MaxIdleSeconds) {
+                Write-Host "[+] Target directory stabilized. 10 minutes of idling reached!" -ForegroundColor Green
+                $IsProcessing = $false
+            } else {
+                # Format a clean countdown tracking indicator
+                $Remaining = [Math]::Round($MaxIdleSeconds - $TimeIdle)
+                Write-Host "[*] Idling... ($Remaining seconds remaining until automatic cutoff)" -ForegroundColor DarkGray
+            }
+        }
+    } else {
+        Write-Warning "[-] Sandbox folder empty. Waiting for file initialization..."
+    }
 }
+
+# 3. Cleanly kill the background process now that the database tasks have finished writing
+Write-Host "[*] Finalizing step and closing foobar2000 cleanly..." -ForegroundColor Cyan
+Stop-Process -Name "foobar2000" -Force -ErrorAction SilentlyContinue
 
 Write-Host "`n=============================================" -ForegroundColor Cyan
 Write-Host "   foobar2000 closed. Lyric embedding complete!" -ForegroundColor Green
