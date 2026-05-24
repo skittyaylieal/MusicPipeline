@@ -47,37 +47,20 @@ foreach ($File in $AudioFiles) {
 
     # 3. Embed lyrics into file metadata tags if found
     if ($TargetLyricFile) {
-        $LyricContent = [File]::ReadAllText($TargetLyricFile) -replace '"', '\\"' -replace "`n", '\n' -replace "`r", ''
-        $EscapedAudioPath = $File.FullName -replace '\\', '\\\\' -replace '"', '\\"'
-
         Write-Host "    [+] Scraped successfully. Embedding tags..." -ForegroundColor DarkGray
 
-        # Run an inline Python script using Mutagen to handle M4A (MP4) vs FLAC natively
-        $PythonCode = @"
-import mutagen
-from mutagen.mp4 import MP4
-from mutagen.flac import FLAC
+        # Double-escape paths for Python syntax safety
+        $EscapedAudioPath = $File.FullName -replace '\\', '\\\\' -replace '"', '\\"'
+        $EscapedLyricPath = $TargetLyricFile -replace '\\', '\\\\' -replace '"', '\\"'
 
-audio_path = "$EscapedAudioPath"
-lyrics_text = "$LyricContent"
+        # Single line python execution to completely eliminate indentation/here-string formatting issues
+        $PythonInline = "import mutagen; from mutagen.mp4 import MP4; from mutagen.flac import FLAC; lyrics = open('$EscapedLyricPath', 'r', encoding='utf-8').read(); f = mutagen.File('$EscapedAudioPath'); f['\xa9lyr' if isinstance(f, MP4) else 'lyrics'] = lyrics; f.save()"
 
-try:
-    f = mutagen.File(audio_path)
-    if isinstance(f, MP4):
-        f['\xa9lyr'] = [lyrics_text]
-        f.save()
-        print('    [+] Embedded into M4A metadata atoms.')
-    elif isinstance(f, FLAC):
-        f['lyrics'] = lyrics_text
-        f.save()
-        print('    [+] Embedded into FLAC Vorbis comments.')
-except Exception as e:
-    print(f'    [!-ERROR] Metadata injection failed: {e}')
-"@
-
-        # Execute the embedder
-        $EmbedArgs = @("-c", $PythonCode)
+        # Execute the embedder command safely
+        $EmbedArgs = @("-c", $PythonInline)
         Start-Process -FilePath "python" -ArgumentList $EmbedArgs -Wait -NoNewWindow
+        
+        Write-Host "    [+] Metadata atomic sync complete." -ForegroundColor Green
     } else {
         Write-Host "    [-] No matching lyrics found across scanned repositories." -ForegroundColor Yellow
     }
