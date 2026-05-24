@@ -10,8 +10,8 @@ param (
     [int]$SleepRequests
 )
 
-# Clear screen
-Clear-Host
+# Fake clear: push old content up into scrollback history
+1..50 | ForEach-Object { Write-Host "" }
 
 
 Write-Host "=============================================" -ForegroundColor Cyan

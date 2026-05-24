@@ -4,8 +4,8 @@ param (
 	[string]$TestURL
 )
 
-# Clear screen for clean console output
-Clear-Host
+# Fake clear: push old content up into scrollback history
+1..50 | ForEach-Object { Write-Host "" }
 
 
 Write-Host "=============================================" -ForegroundColor Cyan
