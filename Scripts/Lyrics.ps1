@@ -28,7 +28,9 @@ Read-Host "DEBUG: Foobar has launched. Press Enter to allow the script to contin
 Write-Host "[*] Triggering automated Lyric Show Panel 3 query" -ForegroundColor Cyan
 
 # Fixed command typo (/runcmd) and passed /exit inside arguments to force-close Foobar when finished
-Start-Process -FilePath $FoobarPath -ArgumentList "/runcmd=`"Lyric Show Panel 3/Search for lyrics`"", "/exit"
+$FoobarArgs = '/runcmd="Context/Lyric Show Panel 3/Search for lyrics"'
+Start-Process -FilePath $FoobarPath -ArgumentList $FoobarArgs -NoNewWindow -Wait
+
 
 Write-Host "[*] Monitoring scraper progress. Waiting for database completion" -ForegroundColor Yellow
 Write-Host "Do not close this window. The script will automatically advance when done." -ForegroundColor DarkGray
