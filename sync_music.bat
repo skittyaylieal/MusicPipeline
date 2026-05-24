@@ -2,6 +2,21 @@
 setlocal enabledelayedexpansion
 
 :: ==========================================
+:: LOG ROTATION: Prevent log file from bloating
+:: ==========================================
+if exist "%~dp0pipeline.log" (
+    for %%A in ("%~dp0pipeline.log") do (
+        :: If log file is greater than 5MB (5242880 bytes), wipe it and start fresh
+        if %%~zA gtr 5242880 (
+            echo ========================================== > "%~dp0pipeline.log"
+            echo [INFO] Log rotated due to size restrictions >> "%~dp0pipeline.log"
+            echo ========================================== >> "%~dp0pipeline.log"
+        )
+    )
+)
+
+
+:: ==========================================
 :: 1. DEFINE PRODUCTION WORKING PATHS
 :: ==========================================
 set "SCRIPT_DIR=C:\MusicTools\MusicPipeline\Scripts"
