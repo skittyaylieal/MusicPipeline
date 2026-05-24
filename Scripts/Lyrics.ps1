@@ -44,7 +44,7 @@ while ($IsProcessing) {
     
     # Check if Foobar was closed manually by a user (emergency breakout)
     if (-not (Get-Process -Name "foobar2000" -ErrorAction SilentlyContinue)) {
-        Write-Host "[-] foobar2000 process terminated externally. Breaking monitor loop." -ForegroundColor Orange
+        Write-Host "[-] foobar2000 process terminated externally. Breaking monitor loop." -ForegroundColor DarkYellow
         $IsProcessing = $false
         break
     }
