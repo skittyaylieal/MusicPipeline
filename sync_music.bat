@@ -45,7 +45,6 @@ set "FIREFOX_EXE=C:\Program Files\Mozilla Firefox\firefox.exe"
 set PROD_PLAYLISTS="https://www.youtube.com/playlist?list=PLqcuYaDDgyacWpBG6ib-2EKOuQa6aGjZJ","https://www.youtube.com/playlist?list=PLqcuYaDDgyaeHKssVjz_Nw3qUDwfrwL09","https://www.youtube.com/playlist?list=PLqcuYaDDgyad_i19iLheoQJLLKJUtwlAr"
 
 
-
 :: ==========================================
 :: 3. MODULE EXECUTION PIPELINE
 :: ==========================================
@@ -70,7 +69,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Download.ps1" 
   -SleepInterval 4 ^
   -MaxSleepInterval 12 ^
   -SleepRequests 3
-if %errorlevel% neq 0 exit /b
+
 
 echo [STEP 3/5] Launching Error Parser and Repair Tool...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Fix.ps1" ^

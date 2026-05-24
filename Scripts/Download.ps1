@@ -32,6 +32,14 @@ $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%
 
 $PlaylistIndex = 1
 
+
+# Clean up incoming array string if CMD mashed them into a single comma-separated block
+if ($PlaylistURLs.Count -eq 1) {
+    $PlaylistURLs = $PlaylistURLs -split ',' | ForEach-Object { $_.Trim('"') }
+}
+
+
+
 # Loop through playlist URLS
 
 foreach ($PlaylistURL in $PlaylistURLs) {
