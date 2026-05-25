@@ -89,7 +89,7 @@ foreach ($PlaylistURL in $PlaylistURLs) {
         --audio-format m4a `
         --download-archive $HistoryPath `
         --ignore-errors `
-        $PlaylistURL 2>$ErrorLogPath
+        $PlaylistURL | Out-File -FilePath $ErrorLogPath -Append
 
         # Flag info
         # Gives output appropriate colouring
