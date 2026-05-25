@@ -84,7 +84,7 @@ foreach ($PlaylistURL in $PlaylistURLs) {
         -P $BackupDir `
         -o $OutputTemplate `
         --js-runtime deno `
-        --extractor-args "youtube:player_client=web,safari" `
+        --extractor-args "youtube:player_client=web,web_safari" `
         -x `
         --audio-format m4a `
         --download-archive $HistoryPath `
