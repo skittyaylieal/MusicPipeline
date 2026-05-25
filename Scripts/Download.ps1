@@ -84,7 +84,7 @@ foreach ($PlaylistURL in $PlaylistURLs) {
         -P $BackupDir `
         -o $OutputTemplate `
         --js-runtime deno `
-        --extractor-args "youtube:player_js_variant=tv" `
+        --extractor-args "youtube:player_client=web,safari" `
         -x `
         --audio-format m4a `
         --download-archive $HistoryPath `
@@ -104,7 +104,7 @@ foreach ($PlaylistURL in $PlaylistURLs) {
         # Output directory
         # Template to use for the folder structure of the output
         # Which JavaScript runtime to use for solving youtube captcha challenges
-        # Device to impersonate; TV is easiest
+        # Device to impersonate
         # Only extract audio to begin with
         # Output audio file format
         # Download History file to avoid repeat downloading songs unnecessaril
