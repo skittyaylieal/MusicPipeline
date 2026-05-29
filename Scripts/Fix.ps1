@@ -11,7 +11,8 @@ Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Error File Repair" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
-$ErrorLogs = Get-ChildItem -Path $ConfigDir -Filter "Playlist*_errors.txt"
+# FIX: Swapped to -LiteralPath to scan the config directory safely
+$ErrorLogs = Get-ChildItem -LiteralPath $ConfigDir -Filter "Playlist*_errors.txt"
 
 if (-not $ErrorLogs) {
     Write-Host "[+] No error logs found!" -ForegroundColor Green
@@ -23,8 +24,8 @@ $BrokenIDs = @()
 foreach ($Log in $ErrorLogs) {
     Write-Host "[*] Analyzing log file: $($Log.name)" -ForegroundColor Yellow
 
-    # Read log file
-    $LogContent = Get-Content -Path $Log.Fullname
+    # FIX: Swapped to -LiteralPath to read the individual log contents
+    $LogContent = Get-Content -LiteralPath $Log.Fullname
 
     foreach ($Line in $LogContent) {
         # Check if the line is a missing video error
@@ -40,9 +41,7 @@ foreach ($Log in $ErrorLogs) {
             }
         }
     }
-
 }
-
 
 if ($BrokenIDs.Count -eq 0) {
     Write-Host "[+] Checked all logs. No errors found." -ForegroundColor Green
@@ -50,7 +49,7 @@ if ($BrokenIDs.Count -eq 0) {
     Exit 0
 }
 
-Write-Host "`n[!] Found $($BrokenIDs.Count) unvailable video IDs!" -ForegroundColor Red
+Write-Host "`n[!] Found $($BrokenIDs.Count) unavailable video IDs!" -ForegroundColor Red
 
 foreach ($ID in $BrokenIDs) {
     $TargetURL = "https://www.youtube.com/watch?v=$ID"
@@ -59,17 +58,14 @@ foreach ($ID in $BrokenIDs) {
     # Launch Firefox to specific URL
     Start-Process -FilePath $FirefoxPath -ArgumentList "-url `"$TargetURL`""
 
-    # Append ID to history file
-    "youtube $ID" | Out-File -FilePath $HistoryPath -Append -Encoding ascii
+    # FIX: Swapped to -LiteralPath to append data to the tracking history file cleanly
+    "youtube $ID" | Out-File -LiteralPath $HistoryPath -Append -Encoding ascii
 
     # Short pause to let firefox process
     Start-Sleep -Seconds 2
-
 }
-
 
 Write-Host "`n=============================================" -ForegroundColor Cyan
 Write-Host "   Error parsing complete and IDs archived!" -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0
-

@@ -13,15 +13,14 @@ param (
 # Fake clear: push old content up into scrollback history
 1..50 | ForEach-Object { Write-Host "" }
 
-
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Media Downloader" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
-
 # Ensure backup dir exists
-if (-not (Test-Path -Path $BackupDir)) {
-    New-Item -ItemType Directory -Path $BackupDir -Force |Out-Null
+# FIX: Swapped to -LiteralPath
+if (-not (Test-Path -LiteralPath $BackupDir)) {
+    New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
 }
 
 Write-Host "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
@@ -32,37 +31,32 @@ $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%
 
 $PlaylistIndex = 1
 
-
 # Clean up incoming array string if CMD mashed them into a single comma-separated block
 if ($PlaylistURLs.Count -eq 1) {
     $PlaylistURLs = $PlaylistURLs -split ',' | ForEach-Object { $_.Trim('"') }
 }
 
-
-
 # Loop through playlist URLS
-
 foreach ($PlaylistURL in $PlaylistURLs) {
-
 
     # Fix CMD array flattening: split by comma if they got joined as one string
     if ($PlaylistURL -match ',http') {
         # Re-inject the elements back into the execution loop safely
         $SubURLs = $PlaylistURL -split ','
         foreach ($SubURL in $SubURLs) {
-            # Run the existing loop logic for each cleanly separated URL
-            Invoke-Expression -Command (Get-Content -Path $MyInvocation.MyCommand.Path -Raw) 
+            # FIX: Changed Get-Content to use -LiteralPath to prevent bracket errors when self-invoking
+            Invoke-Expression -Command (Get-Content -LiteralPath $MyInvocation.MyCommand.Path -Raw) 
         }
         continue
     }
 
-
-    # Generate new error log
-    $ErrorLogPath = Join-Path -Path $ConfigDir -ChildPath "playlist${PlaylistIndex}_errors.txt"
+    # FIX: Replaced Join-Path with raw string interpolation
+    $ErrorLogPath = "$ConfigDir\playlist${PlaylistIndex}_errors.txt"
 
     # Clean up the old error log if exists
-    if (Test-Path -Path $ErrorLogPath) {
-        Remove-Item -Path $ErrorLogPath -Force
+    # FIX: Swapped to -LiteralPath
+    if (Test-Path -LiteralPath $ErrorLogPath) {
+        Remove-Item -LiteralPath $ErrorLogPath -Force
     }
 
     Write-Host "`n[*] Processing Playlist $PlaylistIndex..." -ForegroundColor Cyan
@@ -70,7 +64,7 @@ foreach ($PlaylistURL in $PlaylistURLs) {
     Write-Host "Logging errors to: $ErrorLogPath" -ForegroundColor DarkGray
 
     # Execute yt-dlp with our given flags
-
+    # NOTE: Enclosing variables inside double quotes inside the arguments handles literal brackets for CLI strings
     &$YTDLPPath `
         --color always `
         --sleep-interval $SleepInterval `
@@ -80,38 +74,16 @@ foreach ($PlaylistURL in $PlaylistURLs) {
         --embed-metadata `
         --no-keep-video `
         --force-overwrites `
-        --cookies $CookiePath `
-        -P $BackupDir `
-        -o $OutputTemplate `
+        --cookies "$CookiePath" `
+        -P "$BackupDir" `
+        -o "$OutputTemplate" `
         --js-runtime deno `
         --extractor-args "youtube:player_client=web,web_safari" `
         -x `
         --audio-format m4a `
-        --download-archive $HistoryPath `
+        --download-archive "$HistoryPath" `
         --ignore-errors `
-        $PlaylistURL 2>>$ErrorLogPath
-
-        # Flag info
-        # Gives output appropriate colouring
-        # A random sleep interval to prevent bot detection 
-        # Maximum sleep interval
-        # Sleep between any API requests
-        # Embed youtube thumbnail as album art
-        # Embed artist album and comment metadata 
-        # Ignore the video stream of the video; only include audio
-        # If a file already exists and isn't in the download archive remake it entirely; for tag fixing purposes and broken files
-        # Where to find the given cookies
-        # Output directory
-        # Template to use for the folder structure of the output
-        # Which JavaScript runtime to use for solving youtube captcha challenges
-        # Device to impersonate
-        # Only extract audio to begin with
-        # Output audio file format
-        # Download History file to avoid repeat downloading songs unnecessaril
-        # Don't halt execution for errors
-        # Send all errors to the appropriate error log file
-
-
+        $PlaylistURL 2>>"$ErrorLogPath"
 
     if ($LastExitCode -eq 0) {
         Write-Host "[+] Playlist Music $PlaylistIndex sync completed successfully!" -ForegroundColor Green
@@ -120,11 +92,9 @@ foreach ($PlaylistURL in $PlaylistURLs) {
     }
 
     $PlaylistIndex++
-
 }
 
-
 Write-Host "`n=============================================" -ForegroundColor Cyan
-Write-Host "   All playlist download tasks completed!" -ForegroundColor Green
+Write-Host "    All playlist download tasks completed!" -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0
