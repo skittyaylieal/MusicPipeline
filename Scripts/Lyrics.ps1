@@ -5,7 +5,6 @@ Param (
 # Force Python to use UTF-8 encoding for all standard input/output streams
 $env:PYTHONIOENCODING = "utf-8"
 
-
 # Fake clear: push old content up into scrollback history
 1..50 | ForEach-Object { Write-Host "" }
 
@@ -13,10 +12,8 @@ Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Headless Lyric Engine & Tag Embedder" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
-
 Write-Host "Updating Python package" -ForegroundColor Cyan
 pip install --upgrade syncedlyrics
-
 
 # Verify target directory exists
 if (-not (Test-Path -LiteralPath $BackupDir -PathType Container)) {
@@ -38,8 +35,9 @@ Write-Host "---------------------------------------------" -ForegroundColor Dark
 foreach ($File in $AudioFiles) {
     Write-Host "[*] Processing: $($File.Name)" -ForegroundColor Cyan
     
-    # 1. DEFINE PATHS USING BULLETPROOF INTERPOLATION (Bypassing Join-Path entirely)
-    $DirName = Split-Path -LiteralPath $File.FullName
+    # 1. DEFINE PATHS USING BULLETPROOF INTERPOLATION (Bypassing Split-Path entirely)
+    # FIXED: Replaced Split-Path with the absolute, literal .DirectoryName property of the file object
+    $DirName = $File.DirectoryName
     $LrcFile = "$DirName\$($File.BaseName).lrc"
     $TxtFile = "$DirName\$($File.BaseName).txt"
     
@@ -144,6 +142,6 @@ except Exception as e:
 }
 
 Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "   Lyric scraping and embedding complete!" -ForegroundColor Green
+Write-Host "    Lyric scraping and embedding complete!" -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0

@@ -20,7 +20,7 @@ if (-not (Test-Path -LiteralPath $BackupDir)) {
 
 # Make sure there's a target directory
 if (-not (Test-Path -LiteralPath $MobileDir)) {
-    New-Item -ItemType Directory -Path $MobileDir -Force | Out-Null
+    New-Item -ItemType Directory -LiteralPath $MobileDir -Force | Out-Null
 }
 
 # --- 1. STRAY IMAGE CLEANUP ENGINE ---
@@ -57,16 +57,16 @@ foreach ($Lrc in $LrcFiles) {
 
     $RelativePath = $Lrc.FullName.Substring($BackupDir.Length)
     
-    # FIX: Bypassed Join-Path with raw string interpolation
+    # Bypassed Join-Path with raw string interpolation
     $DestinationLrc = "$MobileDir$RelativePath"
     
-    # FIX: Changed to -LiteralPath and -Parent switch
-    $DestFolder = Split-Path -LiteralPath $DestinationLrc -Parent
+    # FIXED: Replaced Split-Path with the bracket-immune native .NET directory parser
+    $DestFolder = [System.IO.Path]::GetDirectoryName($DestinationLrc)
     if (-not (Test-Path -LiteralPath $DestFolder)) {
-        New-Item -ItemType Directory -Path $DestFolder -Force | Out-Null
+        New-Item -ItemType Directory -LiteralPath $DestFolder -Force | Out-Null
     }
     
-    # FIX: Locked down Test-Path and Get-Item with -LiteralPath
+    # Locked down Test-Path and Get-Item with -LiteralPath
     if (-not (Test-Path -LiteralPath $DestinationLrc) -or ($Lrc.LastWriteTime -gt (Get-Item -LiteralPath $DestinationLrc).LastWriteTime)) {
         Copy-Item -LiteralPath $Lrc.FullName -Destination $DestinationLrc -Force
         Write-Host "[LYRIC] Copied lyric layer: $($Lrc.Name)" -ForegroundColor Gray
@@ -80,11 +80,11 @@ $Queue = @()
 foreach ($File in $AllFiles) {
     $RelativePath = $File.FullName.SubString($BackupDir.Length)
     
-    # FIX: Bypassed Join-Path with string interpolation
+    # Bypassed Join-Path with string interpolation
     $DestinationFile = "$MobileDir$RelativePath"
     $DestinationFile = [System.IO.Path]::ChangeExtension($DestinationFile, ".m4a")
 
-    # FIX: Replaced -Path with -LiteralPath for checking existing mobile matches
+    # Replaced -Path with -LiteralPath for checking existing mobile matches
     if (-not (Test-Path -LiteralPath $DestinationFile) -or ($File.LastWriteTime -gt (Get-Item -LiteralPath $DestinationFile).LastWriteTime)) {
         $Queue += [PSCustomObject]@{
             Source      = $File.FullName
@@ -126,10 +126,10 @@ foreach ($Item in $Queue) {
     }
 
     # Ensure target subfolders exist cleanly
-    # FIX: Changed Split-Path to -LiteralPath
-    $TargetFolder = Split-Path -LiteralPath $Item.Destination -Parent
+    # FIXED: Changed Split-Path to native .NET class layout and fixed loose legacy -Path parameter
+    $TargetFolder = [System.IO.Path]::GetDirectoryName($Item.Destination)
     if (-not (Test-Path -LiteralPath $TargetFolder)) {
-        New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
+        New-Item -ItemType Directory -LiteralPath $TargetFolder -Force | Out-Null
     }
 
     Write-Host "[LAUNCH] $($Item.Name) -> Mobile VBR AAC" -ForegroundColor Green
