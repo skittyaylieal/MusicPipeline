@@ -13,13 +13,13 @@ Write-Host "    PowerShell Module: Parallel Audio Compressor" -ForegroundColor C
 Write-Host "=============================================" -ForegroundColor Cyan
 
 # PATH SAFETY CHECK
-if (-not (Test-Path -Path $BackupDir)) {
+if (-not (Test-Path -LiteralPath $BackupDir)) {
     Write-Error "CRITICAL: The Source Directory '$BackupDir' does not exist! Check your folder spelling."
     Exit 1
 }
 
 # Make sure there's a target directory
-if (-not (Test-Path -Path $MobileDir)) {
+if (-not (Test-Path -LiteralPath $MobileDir)) {
     New-Item -ItemType Directory -Path $MobileDir -Force | Out-Null
 }
 
@@ -56,15 +56,19 @@ foreach ($Lrc in $LrcFiles) {
     if ($Lrc.Name -like "*cookie*") { continue }
 
     $RelativePath = $Lrc.FullName.Substring($BackupDir.Length)
-    $DestinationLrc = Join-Path -Path $MobileDir -ChildPath $RelativePath
     
-    $DestFolder = Split-Path -Path $DestinationLrc
-    if (-not (Test-Path -Path $DestFolder)) {
+    # FIX: Bypassed Join-Path with raw string interpolation
+    $DestinationLrc = "$MobileDir$RelativePath"
+    
+    # FIX: Changed to -LiteralPath and -Parent switch
+    $DestFolder = Split-Path -LiteralPath $DestinationLrc -Parent
+    if (-not (Test-Path -LiteralPath $DestFolder)) {
         New-Item -ItemType Directory -Path $DestFolder -Force | Out-Null
     }
     
-    if (-not (Test-Path -Path $DestinationLrc) -or ($Lrc.LastWriteTime -gt (Get-Item -Path $DestinationLrc).LastWriteTime)) {
-        Copy-Item -Path $Lrc.FullName -Destination $DestinationLrc -Force
+    # FIX: Locked down Test-Path and Get-Item with -LiteralPath
+    if (-not (Test-Path -LiteralPath $DestinationLrc) -or ($Lrc.LastWriteTime -gt (Get-Item -LiteralPath $DestinationLrc).LastWriteTime)) {
+        Copy-Item -LiteralPath $Lrc.FullName -Destination $DestinationLrc -Force
         Write-Host "[LYRIC] Copied lyric layer: $($Lrc.Name)" -ForegroundColor Gray
     }
 }
@@ -75,10 +79,13 @@ Write-Host "[*] Filtering out already compressed files..." -ForegroundColor Yell
 $Queue = @()
 foreach ($File in $AllFiles) {
     $RelativePath = $File.FullName.SubString($BackupDir.Length)
-    $DestinationFile = Join-Path -Path $MobileDir -ChildPath $RelativePath
+    
+    # FIX: Bypassed Join-Path with string interpolation
+    $DestinationFile = "$MobileDir$RelativePath"
     $DestinationFile = [System.IO.Path]::ChangeExtension($DestinationFile, ".m4a")
 
-    if (-not (Test-Path -Path $DestinationFile) -or ($File.LastWriteTime -gt (Get-Item -Path $DestinationFile).LastWriteTime)) {
+    # FIX: Replaced -Path with -LiteralPath for checking existing mobile matches
+    if (-not (Test-Path -LiteralPath $DestinationFile) -or ($File.LastWriteTime -gt (Get-Item -LiteralPath $DestinationFile).LastWriteTime)) {
         $Queue += [PSCustomObject]@{
             Source      = $File.FullName
             Destination = $DestinationFile
@@ -119,14 +126,14 @@ foreach ($Item in $Queue) {
     }
 
     # Ensure target subfolders exist cleanly
-    $TargetFolder = Split-Path -Path $Item.Destination -Parent
-    if (-not (Test-Path -Path $TargetFolder)) {
+    # FIX: Changed Split-Path to -LiteralPath
+    $TargetFolder = Split-Path -LiteralPath $Item.Destination -Parent
+    if (-not (Test-Path -LiteralPath $TargetFolder)) {
         New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
     }
 
     Write-Host "[LAUNCH] $($Item.Name) -> Mobile VBR AAC" -ForegroundColor Green
 
-    # Array style argument mapping—keeps spacing completely intact across user directories
     # Array style argument mapping—NOW WITH EXPLICIT ENCAPSULATION QUOTES
     $FFmpegArgs = @(
         "-y",
@@ -139,7 +146,6 @@ foreach ($Item in $Queue) {
         "-id3v2_version", "3",
         "`"$($Item.Destination)`""
     )
-
 
     # Launch FFmpeg as an independent background process track node
     $Proc = Start-Process -FilePath $FFmpegPath -ArgumentList $FFmpegArgs -NoNewWindow -PassThru
