@@ -9,6 +9,11 @@ Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Headless Lyric Engine & Tag Embedder" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
+
+Write-Host "Updating Python package" -ForegroundColor Cyan
+pip install --upgrade syncedlyrics
+
+
 # Verify target directory exists
 if (-not (Test-Path -LiteralPath $BackupDir -PathType Container)) {
     Write-Host "[ERROR] Target directory could not be found: $BackupDir" -ForegroundColor Red
