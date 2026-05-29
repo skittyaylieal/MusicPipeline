@@ -2,6 +2,10 @@ Param (
     [string]$BackupDir
 )
 
+# Force Python to use UTF-8 encoding for all standard input/output streams
+$env:PYTHONIOENCODING = "utf-8"
+
+
 # Fake clear: push old content up into scrollback history
 1..50 | ForEach-Object { Write-Host "" }
 
