@@ -42,7 +42,20 @@ if ($IsHeadless) {
         foreach ($Line in $Content) {
             if ($Line -match $VideoIdRegex) {
                 $Id = $Matches[1]
-                if ($Queue -notcontains $Id) { $Queue += $Id }
+                
+                # Check if this specific video ID is already tracked in our structured queue object array
+                $AlreadyExists = $false
+                foreach ($Item in $Queue) {
+                    if ($Item.id -eq $Id) { $AlreadyExists = $true; break }
+                }
+
+                if (-not $AlreadyExists) {
+                    # Save both the raw ID and the clean text string of the line error context
+                    $Queue += [PSCustomObject]@{
+                        id    = $Id
+                        error = $Line.Trim()
+                    }
+                }
             }
         }
     }
@@ -53,7 +66,7 @@ if ($IsHeadless) {
         Exit 0
     }
 
-    # Save tracking data arrays natively
+    # Save tracking data arrays natively as robust structural JSON elements
     $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8
 
     # Create a Desktop shortcut notification wrapper pointing to our interface engine
@@ -67,6 +80,10 @@ IconFile=$FirefoxPath
     $ShortcutContent | Out-File -LiteralPath $ShortcutPath -Encoding ascii
     
     Write-Host "[+] Background extraction complete. Queue saved with $($Queue.Count) links." -ForegroundColor Green
+    
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host "    Headless link extraction cycle complete!" -ForegroundColor Green
+    Write-Host "=============================================" -ForegroundColor Cyan
     Exit 0
 }
 
@@ -87,8 +104,10 @@ if ($Queue.Count -eq 0) {
     Exit 0
 }
 
+# Convert objects safely to a compiled JavaScript JSON structure data block
+$JsonQueueData = $Queue | ConvertTo-Json -Compress
+
 # Generate the interactive HTML asset file inside the Config directory dynamically
-$JsonIDs = ($Queue | ForEach-Object { "'$_'" }) -join ','
 $HtmlContent = @"
 <!DOCTYPE html>
 <html>
@@ -97,89 +116,12 @@ $HtmlContent = @"
     <title>Music Link Auditor</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #121212; color: #E0E0E0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #1E1E1E; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); text-align: center; max-width: 450px; width: 100%; border: 1px solid #333; }
+        .card { background: #1E1E1E; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); text-align: center; max-width: 500px; width: 100%; border: 1px solid #333; }
         h2 { color: #00ADB5; margin-top: 0; }
         .counter { font-size: 0.9em; color: #888; margin-bottom: 20px; }
-        .id-box { background: #2D2D2D; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 1.2em; color: #FFD369; margin-bottom: 25px; word-break: break-all; }
+        .id-box { background: #2D2D2D; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 1.2em; color: #FFD369; margin-bottom: 15px; word-break: break-all; }
+        .error-log { background: #251B1B; border: 1px solid #5C2D2D; color: #FF6B6B; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.85em; text-align: left; margin-bottom: 25px; word-break: break-word; max-height: 100px; overflow-y: auto; }
         .btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 6px; font-size: 1em; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.9; }
         .btn-launch { background: #00ADB5; color: #FFF; }
-        .btn-fixed { background: #4E9F3D; color: #FFF; }
-        .btn-ok { background: #393E46; color: #FFF; }
-        .btn-skip { background: #D63447; color: #FFF; }
-        .hidden { display: none; }
-    </style>
-</head>
-<body>
-    <div class="card" id="main-view">
-        <h2>Music Link Auditor</h2>
-        <div class="counter" id="progress">Loading...</div>
-        <div class="id-box" id="video-id">---</div>
-        <button class="btn btn-launch" onclick="openTrack()">1. Open Video Link</button>
-        <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
-        <button class="btn btn-fixed" onclick="submitAction('fixed')">2. Fixed (New Track Sourced)</button>
-        <button class="btn btn-ok" onclick="submitAction('ignore')">3. Broken but OK (Ignore Future Runs)</button>
-        <button class="btn btn-skip" onclick="submitAction('skip')">4. Skip / Leave for Next Time</button>
-    </div>
-    <div class="card hidden" id="done-view">
-        <h2>Session Complete</h2>
-        <p>All items evaluated. This webpage and the desktop shortcut can now be closed.</p>
-    </div>
-
-    <script>
-        const ids = [$JsonIDs];
-        let index = 0;
-
-        function render() {
-            if (index >= ids.length) {
-                document.getElementById('main-view').classList.add('hidden');
-                document.getElementById('done-view').classList.remove('hidden');
-                fetch('http://localhost:8080/shutdown');
-                return;
-            }
-            document.getElementById('progress').innerText = `Item \${index + 1} of \${ids.length}`;
-            document.getElementById('video-id').innerText = ids[index];
-        }
-
-        function openTrack() {
-            window.open('https://www.youtube.com/watch?v=' + ids[index], '_blank');
-        }
-
-        function submitAction(actionType) {
-            const currentId = ids[index];
-            fetch(`http://localhost:8080/submit?id=\${currentId}&action=\${actionType}`)
-                .then(() => {
-                    index++;
-                    render();
-                })
-                .catch(err => alert('Communication with local PowerShell engine dropped: ' + err));
-        }
-        render();
-    </script>
-</body>
-</html>
-"@
-$HtmlContent | Out-File -LiteralPath $HtmlPath -Encoding utf8
-
-# -----------------------------------------------------------------
-# STEP 3: THE LIGHTWEIGHT MICRO-REST LISTENER LOOP
-# -----------------------------------------------------------------
-# Spins up a native .NET listener loop to intercept processing events from the browser directly
-$Listener = New-Object System.Net.HttpListener
-$Listener.Prefixes.Add("http://localhost:8080/")
-try { $Listener.Start() } catch {
-    Write-Host "[!] Port 8080 occupied. Is another instance of the deck running?" -ForegroundColor Red
-    Exit 1
-}
-
-Write-Host "[+] Local database engine loop listening on port 8080." -ForegroundColor Green
-Write-Host "[*] Spawning Firefox interface panel..." -ForegroundColor Yellow
-
-Start-Process -FilePath $FirefoxPath -ArgumentList "`"$HtmlPath`""
-
-# Loop processing interaction payloads until the browser reports work completion
-$Looping = $true
-while ($Looping) {
-    $Context = $Listener.GetContext()
-    $Request = $Context.Request
-    $Response = $Context
+        .btn-fixed { background: #4
