@@ -1,4 +1,4 @@
-param (
+Param (
     [string]$BackupDir,
     [string]$YTDLPPath,
     [string]$CookiePath,
@@ -38,17 +38,6 @@ if ($PlaylistURLs.Count -eq 1) {
 
 # Loop through playlist URLS
 foreach ($PlaylistURL in $PlaylistURLs) {
-
-    # Fix CMD array flattening: split by comma if they got joined as one string
-    if ($PlaylistURL -match ',http') {
-        # Re-inject the elements back into the execution loop safely
-        $SubURLs = $PlaylistURL -split ','
-        foreach ($SubURL in $SubURLs) {
-            # FIX: Changed Get-Content to use -LiteralPath to prevent bracket errors when self-invoking
-            Invoke-Expression -Command (Get-Content -LiteralPath $MyInvocation.MyCommand.Path -Raw) 
-        }
-        continue
-    }
 
     # FIX: Replaced Join-Path with raw string interpolation
     $ErrorLogPath = "$ConfigDir\playlist${PlaylistIndex}_errors.txt"

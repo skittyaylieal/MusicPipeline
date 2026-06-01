@@ -1,4 +1,4 @@
-param (
+Param (
     [string]$CookiePath,
     [string]$YTDLPPath,
     [string]$TestURL

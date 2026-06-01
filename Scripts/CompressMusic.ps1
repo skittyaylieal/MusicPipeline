@@ -1,4 +1,4 @@
-param (
+Param (
     [string]$BackupDir,
     [string]$MobileDir,
     [string]$FFmpegPath,
@@ -134,17 +134,17 @@ foreach ($Item in $Queue) {
 
     Write-Host "[LAUNCH] $($Item.Name) -> Mobile VBR AAC" -ForegroundColor Green
 
-    # Array style argument mapping—NOW WITH EXPLICIT ENCAPSULATION QUOTES
+    # Array style argument mapping—PowerShell handles encapsulation automatically
     $FFmpegArgs = @(
         "-y",
-        "-i", "`"$($Item.Source)`"",
+        "-i", $Item.Source,
         "-c:a", "aac",
         "-vbr", "4",
         "-c:v", "copy",
         "-disposition:v", "attached_pic",
         "-map_metadata", "0",
         "-id3v2_version", "3",
-        "`"$($Item.Destination)`""
+        $Item.Destination
     )
 
     # Launch FFmpeg as an independent background process track node
