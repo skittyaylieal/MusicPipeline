@@ -35,8 +35,7 @@ Write-Host "---------------------------------------------" -ForegroundColor Dark
 foreach ($File in $AudioFiles) {
     Write-Host "[*] Processing: $($File.Name)" -ForegroundColor Cyan
     
-    # 1. DEFINE PATHS USING BULLETPROOF INTERPOLATION (Bypassing Split-Path entirely)
-    # FIXED: Replaced Split-Path with the absolute, literal .DirectoryName property of the file object
+    # 1. DEFINE PATHS USING BULLETPROOF INTERPOLATION
     $DirName = $File.DirectoryName
     $LrcFile = "$DirName\$($File.BaseName).lrc"
     $TxtFile = "$DirName\$($File.BaseName).txt"
@@ -50,7 +49,6 @@ foreach ($File in $AudioFiles) {
     }
 
     # 3. CONSTRUCT EMBEDDING PRE-CHECK STRING
-    # Check if the audio file container ALREADY has unsynced lyrics embedded.
     $EscapedAudioPath = $File.FullName -replace '\\', '\\\\' -replace "'", "\'"
     
     $PreCheckPython = @"
@@ -71,42 +69,49 @@ except Exception:
     sys.exit(0)
 "@
     
-    # Run the validation check string
     $PreCheckPython | python -
-    $CheckResult = $LASTEXITCODE
-
-    if ($CheckResult -eq 2) {
-        Write-Host "    [!] Track contains embedded unsynced metadata. Attempting to upgrade to a synced .lrc file..." -ForegroundColor Yellow
-    }
+    $HasUnsyncedLyrics = ($LASTEXITCODE -eq 2)
 
     # Clean up file name to use as a search query
     $SearchQuery = $File.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' '
     
-    # 4. EXECUTE SCRAPER (Using safely escaped argument bounds)
-    $ScrapeArgs = @("-m", "syncedlyrics", "`"$SearchQuery`"", "-o", "`"$LrcFile`"")
-    $null = Start-Process -FilePath "python" -ArgumentList $ScrapeArgs -Wait -NoNewWindow
+    # -----------------------------------------------------------------
+    # STAGE 1: EXHAUST ALL PREMIUM SYNCED LYRIC PROVIDERS
+    # -----------------------------------------------------------------
+    Write-Host "    [*] Searching premium databases for synced timing tags (.lrc)..." -ForegroundColor DarkCyan
+    
+    # Enforcing Musixmatch, NetEase, Megalyrics, and Lyricsify exclusively
+    $SyncedArgs = @("-m", "syncedlyrics", "`"$SearchQuery`"", "-o", "`"$LrcFile`"", "--providers", "musixmatch", "netease", "megalyrics", "lyricsify")
+    $null = Start-Process -FilePath "python" -ArgumentList $SyncedArgs -Wait -NoNewWindow
 
-    # 5. DETERMINE SCRAIPER OUTPUT RESULTS
-    $TargetLyricFile = $null
-    if (Test-Path -LiteralPath $LrcFile) { 
-        $TargetLyricFile = $LrcFile 
-    } elseif (Test-Path -LiteralPath $TxtFile) { 
-        $TargetLyricFile = $TxtFile 
+    if (Test-Path -LiteralPath $LrcFile) {
+        Write-Host "    [+] Found pristine synced lyrics (.lrc). Preserving file next to track." -ForegroundColor Green
+        Write-Host "---------------------------------------------" -ForegroundColor DarkGray
+        # If a .txt accidentally leaked from these providers, scrub it away
+        if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force }
+        continue
     }
 
-    # 6. PROCESSING & EMBEDDING
-    if ($TargetLyricFile) {
-        # If it found a true, premium synced file (.lrc), keep it in the directory!
-        if ($TargetLyricFile -eq $LrcFile) {
-            Write-Host "    [+] Found pristine synced lyrics (.lrc). Preserving file next to track." -ForegroundColor Green
-        }
+    # -----------------------------------------------------------------
+    # STAGE 2: PLAIN TEXT FALLBACK MECHANISM (Only if file does not have tags)
+    # -----------------------------------------------------------------
+    if ($HasUnsyncedLyrics) {
+        Write-Host "    [-] Synced missing, but track already has embedded plain text tags. Skipping fallback." -ForegroundColor Gray
+        Write-Host "---------------------------------------------" -ForegroundColor DarkGray
+        continue
+    }
+
+    Write-Host "    [!] No timed lyrics found. Attempting plain text fallback lookup..." -ForegroundColor Yellow
+    
+    # Route fallback purely through Genius/Luminate pools for raw structural text accuracy
+    $FallbackArgs = @("-m", "syncedlyrics", "`"$SearchQuery`"", "-o", "`"$LrcFile`"", "--providers", "genius")
+    $null = Start-Process -FilePath "python" -ArgumentList $FallbackArgs -Wait -NoNewWindow
+
+    if (Test-Path -LiteralPath $TxtFile) {
+        Write-Host "    [+] Found flat unsynced lyrics (.txt fallback). Embedding tag into metadata container..." -ForegroundColor DarkGray
         
-        # If it returned a flat text fallback (.txt), embed it internally and clean up the file junk!
-        if ($TargetLyricFile -eq $TxtFile) {
-            Write-Host "    [+] Found flat unsynced lyrics (.txt fallback). Embedding tag into metadata container..." -ForegroundColor DarkGray
-            
-            $EscapedLyricPath = $TargetLyricFile -replace '\\', '\\\\' -replace "'", "\'"
-            $PythonCode = @"
+        $EscapedLyricPath = $TxtFile -replace '\\', '\\\\' -replace "'", "\'"
+        $PythonCode = @"
 import os
 import mutagen
 from mutagen.mp4 import MP4
@@ -127,16 +132,16 @@ try:
             audio.save()
             print('    [+] Unsynced text tag cleanly written to FLAC (Vorbis comments).')
             
-    # Clean up loose txt file junk so directories stay pristine
     if os.path.exists('$EscapedLyricPath'):
         os.remove('$EscapedLyricPath')
 except Exception as e:
     print(f'    [!-ERROR] Mutagen execution failed: {e}')
 "@
-            $PythonCode | python -
-        }
+        $PythonCode | python -
     } else {
-        Write-Host "    [-] No matching lyrics found across scanned repositories." -ForegroundColor Yellow
+        Write-Host "    [-] No matching lyrics found across any scanned repositories." -ForegroundColor Yellow
+        # Clean up any dead empty files generated by failed fallback cycles
+        if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force }
     }
     Write-Host "---------------------------------------------" -ForegroundColor DarkGray
 }
