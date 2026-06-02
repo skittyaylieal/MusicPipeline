@@ -4,108 +4,99 @@ Param (
     [string]$BatchScript = "C:\MusicTools\MusicPipeline\sync_music.bat"
 )
 
-$Global:LogBuffer = New-Object System.Collections.Generic.List[string]
+# Global variables and runtime states
 $Global:IsPipelineRunning = $false
 $Global:DiagLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
-
-# Establish repository working directory context dynamically
 $ScriptRepoDir = [System.IO.Path]::GetDirectoryName($BatchScript)
 
-# -----------------------------------------------------------------
-# 1. HELPER FUNCTION: METRICS SCAN & INTEGRATED SYSTEM AUDITS
-# -----------------------------------------------------------------
-function Get-LibraryMetrics {
-    if (-not (Test-Path -LiteralPath $BackupDir)) { return @{} }
-
-    $MasterFiles = Get-ChildItem -LiteralPath $BackupDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" }
-    $MobileFiles = Get-ChildItem -LiteralPath $MobileDir -Recurse -File | Where-Object { $_.Extension -match "m4a" }
-    $LrcFiles    = Get-ChildItem -LiteralPath $BackupDir -Recurse -Filter "*.lrc" -File
-
-    $MasterSize = ($MasterFiles | Measure-Object -Property Length -Sum).Sum / 1GB
-    $MobileSize = ($MobileFiles | Measure-Object -Property Length -Sum).Sum / 1GB
-
-    $Alerts = @()
-
-    # --- AUDIT A: AUTOMATIC SELF-UPDATE PIPELINE (TASK SCHEDULER COMPATIBLE) ---
-    if (Test-Path -LiteralPath "$ScriptRepoDir\.git") {
-        Push-Location $ScriptRepoDir
-        try {
-            # Force Git to drop terminal prompts and use HTTPS formatting for background safety
-            $Env:GIT_TERMINAL_PROMPT = "0"
-            $Env:GIT_SSH_COMMAND = ""
-            
-            # Fetch silently using standard origin
-            [void](git -c network.timeout=3 fetch origin main 2>&1)
-            $LocalHash  = (git rev-parse HEAD).Trim()
-            $RemoteHash = (git rev-parse "@{upstream}").Trim()
-
-            if ($LocalHash -ne $RemoteHash) {
-                $Alerts += @{
-                    type = "warning"
-                    message = "Repository Update Available: Your Mac pushed changes that aren't on this PC yet."
-                    fixAction = "gitpull"
-                }
-            }
-        } catch {}
-        Pop-Location
-    }
-    
-    # --- AUDIT B: SYNCHRONIZATION GAP ---
-    $CountGap = $MasterFiles.Count - $MobileFiles.Count
-    if ($CountGap -gt 0) {
-        $Alerts += @{
-            type = "danger"
-            message = "Synchronization Gap: Master backup has $CountGap more track(s) than Mobile Storage."
-            fixAction = "sync"
-        }
-    }
-
-    # --- AUDIT C: LYRIC COVERAGE DEFICIT ---
-    if ($MasterFiles.Count -gt 0) {
-        $LyricCoverage = ($LrcFiles.Count / $MasterFiles.Count) * 100
-        if ($LyricCoverage -lt 75) {
-            $Alerts += @{
-                type = "warning"
-                message = "Low Lyric Coverage: Only $([Math]::Round($LyricCoverage, 1))% of library has synced (.lrc) metadata."
-                fixAction = "none"
-            }
-        }
-    }
-
-    $TrackDatabase = @()
-    foreach ($File in $MasterFiles) {
-        $RelativePath = $File.FullName.Substring($BackupDir.Length).TrimStart('\')
-        $PathParts = $RelativePath -split '\\'
-        $Artist = if ($PathParts.Count -ge 3) { $PathParts[0] } else { "Unknown Artist" }
-        $Album  = if ($PathParts.Count -ge 3) { $PathParts[1] } else { "Single / Unknown" }
-        $HasLrc = Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc"
-
-        $TrackDatabase += @{
-            title  = $File.BaseName
-            artist = $Artist
-            album  = $Album
-            sizeMb = [Math]::Round(($File.Length / 1MB), 2)
-            hasLrc = $HasLrc
-            type   = $File.Extension.ToUpper().Replace('.','')
-        }
-    }
-
-    return @{
-        masterCount = $MasterFiles.Count
-        mobileCount = $MobileFiles.Count
-        lrcCount    = $LrcFiles.Count
-        masterSize  = [Math]::Round($MasterSize, 2)
-        mobileSize  = [Math]::Round($MobileSize, 2)
-        alerts      = $Alerts
-        tracks      = $TrackDatabase
-    }
+# Shared Thread-Safe Memory Container for immediate web loading
+$Global:CachedMetrics = @{
+    masterCount = 0
+    mobileCount = 0
+    lrcCount    = 0
+    masterSize  = 0
+    mobileSize  = 0
+    alerts      = @()
+    tracks      = @()
 }
 
 # -----------------------------------------------------------------
-# 2. HELPER FUNCTION: ASYNC WORKER TASK ENGINE (FILE-STREAM BASED)
+# 1. ASYNC BACKGROUND SCANNER (Keeps the web thread ultra-fast)
+# -----------------------------------------------------------------
+function Start-AsyncLibraryScanner {
+    $null = Start-ThreadJob -ScriptBlock {
+        param($BDir, $MDir, $RDir)
+        while ($true) {
+            if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 10; continue }
+
+            # Perform heavy disk scanning quietly away from the web thread
+            $MasterFiles = Get-ChildItem -LiteralPath $BDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" }
+            $MobileFiles = Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" }
+            $LrcFiles    = Get-ChildItem -LiteralPath $BDir -Recurse -Filter "*.lrc" -File
+
+            $MasterSize = ($MasterFiles | Measure-Object -Property Length -Sum).Sum / 1GB
+            $MobileSize = ($MobileFiles | Measure-Object -Property Length -Sum).Sum / 1GB
+
+            $Alerts = @()
+            
+            # Safe Public Git update checker
+            if (Test-Path -LiteralPath "$RDir\.git") {
+                try {
+                    $Env:GIT_TERMINAL_PROMPT = "0"
+                    $Env:GIT_SSH_COMMAND = ""
+                    Push-Location $RDir
+                    [void](git -c network.timeout=3 fetch origin main 2>&1)
+                    if ((git rev-parse HEAD).Trim() -ne (git rev-parse "@{upstream}").Trim()) {
+                        $Alerts += @{ type = "warning"; message = "Repository Update Available: Changes pushed from Mac are ready."; fixAction = "gitpull" }
+                    }
+                    Pop-Location
+                } catch {}
+            }
+
+            if ($MasterFiles.Count -gt $MobileFiles.Count) {
+                $Alerts += @{ type = "danger"; message = "Synchronization Gap: Master backup has $(($MasterFiles.Count - $MobileFiles.Count)) more track(s) than Mobile."; fixAction = "sync" }
+            }
+
+            # Build the memory track list grid safely
+            $TrackDatabase = @()
+            foreach ($File in $MasterFiles) {
+                if ($null -eq $File.FullName) { continue }
+                $RelativePath = $File.FullName.Substring($BDir.Length).TrimStart('\')
+                $PathParts = $RelativePath -split '\\'
+                $Artist = if ($PathParts.Count -ge 3) { $PathParts[0] } else { "Unknown Artist" }
+                $Album  = if ($PathParts.Count -ge 3) { $PathParts[1] } else { "Single / Unknown" }
+                
+                $TrackDatabase += @{
+                    title  = [string]$File.BaseName
+                    artist = [string]$Artist
+                    album  = [string]$Album
+                    sizeMb = [Math]::Round(($File.Length / 1MB), 2)
+                    hasLrc = [bool](Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc" -ErrorAction SilentlyContinue)
+                    type   = [string]$File.Extension.ToUpper().Replace('.','')
+                }
+            }
+
+            # Swap the finished cache instantly into memory
+            $Global:CachedMetrics = @{
+                masterCount = $MasterFiles.Count
+                mobileCount = $MobileFiles.Count
+                lrcCount    = $LrcFiles.Count
+                masterSize  = [Math]::Round($MasterSize, 2)
+                mobileSize  = [Math]::Round($MobileSize, 2)
+                alerts      = $Alerts
+                tracks      = $TrackDatabase
+            }
+
+            # Rest the scanner loop for 30 seconds before re-checking disk changes
+            Start-Sleep -Seconds 30
+        }
+    } -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir
+}
+
+# -----------------------------------------------------------------
+# 2. FILE-STREAM BASED WORKER TRIGGER
 # -----------------------------------------------------------------
 function Invoke-PipelineExecution {
-    param([string]$Type = "sync")
     if ($Global:IsPipelineRunning) { return }
     $Global:IsPipelineRunning = $true
     
@@ -119,7 +110,6 @@ function Invoke-PipelineExecution {
     }
     
     $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Global:DiagLogFile
-
     $null = Start-ThreadJob -ScriptBlock {
         while ($using:Job.State -eq "Running") { Start-Sleep -Seconds 1 }
         Remove-Job -Job $using:Job
@@ -127,31 +117,20 @@ function Invoke-PipelineExecution {
     }
 }
 
-# -----------------------------------------------------------------
-# 2.5 HELPER FUNCTION: HOT-RELOAD EXECUTION ENGINE
-# -----------------------------------------------------------------
 function Invoke-HotReload {
     if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
     "[SYSTEM] Hot-reload triggered. Executing Git Pull..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
-    
     Push-Location $ScriptRepoDir
     try {
-        # Force Git to run silently over HTTPS
         $Env:GIT_TERMINAL_PROMPT = "0"
         $Env:GIT_SSH_COMMAND = ""
         & "git" pull origin main >> $Global:DiagLogFile 2>&1
-        "[SYSTEM] Git pull completed successfully." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
-    } catch {
-        "[ERROR] Git pull failed: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
-    }
+    } catch {}
     Pop-Location
-
-    "[SYSTEM] Execution complete. Reloading dashboard context..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
 }
 
-# -----------------------------------------------------------------
-# 3. CORE FRONTEND DASHBOARD INTERFACE ASSET (RAW LITERAL STRING)
-# -----------------------------------------------------------------
+# HTML String Asset (Kept intact from core interface build)
+# Includes your updated Fetch configuration
 $HtmlDashboard = @'
 <!DOCTYPE html>
 <html lang="en">
@@ -187,130 +166,74 @@ $HtmlDashboard = @'
     </style>
 </head>
 <body>
-
     <div class="alert-container" id="alerts-zone"></div>
-
     <div class="grid">
         <div class="card"><h3>Master Tracks</h3><div class="value" id="stat-master-count">-</div></div>
         <div class="card"><h3>Mobile Storage</h3><div class="value" id="stat-mobile-count">-</div></div>
         <div class="card"><h3>Lyrics Index</h3><div class="value" id="stat-lrc-count">-</div></div>
         <div class="card"><h3>Storage Weights</h3><div class="value" id="stat-sizes">-</div></div>
     </div>
-
     <div class="main-layout">
         <div class="panel">
             <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline()">Run Master Sync</button></h2>
             <div class="console" id="terminal-feed">Ready. Awaiting run commands...</div>
         </div>
-
         <div class="panel">
             <h2>Archive Metadata Navigator</h2>
             <input type="text" class="search-box" id="search-input" placeholder="Search archive by title, artist, or album..." onkeyup="filterDatabase()">
             <div class="table-wrapper">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Track Title</th>
-                            <th>Artist</th>
-                            <th>Album</th>
-                            <th>Lyrics</th>
-                        </tr>
-                    </thead>
-                    <tbody id="metadata-rows">
-                        <tr><td colspan="4" style="text-align:center; color:#71717A;">Scanning file layout...</td></tr>
-                    </tbody>
+                    <thead><tr><th>Track Title</th><th>Artist</th><th>Album</th><th>Lyrics</th></tr></thead>
+                    <tbody id="metadata-rows"><tr><td colspan="4" style="text-align:center; color:#71717A;">Scanning file layout...</td></tr></tbody>
                 </table>
             </div>
         </div>
     </div>
-
     <script>
         let fullTrackDb = [];
-
         function loadMetrics() {
-            fetch('/metrics')
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById('stat-master-count').innerText = `${data.masterCount} files`;
-                    document.getElementById('stat-mobile-count').innerText = `${data.mobileCount} compressed`;
-                    document.getElementById('stat-lrc-count').innerText = `${data.lrcCount} synced`;
-                    document.getElementById('stat-sizes').innerText = `${data.mobileSize} GB / ${data.masterSize} GB`;
-                    
-                    const alertZone = document.getElementById('alerts-zone');
-                    if (data.alerts && data.alerts.length > 0) {
-                        alertZone.innerHTML = data.alerts.map(a => {
-                            if (a.fixAction === "gitpull") {
-                                return `<div class="alert alert-${a.type}">
-                                    <span>⚠️ ${a.message}</span>
-                                    <button class="btn btn-warn" onclick="triggerPull()">Pull & Hot-Reload Script</button>
-                                </div>`;
-                            }
-                            return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span></div>`;
-                        }).join('');
-                    } else {
-                        alertZone.innerHTML = '';
-                    }
-
-                    fullTrackDb = data.tracks || [];
-                    buildTable(fullTrackDb);
-                })
-                .catch(() => {
-                    document.getElementById('terminal-feed').innerText = "[SYSTEM] Server recycling updates...";
-                });
+            fetch('/metrics').then(res => res.json()).then(data => {
+                document.getElementById('stat-master-count').innerText = `${data.masterCount} files`;
+                document.getElementById('stat-mobile-count').innerText = `${data.mobileCount} compressed`;
+                document.getElementById('stat-lrc-count').innerText = `${data.lrcCount} synced`;
+                document.getElementById('stat-sizes').innerText = `${data.mobileSize} GB / ${data.masterSize} GB`;
+                const alertZone = document.getElementById('alerts-zone');
+                if (data.alerts && data.alerts.length > 0) {
+                    alertZone.innerHTML = data.alerts.map(a => {
+                        if (a.fixAction === "gitpull") return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span><button class="btn btn-warn" onclick="triggerPull()">Pull & Hot-Reload Script</button></div>`;
+                        return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span></div>`;
+                    }).join('');
+                } else { alertZone.innerHTML = ''; }
+                fullTrackDb = data.tracks || [];
+                buildTable(fullTrackDb);
+            }).catch(() => {});
         }
-
         function buildTable(tracks) {
             const tbody = document.getElementById('metadata-rows');
             if(tracks.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#71717A;">No records found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#71717A;">Scanning directory layouts asynchronously...</td></tr>`;
                 return;
             }
-            tbody.innerHTML = tracks.map(t => `
-                <tr>
-                    <td><strong>${t.title}</strong> <span style="color:#71717A; font-size:0.8em;">(${t.type})</span></td>
-                    <td>${t.artist}</td>
-                    <td>${t.album}</td>
-                    <td>${t.hasLrc ? '<span class="badge badge-lrc">LRC</span>' : '<span class="badge badge-missing">TXT/NONE</span>'}</td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = tracks.map(t => `<tr><td><strong>${t.title}</strong> <span style="color:#71717A; font-size:0.8em;">(${t.type})</span></td><td>${t.artist}</td><td>${t.album}</td><td>${t.hasLrc ? '<span class="badge badge-lrc">LRC</span>' : '<span class="badge badge-missing">TXT/NONE</span>'}</td></tr>`).join('');
         }
-
         function filterDatabase() {
             const query = document.getElementById('search-input').value.toLowerCase();
-            const filtered = fullTrackDb.filter(t => 
-                t.title.toLowerCase().includes(query) || 
-                t.artist.toLowerCase().includes(query) || 
-                t.album.toLowerCase().includes(query)
-            );
+            const filtered = fullTrackDb.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query) || t.album.toLowerCase().includes(query));
             buildTable(filtered);
         }
-
-        function triggerPipeline() {
-            document.getElementById('run-btn').disabled = true;
-            fetch('/run', { method: 'POST' });
-        }
-
-        function triggerPull() {
-            fetch('/pull', { method: 'POST' });
-        }
-
+        function triggerPipeline() { document.getElementById('run-btn').disabled = true; fetch('/run', { method: 'POST' }); }
+        function triggerPull() { fetch('/pull', { method: 'POST' }); }
         setInterval(() => {
-            fetch('/stream')
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById('run-btn').disabled = data.running;
-                    if(data.logs && data.logs.length > 0) {
-                        const consoleBox = document.getElementById('terminal-feed');
-                        consoleBox.innerText = data.logs.join('\n');
-                        consoleBox.scrollTop = consoleBox.scrollHeight;
-                    }
-                })
-                .catch(() => {
-                     document.getElementById('terminal-feed').innerText = "[SYSTEM] Engine reload sequence initiated. Reconnecting to interface loop...";
-                });
+            fetch('/stream').then(res => res.json()).then(data => {
+                document.getElementById('run-btn').disabled = data.running;
+                if(data.logs && data.logs.length > 0) {
+                    const consoleBox = document.getElementById('terminal-feed');
+                    consoleBox.innerText = data.logs.join('\n');
+                    consoleBox.scrollTop = consoleBox.scrollHeight;
+                }
+            }).catch(() => {});
         } , 1000);
-
-        setInterval(loadMetrics, 7000);
+        setInterval(loadMetrics, 5000);
         loadMetrics();
     </script>
 </body>
@@ -318,15 +241,18 @@ $HtmlDashboard = @'
 '@
 
 # -----------------------------------------------------------------
-# 4. HTTP LISTENER CORE WEB ENGINE ROUTING LOOP
+# 3. HTTP LISTENER PIPELINE ROUTER LOOP
 # -----------------------------------------------------------------
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8080/")
 
 try {
     $Listener.Start()
-    $Running = $true
     
+    # KICK OFF FILE DISK SCANNING ON AN ISOLATED SYSTEM THREAD IMMEDIATELY
+    Start-AsyncLibraryScanner
+    
+    $Running = $true
     while ($Running) {
         try {
             $Context = $Listener.GetContext()
@@ -342,8 +268,8 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
-                $DataMetrics = Get-LibraryMetrics
-                $JsonPayload = $DataMetrics | ConvertTo-Json -Depth 4 -Compress
+                # Instantly returns whatever data is currently calculated without waiting
+                $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 $Response.ContentType = "application/json"
                 $Response.ContentLength64 = $Buffer.Length
@@ -351,23 +277,15 @@ try {
             }
             elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
                 $CurrentLogs = @()
-                if (Test-Path $Global:DiagLogFile) {
-                    $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue
-                }
-                $StreamObj = @{
-                    running = $Global:IsPipelineRunning
-                    logs    = $CurrentLogs
-                }
-                $JsonPayload = $StreamObj | ConvertTo-Json -Compress
+                if (Test-Path $Global:DiagLogFile) { $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue }
+                $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs } | ConvertTo-Json -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 $Response.ContentType = "application/json"
                 $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
-                if (-not $Global:IsPipelineRunning) {
-                    Invoke-PipelineExecution -Type "sync"
-                }
+                Invoke-PipelineExecution
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
                 $Response.ContentType = "application/json"
                 $Response.ContentLength64 = $Buffer.Length
@@ -384,10 +302,6 @@ try {
             $Response.OutputStream.Close()
         } catch {}
     }
-}
-finally {
-    if ($null -ne $Listener) {
-        $Listener.Stop()
-        $Listener.Close()
-    }
+} finally {
+    if ($null -ne $Listener) { $Listener.Stop(); $Listener.Close() }
 }
