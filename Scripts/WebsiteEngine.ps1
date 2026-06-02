@@ -115,31 +115,32 @@ function Invoke-PipelineExecution {
     param([string]$Type = "sync")
     if ($Global:IsPipelineRunning) { return }
     $Global:IsPipelineRunning = $true
-    $Global:LogBuffer.Clear()
+    
+    # Establish a physical file path for the web console to read from
+    $Global:DiagLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
+    
+    # Clear any old diagnostic files from previous runs
+    if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
+    
+    # Write an initial line so we know the button click worked
+    "[SYSTEM] Dispatching background process worker..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
 
-    $Global:LogBuffer.Add("[DIAGNOSTIC] Attempting direct command execution...")
+    $JobScript = {
+        param($ScriptPath, $RepoDir, $OutputFile)
+        Set-Location -LiteralPath $RepoDir
+        
+        # Force cmd.exe to dump EVERY SINGLE LINE directly into our physical text file in real time
+        & "$env:SystemRoot\System32\cmd.exe" /c "`"$ScriptPath`" headless" > $OutputFile 2>&1
+    }
+    
+    # Fire the job completely independent of the web threads
+    $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Global:DiagLogFile
 
-    # Run everything on a safe, isolated thread pool without the complex Job architecture
+    # Monitor when the job stops so we can unlock the button
     $null = Start-ThreadJob -ScriptBlock {
-        try {
-            Set-Location -LiteralPath $using:ScriptRepoDir -ErrorAction Stop
-            $Global:LogBuffer.Add("[DIAGNOSTIC] Directory context verified: $($using:ScriptRepoDir)")
-            
-            # Execute the batch file directly and dump output streams into the logs
-            $Output = & "$env:SystemRoot\System32\cmd.exe" /c "`"$using:BatchScript`" headless" 2>&1
-            
-            foreach ($Line in $Output) {
-                if ($Line) { $Global:LogBuffer.Add($Line.ToString()) }
-            }
-        }
-        catch {
-            $Global:LogBuffer.Add("[CRITICAL ERROR] Failed during execution launcher:")
-            $Global:LogBuffer.Add($_.Exception.Message)
-        }
-        finally {
-            $Global:LogBuffer.Add("[DIAGNOSTIC] Direct execution sequence finished.")
-            $Global:IsPipelineRunning = $false
-        }
+        while ($using:Job.State -eq "Running") { Start-Sleep -Seconds 1 }
+        Remove-Job -Job $using:Job
+        $Global:IsPipelineRunning = $false
     }
 }
 
