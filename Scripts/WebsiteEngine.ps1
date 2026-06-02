@@ -1,6 +1,6 @@
 Param (
-    [string]$BackupDir = "C:\Users\filip\Music\YT_Music_Backup",
-    [string]$MobileDir = "C:\Users\filip\Music\YT_Music_Mobile",
+    [string]$BackupDir = "C:\MusicTools\MusicPipeline\YT_Music_Backup",
+    [string]$MobileDir = "C:\MusicTools\MusicPipeline\YT_Music_Mobile",
     [string]$BatchScript = "C:\MusicTools\MusicPipeline\sync_music.bat"
 )
 
@@ -29,10 +29,10 @@ function Get-LibraryMetrics {
     if (Test-Path -LiteralPath "$ScriptRepoDir\.git") {
         Push-Location $ScriptRepoDir
         try {
-            # Quietly fetch remote metadata index
-            [void](git fetch origin 2>&1)
+            $Env:GIT_TERMINAL_PROMPT = "0"
+            [void](git -c network.timeout=3 fetch origin 2>&1)
             $LocalHash  = (git rev-parse HEAD).Trim()
-            $RemoteHash = (git rev-parse "@{upstream}").Trim() # Quoted and explicit
+            $RemoteHash = (git rev-parse "@{upstream}").Trim()
 
             if ($LocalHash -ne $RemoteHash) {
                 $Alerts += @{
@@ -162,9 +162,9 @@ function Invoke-PipelineExecution {
 }
 
 # -----------------------------------------------------------------
-# 3. CORE FRONTEND DASHBOARD INTERFACE ASSET
+# 3. CORE FRONTEND DASHBOARD INTERFACE ASSET (RAW LITERAL STRING)
 # -----------------------------------------------------------------
-$HtmlDashboard = @"
+$HtmlDashboard = @'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -212,7 +212,7 @@ $HtmlDashboard = @"
 
     <div class="main-layout">
         <div class="panel">
-            <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline(`"sync`")">Run Master Sync</button></h2>
+            <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline('sync')">Run Master Sync</button></h2>
             <div class="console" id="terminal-feed">Ready. Awaiting run commands...</div>
         </div>
 
@@ -244,25 +244,25 @@ $HtmlDashboard = @"
             fetch('/metrics')
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('stat-master-count').innerText = `\${data.masterCount} files`;
-                    document.getElementById('stat-mobile-count').innerText = `\${data.mobileCount} compressed`;
-                    document.getElementById('stat-lrc-count').innerText = `\${data.lrcCount} synced`;
-                    document.getElementById('stat-sizes').innerText = `\${data.mobileSize} GB / \${data.masterSize} GB`;
+                    document.getElementById('stat-master-count').innerText = `${data.masterCount} files`;
+                    document.getElementById('stat-mobile-count').innerText = `${data.mobileCount} compressed`;
+                    document.getElementById('stat-lrc-count').innerText = `${data.lrcCount} synced`;
+                    document.getElementById('stat-sizes').innerText = `${data.mobileSize} GB / ${data.masterSize} GB`;
                     
                     const alertZone = document.getElementById('alerts-zone');
                     if (data.alerts && data.alerts.length > 0) {
                         alertZone.innerHTML = data.alerts.map(a => {
                             let actionButton = '';
                             if (a.fixAction === 'sync') {
-                                actionButton = `<button class="fix-btn" onclick="triggerPipeline(\`"sync\`")">Fix Now</button>`;
+                                actionButton = `<button class="fix-btn" onclick="triggerPipeline('sync')">Fix Now</button>`;
                             } else if (a.fixAction === 'gitpull') {
-                                actionButton = `<button class="fix-btn" style="background:#00ADB5; color:#fff;" onclick="triggerPipeline(\`"gitpull\`")">Git Pull</button>`;
+                                actionButton = `<button class="fix-btn" style="background:#00ADB5; color:#fff;" onclick="triggerPipeline('gitpull')">Git Pull</button>`;
                             }
                             return `
-                                <div class="alert alert-\${a.type}">
-                                    <span>⚠️ \${a.message}</span>
-                                    \${actionButton}
-                                </div>
+                                <div class="alert alert-${a.type}">
+                                    <span>⚠️ ${a.message}</span>
+                                    ${actionButton}
+                               </div>
                             `;
                         }).join('');
                     } else {
@@ -282,10 +282,10 @@ $HtmlDashboard = @"
             }
             tbody.innerHTML = tracks.map(t => `
                 <tr>
-                    <td><strong>\${t.title}</strong> <span style="color:#71717A; font-size:0.8em;">(\${t.type})</span></td>
-                    <td>\${t.artist}</td>
-                    <td>\${t.album}</td>
-                    <td>\${t.hasLrc ? '<span class="badge badge-lrc">LRC</span>' : '<span class="badge badge-missing">TXT/NONE</span>'}</td>
+                    <td><strong>${t.title}</strong> <span style="color:#71717A; font-size:0.8em;">(${t.type})</span></td>
+                    <td>${t.artist}</td>
+                    <td>${t.album}</td>
+                    <td>${t.hasLrc ? '<span class="badge badge-lrc">LRC</span>' : '<span class="badge badge-missing">TXT/NONE</span>'}</td>
                 </tr>
             `).join('');
         }
@@ -302,7 +302,7 @@ $HtmlDashboard = @"
 
         function triggerPipeline(mode) {
             document.getElementById('run-btn').disabled = true;
-            fetch(`/run?mode=\${mode}`, { method: 'POST' })
+            fetch('/run?mode=' + mode, { method: 'POST' })
                 .then(() => {
                     if (mode === 'gitpull') {
                         setTimeout(loadMetrics, 4000);
@@ -327,10 +327,7 @@ $HtmlDashboard = @"
     </script>
 </body>
 </html>
-"@
-
-
-
+'@
 
 # -----------------------------------------------------------------
 # 3.5 AUTOMATIC BACKGROUND TIMER (Every 30 Minutes)
