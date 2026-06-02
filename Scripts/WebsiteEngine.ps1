@@ -1,15 +1,14 @@
 Param (
-    [string]$BackupDir = "C:\Users\filip\Music\YT_Music_Backup",
-    [string]$MobileDir = "C:\Users\filip\Music\YT_Music_Mobile",
-    [string]$BatchScript = "C:\MusicTools\MusicPipeline\sync_music.bat"
+    [string]$BackupDir = "C:\\Users\\filip\\Music\\YT_Music_Backup",
+    [string]$MobileDir = "C:\\Users\\filip\\Music\\YT_Music_Mobile",
+    [string]$BatchScript = "C:\\MusicTools\\MusicPipeline\\sync_music.bat"
 )
 
-# Global memory variable to hold active live log stream data
 $Global:LogBuffer = New-Object System.Collections.Generic.List[string]
 $Global:IsPipelineRunning = $false
 
 # -----------------------------------------------------------------
-# 1. HELPER FUNCTION: SCAN STORAGE FOOTPRINT & METADATA INDEX
+# 1. ENHANCED HELPER FUNCTION: SCAN METRICS & AUDIT FOR ALERTS
 # -----------------------------------------------------------------
 function Get-LibraryMetrics {
     if (-not (Test-Path -LiteralPath $BackupDir)) { return @{} }
@@ -18,20 +17,43 @@ function Get-LibraryMetrics {
     $MobileFiles = Get-ChildItem -LiteralPath $MobileDir -Recurse -File | Where-Object { $_.Extension -match "m4a" }
     $LrcFiles    = Get-ChildItem -LiteralPath $BackupDir -Recurse -Filter "*.lrc" -File
 
-    # Calculate Sizes safely
     $MasterSize = ($MasterFiles | Measure-Object -Property Length -Sum).Sum / 1GB
     $MobileSize = ($MobileFiles | Measure-Object -Property Length -Sum).Sum / 1GB
 
-    # Build searchable track metadata array
+    # -------------------------------------------------------------
+    # LIVE AUDIT SYSTEM (Replaces manual Fix.ps1 logic)
+    # -------------------------------------------------------------
+    $Alerts = @()
+    
+    # Audit 1: Synchronization Gap Mismatch
+    $CountGap = $MasterFiles.Count - $MobileFiles.Count
+    if ($CountGap -gt 0) {
+        $Alerts += @{
+            type = "danger"
+            message = "Synchronization Gap: Master backup has $CountGap more track(s) than Mobile Storage. A compression or rsync thread may have skipped files."
+            fixAction = "sync"
+        }
+    }
+
+    # Audit 2: High Lyric Deficit
+    if ($MasterFiles.Count -gt 0) {
+        $LyricCoverage = ($LrcFiles.Count / $MasterFiles.Count) * 100
+        if ($LyricCoverage -lt 75) {
+            $Alerts += @{
+                type = "warning"
+                message = "Low Lyric Coverage: Only $([Math]::Round($LyricCoverage, 1))% of your library has time-synced (.lrc) files configured."
+                fixAction = "none"
+            }
+        }
+    }
+
     $TrackDatabase = @()
     foreach ($File in $MasterFiles) {
         $RelativePath = $File.FullName.Substring($BackupDir.Length).TrimStart('\')
         $PathParts = $RelativePath -split '\\'
         
-        # Extrapolate structured metadata from standard directory tree layout
         $Artist = if ($PathParts.Count -ge 3) { $PathParts[0] } else { "Unknown Artist" }
         $Album  = if ($PathParts.Count -ge 3) { $PathParts[1] } else { "Single / Unknown" }
-        
         $HasLrc = Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc"
 
         $TrackDatabase += @{
@@ -50,6 +72,7 @@ function Get-LibraryMetrics {
         lrcCount    = $LrcFiles.Count
         masterSize  = [Math]::Round($MasterSize, 2)
         mobileSize  = [Math]::Round($MobileSize, 2)
+        alerts      = $Alerts
         tracks      = $TrackDatabase
     }
 }
@@ -63,10 +86,8 @@ function Invoke-PipelineExecution {
     $Global:LogBuffer.Clear()
     $Global:LogBuffer.Add("[SYSTEM] Initializing Master Execution Loop...")
 
-    # Build a clean background block payload to feed into a separate thread
     $JobScript = {
         param($ScriptPath)
-        
         $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
         $ProcessInfo.FileName = "cmd.exe"
         $ProcessInfo.Arguments = "/c `"$ScriptPath`" headless"
@@ -77,10 +98,8 @@ function Invoke-PipelineExecution {
 
         $Process = New-Object System.Diagnostics.Process
         $Process.StartInfo = $ProcessInfo
-        
         [void]$Process.Start()
 
-        # Stream output text lines back up continuously while the process is alive
         while (-not $Process.StandardOutput.EndOfStream) {
             $Line = $Process.StandardOutput.ReadLine()
             if ($Line) { $Line }
@@ -89,41 +108,33 @@ function Invoke-PipelineExecution {
             $ErrLine = $Process.StandardError.ReadLine()
             if ($ErrLine) { "[ERROR] " + $ErrLine }
         }
-
         $Process.WaitForExit()
         return "[SYSTEM] Pipeline task finalized with code: $($Process.ExitCode)"
     }
 
-    # Launch the execution script as an independent local background job
     $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript
 
-    # Monitor the job's returned echo data stream asynchronously without locking up the server
     $null = Register-ObjectEvent -InputObject $Job -EventName "StateChanged" -Action {
         if ($Event.SourceEventArgs.JobStateInfo.State -eq "Completed") {
             $Results = Receive-Job -Job $Job
-            foreach ($Row in $Results) {
-                if ($Row) { $Global:LogBuffer.Add($Row) }
-            }
+            foreach ($Row in $Results) { if ($Row) { $Global:LogBuffer.Add($Row) } }
             Remove-Job -Job $Job
             $Global:IsPipelineRunning = $false
             Unregister-Event -SourceIdentifier $Event.SourceIdentifier
         }
     }
 
-    # Regularly pull incremental output updates into the console stream
-    Task {
+    $null = Start-ThreadJob -ScriptBlock {
         while ($Global:IsPipelineRunning) {
-            $Data = Receive-Job -Job $Job
-            foreach ($Line in $Data) {
-                if ($Line) { $Global:LogBuffer.Add($Line) }
-            }
+            $Data = Receive-Job -Job $using:Job
+            foreach ($Line in $Data) { if ($Line) { $Global:LogBuffer.Add($Line) } }
             Start-Sleep -Seconds 1
         }
     }
 }
 
 # -----------------------------------------------------------------
-# 3. CORE FRONTEND DASHBOARD INTERFACE ASSET (HTML/CSS/JS)
+# 3. CORE FRONTEND DASHBOARD INTERFACE ASSET (WITH ALERT SYSTEM)
 # -----------------------------------------------------------------
 $HtmlDashboard = @"
 <!DOCTYPE html>
@@ -133,11 +144,17 @@ $HtmlDashboard = @"
     <title>Music Pipeline Master Console</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0F0F11; color: #E2E8F0; margin: 0; padding: 25px; }
+        .alert-container { margin-bottom: 20px; }
+        .alert { padding: 15px 20px; border-radius: 6px; margin-bottom: 10px; font-size: 0.95em; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+        .alert-danger { background: #4C1D1D; color: #F87171; border: 1px solid #7F1D1D; }
+        .alert-warning { background: #453015; color: #FBBF24; border: 1px solid #78350F; }
+        .alert .fix-btn { background: #FFF; color: #000; border: none; padding: 5px 12px; border-radius: 4px; font-size: 0.85em; font-weight: bold; cursor: pointer; }
+        .alert .fix-btn:hover { opacity: 0.9; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .card { background: #18181C; padding: 20px; border-radius: 10px; border: 1px solid #27272A; text-align: center; }
         .card h3 { margin: 0; color: #A1A1AA; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; }
         .card .value { font-size: 2em; font-weight: bold; margin: 10px 0; color: #00ADB5; }
-        .main-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; height: calc(100vh - 180px); }
+        .main-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; height: calc(100vh - 260px); }
         .panel { background: #18181C; border-radius: 10px; border: 1px solid #27272A; padding: 20px; display: flex; flex-direction: column; }
         h2 { margin-top: 0; color: #FFF; font-size: 1.3em; border-bottom: 1px solid #27272A; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .btn { background: #00ADB5; color: #FFF; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
@@ -155,6 +172,8 @@ $HtmlDashboard = @"
     </style>
 </head>
 <body>
+
+    <div class="alert-container" id="alerts-zone"></div>
 
     <div class="grid">
         <div class="card"><h3>Master Tracks</h3><div class="value" id="stat-master-count">-</div></div>
@@ -202,6 +221,19 @@ $HtmlDashboard = @"
                     document.getElementById('stat-lrc-count').innerText = `\${data.lrcCount} synced`;
                     document.getElementById('stat-sizes').innerText = `\${data.mobileSize} GB / \${data.masterSize} GB`;
                     
+                    // Render Alert Banners
+                    const alertZone = document.getElementById('alerts-zone');
+                    if (data.alerts && data.alerts.length > 0) {
+                        alertZone.innerHTML = data.alerts.map(a => `
+                            <div class="alert alert-\${a.type}">
+                                <span>⚠️ \${a.message}</span>
+                                \${a.fixAction === 'sync' ? '<button class="fix-btn" onclick="triggerPipeline()">Fix Now</button>' : ''}
+                            </div>
+                        `).join('');
+                    } else {
+                        alertZone.innerHTML = '';
+                    }
+
                     fullTrackDb = data.tracks || [];
                     buildTable(fullTrackDb);
                 });
@@ -238,7 +270,6 @@ $HtmlDashboard = @"
             fetch('/run', { method: 'POST' });
         }
 
-        // Long poll connection looping frame to handle immediate log updates
         setInterval(() => {
             fetch('/stream')
                 .then(res => res.json())
@@ -252,16 +283,11 @@ $HtmlDashboard = @"
                 });
         } , 1000);
 
-        // Initial Load frame dispatch
         loadMetrics();
     </script>
 </body>
 </html>
 "@
-
-
-
-
 
 # -----------------------------------------------------------------
 # 3.5 AUTOMATIC BACKGROUND TIMER (Every 30 Minutes)
@@ -269,24 +295,13 @@ $HtmlDashboard = @"
 $TimerScript = {
     param($EngineUrl)
     while ($true) {
-        # Sleep for 30 minutes (1800 seconds)
         Start-Sleep -Seconds 1800
-        
-        # Poke the website engine to start an automated sync run
         try {
             Invoke-RestMethod -Uri "$EngineUrl`run" -Method Post | Out-Null
-        } catch {
-            # Webserver might be temporarily busy or recycling; ignore and wait for next loop
-        }
+        } catch {}
     }
 }
-# Start the timer process as an independent background script job
 $null = Start-Job -ScriptBlock $TimerScript -ArgumentList "http://localhost:8080/"
-
-
-
-
-
 
 # -----------------------------------------------------------------
 # 4. HTTP LISTENER CORE SERVER TERMINAL ROUTING LOOP
@@ -294,14 +309,9 @@ $null = Start-Job -ScriptBlock $TimerScript -ArgumentList "http://localhost:8080
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8080/")
 try { $Listener.Start() } catch {
-    Write-Host "[!] Port 8080 occupied. Shutdown active process tracks before spinning up console console app engine." -ForegroundColor Red
+    Write-Host "[!] Port 8080 occupied." -ForegroundColor Red
     Exit 1
 }
-
-Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "     Master Console Server Engine Live on http://localhost:8080" -ForegroundColor Green
-Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "[*] Open your browser and navigate to http://localhost:8080 to access your dashboard." -ForegroundColor Yellow
 
 $Running = $true
 while ($Running) {
@@ -309,18 +319,15 @@ while ($Running) {
         $Context = $Listener.GetContext()
         $Request = $Context.Request
         $Response = $Context.Response
-
         $UrlPath = $Request.Url.LocalPath
         $Method  = $Request.HttpMethod
 
-        # ROUTE A: BASE ENTRYPOINT (Load Master Panel App HTML UI Frame)
         if ($UrlPath -eq "/" -and $Method -eq "GET") {
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlDashboard)
             $Response.ContentType = "text/html; charset=utf-8"
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        # ROUTE B: TRACKS DATA & SYSTEM STRUCTURAL METRICS (JSON Payload)
         elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
             $DataMetrics = Get-LibraryMetrics
             $JsonPayload = $DataMetrics | ConvertTo-Json -Depth 4 -Compress
@@ -329,7 +336,6 @@ while ($Running) {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        # ROUTE C: INTERCEPT TERMINAL LOG STREAM BUFFER ARRAY
         elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
             $StreamObj = @{
                 running = $Global:IsPipelineRunning
@@ -341,7 +347,6 @@ while ($Running) {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        # ROUTE D: TRIGGER LIVE PIPELINE RUN
         elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
             if (-not $Global:IsPipelineRunning) {
                 Invoke-PipelineExecution
@@ -351,14 +356,8 @@ while ($Running) {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        else {
-            $Response.StatusCode = 404
-        }
+        else { $Response.StatusCode = 404 }
         $Response.OutputStream.Close()
-    }
-    catch {
-        # Catch connection drops quietly so server process loop doesn't fail
-    }
+    } catch {}
 }
-
 $Listener.Stop()

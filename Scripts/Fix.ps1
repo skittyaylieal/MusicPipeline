@@ -5,7 +5,7 @@ Param (
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-1..50 | ForEach-Object { Write-Host "" }
+1..10 | ForEach-Object { Write-Host "" }
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Headless Link Auditor" -ForegroundColor Cyan
@@ -15,8 +15,12 @@ $QueueFile = "$ConfigDir\audit_queue.json"
 $HtmlPath  = "$ConfigDir\music_audit.html"
 $ShortcutPath = "$env:USERPROFILE\Desktop\Review Broken Music.url"
 
+# Detect if running in background task scheduler mode or terminal mode
 $IsHeadless = (Get-Process -Id $PID).SessionId -eq 0
 
+# -----------------------------------------------------------------
+# MODE A: HEADLESS ERROR PARSING (Runs silently in background)
+# -----------------------------------------------------------------
 if ($IsHeadless) {
     Write-Host "[*] Headless execution environment verified. Scanning logs..." -ForegroundColor Yellow
     
@@ -80,8 +84,10 @@ IconFile=$FirefoxPath
     Exit 0
 }
 
-# MODE B: INTERACTIVE REVIEW PLATFORM (When run manually by you)
-Write-Host "[*] Interactive console detected. Launching local API engine..." -ForegroundColor Cyan
+# -----------------------------------------------------------------
+# MODE B: INTERACTIVE REVIEW PLATFORM (When clicked from Desktop)
+# -----------------------------------------------------------------
+Write-Host "[*] Interactive console detected. Launching local Auditor interface..." -ForegroundColor Cyan
 
 if (-not (Test-Path -LiteralPath $QueueFile)) {
     Write-Host "[+] No audit data found. Queue file is missing." -ForegroundColor Green
@@ -146,7 +152,7 @@ $HtmlContent = @"
             if (index >= queue.length) {
                 document.getElementById('main-view').classList.add('hidden');
                 document.getElementById('done-view').classList.remove('hidden');
-                fetch('http://localhost:8080/shutdown');
+                fetch('http://localhost:8082/shutdown');
                 return;
             }
             document.getElementById('progress').innerText = `Item \${index + 1} of \${queue.length}`;
@@ -158,12 +164,12 @@ $HtmlContent = @"
         }
         function submitAction(actionType) {
             const currentId = queue[index].id;
-            fetch(`http://localhost:8080/submit?id=\${currentId}&action=\${actionType}`)
+            fetch(`http://localhost:8082/submit?id=\${currentId}&action=\${actionType}`)
                 .then(() => {
                     index++;
                     render();
                 })
-                .catch(err => alert('Communication with local PowerShell engine dropped: ' + err));
+                .catch(err => alert('Communication with local Link Auditor engine dropped: ' + err));
         }
         render();
     </script>
@@ -172,55 +178,58 @@ $HtmlContent = @"
 "@
 $HtmlContent | Out-File -LiteralPath $HtmlPath -Encoding utf8
 
+# FIXED: Shifted port to 8082 to allow parallel processing alongside the Web Server Console
 $Listener = New-Object System.Net.HttpListener
-$Listener.Prefixes.Add("http://localhost:8080/")
+$Listener.Prefixes.Add("http://localhost:8082/")
 try { $Listener.Start() } catch {
-    Write-Host "[!] Port 8080 occupied. Is another instance of the deck running?" -ForegroundColor Red
+    Write-Host "[!] Port 8082 occupied. Is another instance of the deck running?" -ForegroundColor Red
     Exit 1
 }
 
-Write-Host "[+] Local database engine loop listening on port 8080." -ForegroundColor Green
+Write-Host "[+] Local database engine loop listening on port 8082." -ForegroundColor Green
 Write-Host "[*] Spawning Firefox interface panel..." -ForegroundColor Yellow
 Start-Process -FilePath $FirefoxPath -ArgumentList "`"$HtmlPath`""
 
 $Looping = $true
 while ($Looping) {
-    $Context = $Listener.GetContext()
-    $Request = $Context.Request
-    $Response = $Context.Response
-    $Url = $Request.Url.LocalPath
-    $Query = $Request.QueryString
+    try {
+        $Context = $Listener.GetContext()
+        $Request = $Context.Request
+        $Response = $Context.Response
+        $Url = $Request.Url.LocalPath
+        $Query = $Request.QueryString
 
-    if ($Url -eq "/submit") {
-        $TargetID = $Query["id"]
-        $Action   = $Query["action"]
+        if ($Url -eq "/submit") {
+            $TargetID = $Query["id"]
+            $Action   = $Query["action"]
 
-        if ($Action -eq "fixed" -or $Action -eq "ignore") {
-            "youtube $TargetID" | Out-File -LiteralPath $HistoryPath -Append -Encoding ascii
-            Write-Host "[ARCHIVED] Successfully added ID: $TargetID to history." -ForegroundColor Green
-        } else {
-            Write-Host "[SKIPPED] Track $TargetID skipped by user choice." -ForegroundColor Yellow
+            if ($Action -eq "fixed" -or $Action -eq "ignore") {
+                "youtube $TargetID" | Out-File -LiteralPath $HistoryPath -Append -Encoding ascii
+                Write-Host "[ARCHIVED] Successfully added ID: $TargetID to history." -ForegroundColor Green
+            } else {
+                Write-Host "[SKIPPED] Track $TargetID skipped by user choice." -ForegroundColor Yellow
+            }
+
+            $Queue = $Queue | Where-Object { $_.id -ne $TargetID }
+            if ($Queue) {
+                $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8
+            } else {
+                if (Test-Path -LiteralPath $QueueFile) { Remove-Item -LiteralPath $QueueFile -Force }
+                if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
+            }
+            $Buffer = [System.Text.Encoding]::UTF8.GetBytes("OK")
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            $Response.OutputStream.Close()
         }
-
-        $Queue = $Queue | Where-Object { $_.id -ne $TargetID }
-        if ($Queue) {
-            $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8
-        } else {
-            if (Test-Path -LiteralPath $QueueFile) { Remove-Item -LiteralPath $QueueFile -Force }
-            if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
+        elif ($Url -eq "/shutdown") {
+            $Buffer = [System.Text.Encoding]::UTF8.GetBytes("Goodbye")
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            $Response.OutputStream.Close()
+            $Looping = $false
         }
-        $Buffer = [System.Text.Encoding]::UTF8.GetBytes("OK")
-        $Response.ContentLength64 = $Buffer.Length
-        $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-        $Response.OutputStream.Close()
-    }
-    elseif ($Url -eq "/shutdown") {
-        $Buffer = [System.Text.Encoding]::UTF8.GetBytes("Goodbye")
-        $Response.ContentLength64 = $Buffer.Length
-        $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-        $Response.OutputStream.Close()
-        $Looping = $false
-    }
+    } catch {}
 }
 $Listener.Stop()
 $MetricStopwatch.Stop()
