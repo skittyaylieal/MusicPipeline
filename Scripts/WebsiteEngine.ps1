@@ -121,8 +121,11 @@ function Invoke-PipelineExecution {
 
     $JobScript = {
         param($ScriptPath, $RepoDir, $Mode)
-        Set-Location $RepoDir
-        cmd.exe /c "`"$ScriptPath`" headless" 2>&1
+        # CRITICAL FIX: Explicitly step inside your actual music directory
+        Set-Location -LiteralPath $RepoDir
+        
+        # CRITICAL FIX: Call absolute command interpreter with native powershell invocation handler
+        & "$env:SystemRoot\System32\cmd.exe" /c "`"$ScriptPath`" headless" 2>&1
     }
     
     $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Type
@@ -246,7 +249,6 @@ $HtmlDashboard = @'
                     buildTable(fullTrackDb);
                 })
                 .catch(() => {
-                    // If network dropped due to a script restart, place visual indicator
                     document.getElementById('terminal-feed').innerText = "[SYSTEM] Server connection dropped. Web service is recycling updates...";
                 });
         }
