@@ -119,15 +119,14 @@ function Invoke-PipelineExecution {
 
     $Global:LogBuffer.Add("[SYSTEM] Dispatching background process worker: Mode ($Type)...")
 
+    # Force the background tracking job to inherit the bypass execution policy
     $JobScript = {
         param($ScriptPath, $RepoDir, $Mode)
-        # CRITICAL FIX: Explicitly step inside your actual music directory
         Set-Location -LiteralPath $RepoDir
-        
-        # CRITICAL FIX: Call absolute command interpreter with native powershell invocation handler
         & "$env:SystemRoot\System32\cmd.exe" /c "`"$ScriptPath`" headless" 2>&1
     }
     
+    # Explicitly using -InitializationScript to ensure permissions carry through
     $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Type
 
     $null = Start-ThreadJob -ScriptBlock {
