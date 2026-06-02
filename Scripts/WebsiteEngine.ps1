@@ -14,7 +14,7 @@ $ScriptRepoDir = [System.IO.Path]::GetDirectoryName($BatchScript)
 $ConfigDir = Split-Path $Global:DiagLogFile
 if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force }
 
-# Shared Default Memory Container (Instantly served to browser on boot)
+# Shared Default Memory Container
 $Global:CachedMetrics = @{
     masterCount = 0
     mobileCount = 0
@@ -25,7 +25,7 @@ $Global:CachedMetrics = @{
 }
 
 # -----------------------------------------------------------------
-# 1. DELAYED BACKGROUND SCANNER (Starts *after* the website is live)
+# 1. LIGHTWEIGHT BACKGROUND SCANNER (PowerShell 5.1 Bulletproof)
 # -----------------------------------------------------------------
 function Start-AsyncLibraryScanner {
     Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
@@ -33,20 +33,16 @@ function Start-AsyncLibraryScanner {
     $JobScript = {
         param($BDir, $MDir, $RDir, $CFile)
         
-        # CRITICAL: Sleep for 5 seconds to let the main script fully spin up the web port!
-        Start-Sleep -Seconds 5
-        
+        Start-Sleep -Seconds 2
         while ($true) {
             if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 5; continue }
 
-            # Fast targeted counts
             $MasterCount = (Get-ChildItem -LiteralPath $BDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" }).Count
             $MobileCount = (Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" }).Count
             $LrcCount    = (Get-ChildItem -LiteralPath $BDir -Recurse -Filter "*.lrc" -File).Count
 
-            # Quick size totals
             $MasterSize = (Get-ChildItem -LiteralPath $BDir -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1GB
-            $MobileSize = (Get-ChildItem -LiteralPath $MDir -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1GB
+            $MobileSize = (Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" } | Measure-Object -Property Length -Sum).Sum / 1GB
 
             $Alerts = @()
             if (Test-Path -LiteralPath "$RDir\.git") {
@@ -66,7 +62,6 @@ function Start-AsyncLibraryScanner {
                 $Alerts += @{ type = "danger"; message = "Synchronization Gap: Master backup has $(($MasterCount - $MobileCount)) more track(s) than Mobile."; fixAction = "sync" }
             }
 
-            # Drop payload to disk
             @{
                 masterCount = $MasterCount
                 mobileCount = $MobileCount
@@ -114,7 +109,7 @@ function Invoke-HotReload {
     Pop-Location
 }
 
-# HTML Dashboard Layout
+# HTML Dashboard Asset - JavaScript completely streamlined
 $HtmlDashboard = @'
 <!DOCTYPE html>
 <html lang="en">
@@ -131,14 +126,14 @@ $HtmlDashboard = @'
         .card { background: #18181C; padding: 20px; border-radius: 10px; border: 1px solid #27272A; text-align: center; }
         .card h3 { margin: 0; color: #A1A1AA; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; }
         .card .value { font-size: 2em; font-weight: bold; margin: 10px 0; color: #00ADB5; }
-        .main-layout { display: grid; grid-template-columns: 1fr; gap: 25px; height: calc(100vh - 260px); }
+        .main-layout { display: grid; grid-template-columns: 1fr; gap: 25px; }
         .panel { background: #18181C; border-radius: 10px; border: 1px solid #27272A; padding: 20px; display: flex; flex-direction: column; }
         h2 { margin-top: 0; color: #FFF; font-size: 1.3em; border-bottom: 1px solid #27272A; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .btn { background: #00ADB5; color: #FFF; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
         .btn-warn { background: #D97706; }
         .btn:hover { opacity: 0.9; }
         .btn:disabled { background: #3F3F46; cursor: not-allowed; }
-        .console { background: #09090B; border-radius: 6px; padding: 15px; font-family: monospace; font-size: 0.85em; color: #39FF14; overflow-y: auto; flex-grow: 1; white-space: pre-wrap; border: 1px solid #18181B; height: 400px; }
+        .console { background: #09090B; border-radius: 6px; padding: 15px; font-family: monospace; font-size: 0.85em; color: #39FF14; overflow-y: auto; flex-grow: 1; white-space: pre-wrap; border: 1px solid #18181B; min-height: 350px; max-height: 500px; }
     </style>
 </head>
 <body>
@@ -157,32 +152,41 @@ $HtmlDashboard = @'
     </div>
     <script>
         function loadMetrics() {
-            fetch('/metrics').then(res => res.json()).then(data => {
-                document.getElementById('stat-master-count').innerText = `${data.masterCount} files`;
-                document.getElementById('stat-mobile-count').innerText = `${data.mobileCount} compressed`;
-                document.getElementById('stat-lrc-count').innerText = `${data.lrcCount} synced`;
-                document.getElementById('stat-sizes').innerText = `${data.mobileSize} GB / ${data.masterSize} GB`;
-                const alertZone = document.getElementById('alerts-zone');
-                if (data.alerts && data.alerts.length > 0) {
-                    alertZone.innerHTML = data.alerts.map(a => {
-                        if (a.fixAction === "gitpull") return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span><button class="btn btn-warn" onclick="triggerPull()">Pull & Hot-Reload Script</button></div>`;
-                        return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span></div>`;
-                    }).join('');
-                } else { alertZone.innerHTML = ''; }
-            }).catch(() => {});
+            fetch('/metrics')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('stat-master-count').innerText = `${data.masterCount} files`;
+                    document.getElementById('stat-mobile-count').innerText = `${data.mobileCount} compressed`;
+                    document.getElementById('stat-lrc-count').innerText = `${data.lrcCount} synced`;
+                    document.getElementById('stat-sizes').innerText = `${data.mobileSize} GB / ${data.masterSize} GB`;
+                    
+                    const alertZone = document.getElementById('alerts-zone');
+                    if (data.alerts && data.alerts.length > 0) {
+                        alertZone.innerHTML = data.alerts.map(a => {
+                            if (a.fixAction === "gitpull") return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span><button class="btn btn-warn" onclick="triggerPull()">Pull & Hot-Reload Script</button></div>`;
+                            return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span></div>`;
+                        }).join('');
+                    } else { alertZone.innerHTML = ''; }
+                })
+                .catch(() => {});
         }
         function triggerPipeline() { document.getElementById('run-btn').disabled = true; fetch('/run', { method: 'POST' }); }
         function triggerPull() { fetch('/pull', { method: 'POST' }); }
+        
         setInterval(() => {
-            fetch('/stream').then(res => res.json()).then(data => {
-                document.getElementById('run-btn').disabled = data.running;
-                if(data.logs && data.logs.length > 0) {
-                    const consoleBox = document.getElementById('terminal-feed');
-                    consoleBox.innerText = data.logs.join('\n');
-                    consoleBox.scrollTop = consoleBox.scrollHeight;
-                }
-            }).catch(() => {});
-        } , 1000);
+            fetch('/stream')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('run-btn').disabled = data.running;
+                    if(data.logs && data.logs.length > 0) {
+                        const consoleBox = document.getElementById('terminal-feed');
+                        consoleBox.innerText = data.logs.join('\n');
+                        consoleBox.scrollTop = consoleBox.scrollHeight;
+                    }
+                })
+                .catch(() => {});
+        }, 1000);
+        
         setInterval(loadMetrics, 5000);
         loadMetrics();
     </script>
@@ -197,10 +201,7 @@ $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8080/")
 
 try {
-    # CRITICAL CHANGE: Start the web listener BEFORE creating the background job
     $Listener.Start()
-    
-    # Now that port 8080 is wide open, kick off the background counter
     Start-AsyncLibraryScanner
     
     while ($true) {
