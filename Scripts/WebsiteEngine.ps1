@@ -117,33 +117,29 @@ function Invoke-PipelineExecution {
     $Global:IsPipelineRunning = $true
     $Global:LogBuffer.Clear()
 
-    $Global:LogBuffer.Add("[SYSTEM] Dispatching background process worker: Mode ($Type)...")
+    $Global:LogBuffer.Add("[DIAGNOSTIC] Attempting direct command execution...")
 
-    # Force the background tracking job to inherit the bypass execution policy
-    $JobScript = {
-        param($ScriptPath, $RepoDir, $Mode)
-        Set-Location -LiteralPath $RepoDir
-        & "$env:SystemRoot\System32\cmd.exe" /c "`"$ScriptPath`" headless" 2>&1
-    }
-    
-    # Explicitly using -InitializationScript to ensure permissions carry through
-    $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Type
-
+    # Run everything on a safe, isolated thread pool without the complex Job architecture
     $null = Start-ThreadJob -ScriptBlock {
-        while ($using:Job.State -eq "Running") {
-            $Data = Receive-Job -Job $using:Job
-            foreach ($Line in $Data) { 
-                if ($Line) { $Global:LogBuffer.Add($Line.ToString()) } 
+        try {
+            Set-Location -LiteralPath $using:ScriptRepoDir -ErrorAction Stop
+            $Global:LogBuffer.Add("[DIAGNOSTIC] Directory context verified: $($using:ScriptRepoDir)")
+            
+            # Execute the batch file directly and dump output streams into the logs
+            $Output = & "$env:SystemRoot\System32\cmd.exe" /c "`"$using:BatchScript`" headless" 2>&1
+            
+            foreach ($Line in $Output) {
+                if ($Line) { $Global:LogBuffer.Add($Line.ToString()) }
             }
-            Start-Sleep -Seconds 1
         }
-        $FinalData = Receive-Job -Job $using:Job
-        foreach ($Line in $FinalData) { 
-            if ($Line) { $Global:LogBuffer.Add($Line.ToString()) } 
+        catch {
+            $Global:LogBuffer.Add("[CRITICAL ERROR] Failed during execution launcher:")
+            $Global:LogBuffer.Add($_.Exception.Message)
         }
-        $Global:LogBuffer.Add("[SYSTEM] Engine loop tracking complete.")
-        Remove-Job -Job $using:Job
-        $Global:IsPipelineRunning = $false
+        finally {
+            $Global:LogBuffer.Add("[DIAGNOSTIC] Direct execution sequence finished.")
+            $Global:IsPipelineRunning = $false
+        }
     }
 }
 
