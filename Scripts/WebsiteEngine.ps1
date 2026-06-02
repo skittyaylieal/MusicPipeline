@@ -6,6 +6,7 @@ Param (
 
 $Global:LogBuffer = New-Object System.Collections.Generic.List[string]
 $Global:IsPipelineRunning = $false
+$Global:DiagLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
 # Establish repository working directory context dynamically
 $ScriptRepoDir = [System.IO.Path]::GetDirectoryName($BatchScript)
@@ -25,32 +26,24 @@ function Get-LibraryMetrics {
 
     $Alerts = @()
 
-    # --- AUDIT A: AUTOMATIC SELF-UPDATE PIPELINE ---
+    # --- AUDIT A: AUTOMATIC SELF-UPDATE PIPELINE (TASK SCHEDULER COMPATIBLE) ---
     if (Test-Path -LiteralPath "$ScriptRepoDir\.git") {
         Push-Location $ScriptRepoDir
         try {
+            # Force Git to drop terminal prompts and use HTTPS formatting for background safety
             $Env:GIT_TERMINAL_PROMPT = "0"
-            [void](git -c network.timeout=3 fetch origin 2>&1)
+            $Env:GIT_SSH_COMMAND = ""
+            
+            # Fetch silently using standard origin
+            [void](git -c network.timeout=3 fetch origin main 2>&1)
             $LocalHash  = (git rev-parse HEAD).Trim()
             $RemoteHash = (git rev-parse "@{upstream}").Trim()
 
             if ($LocalHash -ne $RemoteHash) {
-                # Update detected! Intercept normal loop to execute an immediate auto-update sequence
-                $Global:LogBuffer.Add("[SYSTEM] Git remote mismatch detected! Initiating hot-reload...")
-                $Global:LogBuffer.Add("[SYSTEM] Fetching latest updates from GitHub...")
-                
-                # Execute the pull synchronously right here so it completes before restart
-                [void](git pull origin main 2>&1)
-                
-                $Global:LogBuffer.Add("[SYSTEM] Pull complete. Triggering Task Scheduler recycler...")
-                
-                # Spawn a completely detached thread task to reboot this process
-                $null = Start-ThreadJob -ScriptBlock {
-                    Start-Sleep -Seconds 2
-                    # Use schtasks to forcefully stop and restart this exact task container cleanly
-                    schtasks /end /tn "Music Pipeline Web Console"
-                    Start-Sleep -Seconds 2
-                    schtasks /run /tn "Music Pipeline Web Console"
+                $Alerts += @{
+                    type = "warning"
+                    message = "Repository Update Available: Your Mac pushed changes that aren't on this PC yet."
+                    fixAction = "gitpull"
                 }
             }
         } catch {}
@@ -109,39 +102,51 @@ function Get-LibraryMetrics {
 }
 
 # -----------------------------------------------------------------
-# 2. HELPER FUNCTION: ASYNC WORKER TASK ENGINE (NON-BLOCKING)
+# 2. HELPER FUNCTION: ASYNC WORKER TASK ENGINE (FILE-STREAM BASED)
 # -----------------------------------------------------------------
 function Invoke-PipelineExecution {
     param([string]$Type = "sync")
     if ($Global:IsPipelineRunning) { return }
     $Global:IsPipelineRunning = $true
     
-    # Establish a physical file path for the web console to read from
-    $Global:DiagLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
-    
-    # Clear any old diagnostic files from previous runs
     if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
-    
-    # Write an initial line so we know the button click worked
     "[SYSTEM] Dispatching background process worker..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
 
     $JobScript = {
         param($ScriptPath, $RepoDir, $OutputFile)
         Set-Location -LiteralPath $RepoDir
-        
-        # Force cmd.exe to dump EVERY SINGLE LINE directly into our physical text file in real time
         & "$env:SystemRoot\System32\cmd.exe" /c "`"$ScriptPath`" headless" > $OutputFile 2>&1
     }
     
-    # Fire the job completely independent of the web threads
     $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Global:DiagLogFile
 
-    # Monitor when the job stops so we can unlock the button
     $null = Start-ThreadJob -ScriptBlock {
         while ($using:Job.State -eq "Running") { Start-Sleep -Seconds 1 }
         Remove-Job -Job $using:Job
         $Global:IsPipelineRunning = $false
     }
+}
+
+# -----------------------------------------------------------------
+# 2.5 HELPER FUNCTION: HOT-RELOAD EXECUTION ENGINE
+# -----------------------------------------------------------------
+function Invoke-HotReload {
+    if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
+    "[SYSTEM] Hot-reload triggered. Executing Git Pull..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+    
+    Push-Location $ScriptRepoDir
+    try {
+        # Force Git to run silently over HTTPS
+        $Env:GIT_TERMINAL_PROMPT = "0"
+        $Env:GIT_SSH_COMMAND = ""
+        & "git" pull origin main >> $Global:DiagLogFile 2>&1
+        "[SYSTEM] Git pull completed successfully." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+    } catch {
+        "[ERROR] Git pull failed: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+    }
+    Pop-Location
+
+    "[SYSTEM] Execution complete. Reloading dashboard context..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
 }
 
 # -----------------------------------------------------------------
@@ -167,6 +172,7 @@ $HtmlDashboard = @'
         .panel { background: #18181C; border-radius: 10px; border: 1px solid #27272A; padding: 20px; display: flex; flex-direction: column; }
         h2 { margin-top: 0; color: #FFF; font-size: 1.3em; border-bottom: 1px solid #27272A; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .btn { background: #00ADB5; color: #FFF; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        .btn-warn { background: #D97706; }
         .btn:hover { opacity: 0.9; }
         .btn:disabled { background: #3F3F46; cursor: not-allowed; }
         .console { background: #09090B; border-radius: 6px; padding: 15px; font-family: monospace; font-size: 0.85em; color: #39FF14; overflow-y: auto; flex-grow: 1; white-space: pre-wrap; border: 1px solid #18181B; }
@@ -193,7 +199,7 @@ $HtmlDashboard = @'
 
     <div class="main-layout">
         <div class="panel">
-            <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline('sync')">Run Master Sync</button></h2>
+            <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline()">Run Master Sync</button></h2>
             <div class="console" id="terminal-feed">Ready. Awaiting run commands...</div>
         </div>
 
@@ -232,11 +238,15 @@ $HtmlDashboard = @'
                     
                     const alertZone = document.getElementById('alerts-zone');
                     if (data.alerts && data.alerts.length > 0) {
-                        alertZone.innerHTML = data.alerts.map(a => `
-                            <div class="alert alert-${a.type}">
-                                <span>⚠️ ${a.message}</span>
-                            </div>
-                        `).join('');
+                        alertZone.innerHTML = data.alerts.map(a => {
+                            if (a.fixAction === "gitpull") {
+                                return `<div class="alert alert-${a.type}">
+                                    <span>⚠️ ${a.message}</span>
+                                    <button class="btn btn-warn" onclick="triggerPull()">Pull & Hot-Reload Script</button>
+                                </div>`;
+                            }
+                            return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span></div>`;
+                        }).join('');
                     } else {
                         alertZone.innerHTML = '';
                     }
@@ -245,7 +255,7 @@ $HtmlDashboard = @'
                     buildTable(fullTrackDb);
                 })
                 .catch(() => {
-                    document.getElementById('terminal-feed').innerText = "[SYSTEM] Server connection dropped. Web service is recycling updates...";
+                    document.getElementById('terminal-feed').innerText = "[SYSTEM] Server recycling updates...";
                 });
         }
 
@@ -275,10 +285,13 @@ $HtmlDashboard = @'
             buildTable(filtered);
         }
 
-        function triggerPipeline(mode) {
+        function triggerPipeline() {
             document.getElementById('run-btn').disabled = true;
-            // Changed from POST to GET to prevent browser blocking
-            fetch('/run'); 
+            fetch('/run', { method: 'POST' });
+        }
+
+        function triggerPull() {
+            fetch('/pull', { method: 'POST' });
         }
 
         setInterval(() => {
@@ -286,18 +299,18 @@ $HtmlDashboard = @'
                 .then(res => res.json())
                 .then(data => {
                     document.getElementById('run-btn').disabled = data.running;
-                    if(data.logs.length > 0) {
+                    if(data.logs && data.logs.length > 0) {
                         const consoleBox = document.getElementById('terminal-feed');
                         consoleBox.innerText = data.logs.join('\n');
                         consoleBox.scrollTop = consoleBox.scrollHeight;
                     }
                 })
                 .catch(() => {
-                     document.getElementById('terminal-feed').innerText = "[SYSTEM] Hot-reload triggered. Reconnecting to dashboard runtime engine...";
+                     document.getElementById('terminal-feed').innerText = "[SYSTEM] Engine reload sequence initiated. Reconnecting to interface loop...";
                 });
         } , 1000);
 
-        setInterval(loadMetrics, 5000);
+        setInterval(loadMetrics, 7000);
         loadMetrics();
     </script>
 </body>
@@ -305,19 +318,7 @@ $HtmlDashboard = @'
 '@
 
 # -----------------------------------------------------------------
-# 3.5 AUTOMATIC BACKGROUND TIMER (Every 30 Minutes)
-# -----------------------------------------------------------------
-$TimerScript = {
-    param($EngineUrl)
-    while ($true) {
-        Start-Sleep -Seconds 1800
-        try { Invoke-RestMethod -Uri "$EngineUrl`run?mode=sync" -Method Post | Out-Null } catch {}
-    }
-}
-$null = Start-Job -ScriptBlock $TimerScript -ArgumentList "http://localhost:8080/"
-
-# -----------------------------------------------------------------
-# 4. HTTP LISTENER CORE WEB ENGINE ROUTING LOOP WITH AUTO-CLEANUP
+# 4. HTTP LISTENER CORE WEB ENGINE ROUTING LOOP
 # -----------------------------------------------------------------
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8080/")
@@ -349,9 +350,13 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
+                $CurrentLogs = @()
+                if (Test-Path $Global:DiagLogFile) {
+                    $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue
+                }
                 $StreamObj = @{
                     running = $Global:IsPipelineRunning
-                    logs    = $Global:LogBuffer.ToArray()
+                    logs    = $CurrentLogs
                 }
                 $JsonPayload = $StreamObj | ConvertTo-Json -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
@@ -359,13 +364,18 @@ try {
                 $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
-            # CHANGED TO GET TO BYPASS BROWSER SECURITY EXTENSION BLOCKS
-            elif ($UrlPath -eq "/run") {
+            elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
                 if (-not $Global:IsPipelineRunning) {
-                    # Default strictly to sync mode to avoid parameter dropping
                     Invoke-PipelineExecution -Type "sync"
                 }
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            }
+            elif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
+                Invoke-HotReload
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
                 $Response.ContentType = "application/json"
                 $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
