@@ -97,7 +97,7 @@ function Get-LibraryMetrics {
 }
 
 # -----------------------------------------------------------------
-# 2. HELPER FUNCTION: ASYNC WORKER TASK ENGINE
+# 2. HELPER FUNCTION: ASYNC WORKER TASK ENGINE (NON-BLOCKING)
 # -----------------------------------------------------------------
 function Invoke-PipelineExecution {
     param([string]$Type = "sync")
@@ -105,61 +105,43 @@ function Invoke-PipelineExecution {
     $Global:IsPipelineRunning = $true
     $Global:LogBuffer.Clear()
 
+    $Global:LogBuffer.Add("[SYSTEM] Dispatching background process worker: Mode ($Type)...")
+
+    # Start the execution entirely as a detached native background job
     $JobScript = {
         param($ScriptPath, $RepoDir, $Mode)
-        
-        $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $ProcessInfo.RedirectStandardOutput = $true
-        $ProcessInfo.RedirectStandardError = $true
-        $ProcessInfo.UseShellExecute = $false
-        $ProcessInfo.CreateNoWindow = $true
-
         if ($Mode -eq "gitpull") {
-            $ProcessInfo.FileName = "git.exe"
-            $ProcessInfo.Arguments = "pull origin main"
-            $ProcessInfo.WorkingDirectory = $RepoDir
+            Set-Location $RepoDir
+            git pull origin main 2>&1
         } else {
-            $ProcessInfo.FileName = "cmd.exe"
-            $ProcessInfo.Arguments = "/c `"$ScriptPath`" headless"
+            Set-Location $RepoDir
+            cmd.exe /c "`"$ScriptPath`" headless" 2>&1
         }
-
-        $Process = New-Object System.Diagnostics.Process
-        $Process.StartInfo = $ProcessInfo
-        [void]$Process.Start()
-
-        while (-not $Process.StandardOutput.EndOfStream) {
-            $Line = $Process.StandardOutput.ReadLine()
-            if ($Line) { $Line }
-        }
-        while (-not $Process.StandardError.EndOfStream) {
-            $ErrLine = $Process.StandardError.ReadLine()
-            if ($ErrLine) { "[DIAGNOSTIC] " + $ErrLine }
-        }
-        $Process.WaitForExit()
-        return "[SYSTEM] Engine loop tracking complete (Exit code: $($Process.ExitCode))"
     }
-
-    $Global:LogBuffer.Add("[SYSTEM] Dispatching background process worker: Mode ($Type)...")
+    
     $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Type
 
-    $null = Register-ObjectEvent -InputObject $Job -EventName "StateChanged" -Action {
-        if ($Event.SourceEventArgs.JobStateInfo.State -eq "Completed") {
-            $Results = Receive-Job -Job $Job
-            foreach ($Row in $Results) { if ($Row) { $Global:LogBuffer.Add($Row) } }
-            Remove-Job -Job $Job
-            $Global:IsPipelineRunning = $false
-            Unregister-Event -SourceIdentifier $Event.SourceIdentifier
-        }
-    }
-
+    # Monitor the job's state and streams safely in a separate thread pool
     $null = Start-ThreadJob -ScriptBlock {
-        while ($Global:IsPipelineRunning) {
+        while ($using:Job.State -eq "Running") {
             $Data = Receive-Job -Job $using:Job
-            foreach ($Line in $Data) { if ($Line) { $Global:LogBuffer.Add($Line) } }
+            foreach ($Line in $Data) { 
+                if ($Line) { $Global:LogBuffer.Add($Line.ToString()) } 
+            }
             Start-Sleep -Seconds 1
         }
+        # Final sweep of any remaining log output lines
+        $FinalData = Receive-Job -Job $using:Job
+        foreach ($Line in $FinalData) { 
+            if ($Line) { $Global:LogBuffer.Add($Line.ToString()) } 
+            }
+        $Global:LogBuffer.Add("[SYSTEM] Engine loop tracking complete.")
+        Remove-Job -Job $using:Job
+        $Global:IsPipelineRunning = $false
     }
 }
+
+
 
 # -----------------------------------------------------------------
 # 3. CORE FRONTEND DASHBOARD INTERFACE ASSET (RAW LITERAL STRING)
