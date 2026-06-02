@@ -32,7 +32,7 @@ function Get-LibraryMetrics {
             # Quietly fetch remote metadata index
             [void](git fetch origin 2>&1)
             $LocalHash  = (git rev-parse HEAD).Trim()
-            $RemoteHash = (git rev-parse "@{u}").Trim()
+            $RemoteHash = (git rev-parse "@{upstream}").Trim() # Quoted and explicit
 
             if ($LocalHash -ne $RemoteHash) {
                 $Alerts += @{
