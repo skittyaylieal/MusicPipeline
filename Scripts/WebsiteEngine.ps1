@@ -276,7 +276,8 @@ $HtmlDashboard = @'
 
         function triggerPipeline(mode) {
             document.getElementById('run-btn').disabled = true;
-            fetch('/run?mode=' + mode, { method: 'POST' });
+            // Changed from POST to GET to prevent browser blocking
+            fetch('/run'); 
         }
 
         setInterval(() => {
