@@ -4,31 +4,29 @@ Param (
     [string]$FirefoxPath
 )
 
-# Push old terminal content out of view
+$MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 1..50 | ForEach-Object { Write-Host "" }
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Headless Link Auditor" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
-# Define tracking file paths
 $QueueFile = "$ConfigDir\audit_queue.json"
 $HtmlPath  = "$ConfigDir\music_audit.html"
 $ShortcutPath = "$env:USERPROFILE\Desktop\Review Broken Music.url"
 
-# Detect if running in Session 0 (Headless / Task Scheduler background)
 $IsHeadless = (Get-Process -Id $PID).SessionId -eq 0
 
-# -----------------------------------------------------------------
-# MODE A: UNATTENDED LOG EXTRACTION (Task Scheduler / Session 0)
-# -----------------------------------------------------------------
 if ($IsHeadless) {
     Write-Host "[*] Headless execution environment verified. Scanning logs..." -ForegroundColor Yellow
     
     $ErrorLogs = Get-ChildItem -LiteralPath $ConfigDir -Filter "playlist*_errors.txt"
-    if (-not $ErrorLogs) { Exit 0 }
+    if (-not $ErrorLogs) { 
+        $MetricStopwatch.Stop()
+        Write-Host "[METRIC] 00:00:00"
+        Exit 0 
+    }
 
-    # Load existing queue items so we don't drop items unresolved from previous runs
     $Queue = @()
     if (Test-Path -LiteralPath $QueueFile) {
         try { $Queue = Get-Content -LiteralPath $QueueFile -Raw | ConvertFrom-Json } catch { $Queue = @() }
@@ -42,15 +40,11 @@ if ($IsHeadless) {
         foreach ($Line in $Content) {
             if ($Line -match $VideoIdRegex) {
                 $Id = $Matches[1]
-                
-                # Check if this specific video ID is already tracked in our structured queue object array
                 $AlreadyExists = $false
                 foreach ($Item in $Queue) {
                     if ($Item.id -eq $Id) { $AlreadyExists = $true; break }
                 }
-
                 if (-not $AlreadyExists) {
-                    # Save both the raw ID and the clean text string of the line error context
                     $Queue += [PSCustomObject]@{
                         id    = $Id
                         error = $Line.Trim()
@@ -60,17 +54,16 @@ if ($IsHeadless) {
         }
     }
 
-    # If nothing is broken, clean up old notifications and stop
     if ($Queue.Count -eq 0) {
         if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
+        $MetricStopwatch.Stop()
+        $Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+        Write-Host "[METRIC] $Elapsed"
         Exit 0
     }
 
-    # Save tracking data arrays natively as robust structural JSON elements
     $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8
 
-    # Create a Desktop shortcut notification wrapper pointing to our interface engine
-    $TargetCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Normal -Command `"& '$PSCommandPath' -ConfigDir '$ConfigDir' -HistoryPath '$HistoryPath' -FirefoxPath '$FirefoxPath'`""
     $ShortcutContent = @"
 [InternetShortcut]
 URL=$HtmlPath
@@ -80,20 +73,20 @@ IconFile=$FirefoxPath
     $ShortcutContent | Out-File -LiteralPath $ShortcutPath -Encoding ascii
     
     Write-Host "[+] Background extraction complete. Queue saved with $($Queue.Count) links." -ForegroundColor Green
-    
-    Write-Host "=============================================" -ForegroundColor Cyan
-    Write-Host "    Headless link extraction cycle complete!" -ForegroundColor Green
+    $MetricStopwatch.Stop()
+    $Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+    Write-Host "[METRIC] $Elapsed"
     Write-Host "=============================================" -ForegroundColor Cyan
     Exit 0
 }
 
-# -----------------------------------------------------------------
 # MODE B: INTERACTIVE REVIEW PLATFORM (When run manually by you)
-# -----------------------------------------------------------------
 Write-Host "[*] Interactive console detected. Launching local API engine..." -ForegroundColor Cyan
 
 if (-not (Test-Path -LiteralPath $QueueFile)) {
     Write-Host "[+] No audit data found. Queue file is missing." -ForegroundColor Green
+    $MetricStopwatch.Stop()
+    Write-Host "[METRIC] 00:00:00"
     Exit 0
 }
 
@@ -101,13 +94,13 @@ $Queue = Get-Content -LiteralPath $QueueFile -Raw | ConvertFrom-Json
 if ($Queue.Count -eq 0) {
     Write-Host "[+] Audit queue is completely empty!" -ForegroundColor Green
     if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
+    $MetricStopwatch.Stop()
+    Write-Host "[METRIC] 00:00:00"
     Exit 0
 }
 
-# Convert objects safely to a compiled JavaScript JSON structure data block
 $JsonQueueData = $Queue | ConvertTo-Json -Compress
 
-# Generate the interactive HTML asset file inside the Config directory dynamically
 $HtmlContent = @"
 <!DOCTYPE html>
 <html>
@@ -146,11 +139,9 @@ $HtmlContent = @"
         <h2>Session Complete</h2>
         <p>All items evaluated. This webpage and the desktop shortcut can now be closed.</p>
     </div>
-
     <script>
         const queue = $JsonQueueData;
         let index = 0;
-
         function render() {
             if (index >= queue.length) {
                 document.getElementById('main-view').classList.add('hidden');
@@ -162,11 +153,9 @@ $HtmlContent = @"
             document.getElementById('video-id').innerText = queue[index].id;
             document.getElementById('error-text').innerText = queue[index].error || "No raw diagnostic log available.";
         }
-
         function openTrack() {
             window.open('https://www.youtube.com/watch?v=' + queue[index].id, '_blank');
         }
-
         function submitAction(actionType) {
             const currentId = queue[index].id;
             fetch(`http://localhost:8080/submit?id=\${currentId}&action=\${actionType}`)
@@ -183,9 +172,6 @@ $HtmlContent = @"
 "@
 $HtmlContent | Out-File -LiteralPath $HtmlPath -Encoding utf8
 
-# -----------------------------------------------------------------
-# STEP 3: THE LIGHTWEIGHT MICRO-REST LISTENER LOOP
-# -----------------------------------------------------------------
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8080/")
 try { $Listener.Start() } catch {
@@ -195,7 +181,6 @@ try { $Listener.Start() } catch {
 
 Write-Host "[+] Local database engine loop listening on port 8080." -ForegroundColor Green
 Write-Host "[*] Spawning Firefox interface panel..." -ForegroundColor Yellow
-
 Start-Process -FilePath $FirefoxPath -ArgumentList "`"$HtmlPath`""
 
 $Looping = $true
@@ -203,7 +188,6 @@ while ($Looping) {
     $Context = $Listener.GetContext()
     $Request = $Context.Request
     $Response = $Context.Response
-
     $Url = $Request.Url.LocalPath
     $Query = $Request.QueryString
 
@@ -218,7 +202,6 @@ while ($Looping) {
             Write-Host "[SKIPPED] Track $TargetID skipped by user choice." -ForegroundColor Yellow
         }
 
-        # Modify active memory runtime list by eliminating processed item
         $Queue = $Queue | Where-Object { $_.id -ne $TargetID }
         if ($Queue) {
             $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8
@@ -226,7 +209,6 @@ while ($Looping) {
             if (Test-Path -LiteralPath $QueueFile) { Remove-Item -LiteralPath $QueueFile -Force }
             if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
         }
-
         $Buffer = [System.Text.Encoding]::UTF8.GetBytes("OK")
         $Response.ContentLength64 = $Buffer.Length
         $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
@@ -240,9 +222,9 @@ while ($Looping) {
         $Looping = $false
     }
 }
-
 $Listener.Stop()
-Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "    Interactive link auditing complete!" -ForegroundColor Green
+$MetricStopwatch.Stop()
+$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+Write-Host "[METRIC] $Elapsed"
 Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0

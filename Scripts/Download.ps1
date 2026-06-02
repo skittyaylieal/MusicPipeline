@@ -10,15 +10,13 @@ Param (
     [int]$SleepRequests
 )
 
-# Fake clear: push old content up into scrollback history
+$MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 1..50 | ForEach-Object { Write-Host "" }
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Media Downloader" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
-# Ensure backup dir exists
-# FIX: Swapped to -LiteralPath
 if (-not (Test-Path -LiteralPath $BackupDir)) {
     New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
 }
@@ -26,24 +24,16 @@ if (-not (Test-Path -LiteralPath $BackupDir)) {
 Write-Host "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
 & $YTDLPPath --update-to nightly
 
-# Define output naming template
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
-
 $PlaylistIndex = 1
 
-# Clean up incoming array string if CMD mashed them into a single comma-separated block
 if ($PlaylistURLs.Count -eq 1) {
     $PlaylistURLs = $PlaylistURLs -split ',' | ForEach-Object { $_.Trim('"') }
 }
 
-# Loop through playlist URLS
 foreach ($PlaylistURL in $PlaylistURLs) {
-
-    # FIX: Replaced Join-Path with raw string interpolation
     $ErrorLogPath = "$ConfigDir\playlist${PlaylistIndex}_errors.txt"
 
-    # Clean up the old error log if exists
-    # FIX: Swapped to -LiteralPath
     if (Test-Path -LiteralPath $ErrorLogPath) {
         Remove-Item -LiteralPath $ErrorLogPath -Force
     }
@@ -52,8 +42,6 @@ foreach ($PlaylistURL in $PlaylistURLs) {
     Write-Host "URL: $PlaylistURL" -ForegroundColor Yellow
     Write-Host "Logging errors to: $ErrorLogPath" -ForegroundColor DarkGray
 
-    # Execute yt-dlp with our given flags
-    # NOTE: Enclosing variables inside double quotes inside the arguments handles literal brackets for CLI strings
     &$YTDLPPath `
         --color always `
         --sleep-interval $SleepInterval `
@@ -79,11 +67,11 @@ foreach ($PlaylistURL in $PlaylistURLs) {
     } else {
         Write-Host "[!] Playlist Music $PlaylistIndex finished with warnings/errors." -ForegroundColor Yellow
     }
-
     $PlaylistIndex++
 }
 
+$MetricStopwatch.Stop()
+$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+Write-Host "[METRIC] $Elapsed"
 Write-Host "`n=============================================" -ForegroundColor Cyan
-Write-Host "    All playlist download tasks completed!" -ForegroundColor Green
-Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0
