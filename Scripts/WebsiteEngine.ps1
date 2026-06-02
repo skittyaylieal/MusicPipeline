@@ -7,9 +7,14 @@ Param (
 # Global variables and runtime states
 $Global:IsPipelineRunning = $false
 $Global:DiagLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
+$Global:CacheFile = "C:\MusicTools\MusicPipeline\Config\dashboard_cache.json"
 $ScriptRepoDir = [System.IO.Path]::GetDirectoryName($BatchScript)
 
-# Shared Memory Container for immediate web loading
+# Create config directory if it doesn't exist
+$ConfigDir = Split-Path $Global:DiagLogFile
+if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force }
+
+# Shared Default Memory Container
 $Global:CachedMetrics = @{
     masterCount = 0
     mobileCount = 0
@@ -21,18 +26,16 @@ $Global:CachedMetrics = @{
 }
 
 # -----------------------------------------------------------------
-# 1. NATIVE BACKGROUND SCANNER (PowerShell 5.1 Compatible)
+# 1. FILE-BASED BACKGROUND SCANNER (PowerShell 5.1 Bulletproof)
 # -----------------------------------------------------------------
 function Start-AsyncLibraryScanner {
-    # If an old tracking job is lingering, clear it out
     Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
 
     $JobScript = {
-        param($BDir, $MDir, $RDir)
+        param($BDir, $MDir, $RDir, $CFile)
         
-        # We run a loop inside the background process
         while ($true) {
-            if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 10; continue }
+            if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 5; continue }
 
             $MasterFiles = Get-ChildItem -LiteralPath $BDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" }
             $MobileFiles = Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" }
@@ -77,7 +80,7 @@ function Start-AsyncLibraryScanner {
                 }
             }
 
-            # Package up the data string to send back to the main script
+            # Drop the data payload directly into a raw JSON file cache
             @{
                 masterCount = $MasterFiles.Count
                 mobileCount = $MobileFiles.Count
@@ -86,14 +89,13 @@ function Start-AsyncLibraryScanner {
                 mobileSize  = [Math]::Round($MobileSize, 2)
                 alerts      = $Alerts
                 tracks      = $TrackDatabase
-            } | CliXml
+            } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force
 
             Start-Sleep -Seconds 30
         }
     }
 
-    # Start the native background job entry
-    Start-Job -Name "MusicFolderScanner" -ScriptBlock $JobScript -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir
+    Start-Job -Name "MusicFolderScanner" -ScriptBlock $JobScript -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir, $Global:CacheFile
 }
 
 # -----------------------------------------------------------------
@@ -127,7 +129,7 @@ function Invoke-HotReload {
     Pop-Location
 }
 
-# HTML System Layout Interface Asset
+# HTML Dashboard Asset
 $HtmlDashboard = @'
 <!DOCTYPE html>
 <html lang="en">
@@ -247,12 +249,9 @@ $Listener.Prefixes.Add("http://localhost:8080/")
 
 try {
     $Listener.Start()
-    
-    # Fire up the standard background loop
     Start-AsyncLibraryScanner
     
-    $Running = $true
-    while ($Running) {
+    while ($true) {
         try {
             $Context = $Listener.GetContext()
             $Request = $Context.Request
@@ -266,34 +265,35 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
-                # Check if the background scanner job has sent new data back
-                $ScannerJob = Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue
-                if ($ScannerJob) {
-                    $LatestOutput = Receive-Job -Job $ScannerJob -Keep | Select-Object -Last 1
-                    if ($LatestOutput -is [string]) {
-                        # Convert data package back out of CliXml format
-                        $Global:CachedMetrics = [System.Management.Automation.PSSerializer]::Deserialize($LatestOutput)
+                # Read the flat cache file dropped by the background job
+                if (Test-Path $Global:CacheFile) {
+                    try {
+                        $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
+                        if ($RawJson) {
+                            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawJson)
+                        }
+                    } catch {
+                        $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress
+                        $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                     }
+                } else {
+                    $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 }
-                
-                $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
                 $CurrentLogs = @()
                 if (Test-Path $Global:DiagLogFile) { $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue }
-                
-                # Check status tracking variables dynamically
-                $ScannerJob = Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue
                 if ($CurrentLogs -match "Execution complete|completed successfully") {
                     $Global:IsPipelineRunning = $false
                 }
-
                 $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs } | ConvertTo-Json -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
