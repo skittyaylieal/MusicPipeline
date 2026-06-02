@@ -25,7 +25,7 @@ function Get-LibraryMetrics {
 
     $Alerts = @()
 
-    # --- AUDIT A: GIT REMOTE VERIFICATION ---
+    # --- AUDIT A: AUTOMATIC SELF-UPDATE PIPELINE ---
     if (Test-Path -LiteralPath "$ScriptRepoDir\.git") {
         Push-Location $ScriptRepoDir
         try {
@@ -35,10 +35,22 @@ function Get-LibraryMetrics {
             $RemoteHash = (git rev-parse "@{upstream}").Trim()
 
             if ($LocalHash -ne $RemoteHash) {
-                $Alerts += @{
-                    type = "warning"
-                    message = "Update Available: Your Mac pushed changes to GitHub that are missing on this PC."
-                    fixAction = "gitpull"
+                # Update detected! Intercept normal loop to execute an immediate auto-update sequence
+                $Global:LogBuffer.Add("[SYSTEM] Git remote mismatch detected! Initiating hot-reload...")
+                $Global:LogBuffer.Add("[SYSTEM] Fetching latest updates from GitHub...")
+                
+                # Execute the pull synchronously right here so it completes before restart
+                [void](git pull origin main 2>&1)
+                
+                $Global:LogBuffer.Add("[SYSTEM] Pull complete. Triggering Task Scheduler recycler...")
+                
+                # Spawn a completely detached thread task to reboot this process
+                $null = Start-ThreadJob -ScriptBlock {
+                    Start-Sleep -Seconds 2
+                    # Use schtasks to forcefully stop and restart this exact task container cleanly
+                    schtasks /end /tn "Music Pipeline Web Console"
+                    Start-Sleep -Seconds 2
+                    schtasks /run /tn "Music Pipeline Web Console"
                 }
             }
         } catch {}
@@ -107,21 +119,14 @@ function Invoke-PipelineExecution {
 
     $Global:LogBuffer.Add("[SYSTEM] Dispatching background process worker: Mode ($Type)...")
 
-    # Start the execution entirely as a detached native background job
     $JobScript = {
         param($ScriptPath, $RepoDir, $Mode)
-        if ($Mode -eq "gitpull") {
-            Set-Location $RepoDir
-            git pull origin main 2>&1
-        } else {
-            Set-Location $RepoDir
-            cmd.exe /c "`"$ScriptPath`" headless" 2>&1
-        }
+        Set-Location $RepoDir
+        cmd.exe /c "`"$ScriptPath`" headless" 2>&1
     }
     
     $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Type
 
-    # Monitor the job's state and streams safely in a separate thread pool
     $null = Start-ThreadJob -ScriptBlock {
         while ($using:Job.State -eq "Running") {
             $Data = Receive-Job -Job $using:Job
@@ -130,18 +135,15 @@ function Invoke-PipelineExecution {
             }
             Start-Sleep -Seconds 1
         }
-        # Final sweep of any remaining log output lines
         $FinalData = Receive-Job -Job $using:Job
         foreach ($Line in $FinalData) { 
             if ($Line) { $Global:LogBuffer.Add($Line.ToString()) } 
-            }
+        }
         $Global:LogBuffer.Add("[SYSTEM] Engine loop tracking complete.")
         Remove-Job -Job $using:Job
         $Global:IsPipelineRunning = $false
     }
 }
-
-
 
 # -----------------------------------------------------------------
 # 3. CORE FRONTEND DASHBOARD INTERFACE ASSET (RAW LITERAL STRING)
@@ -158,8 +160,6 @@ $HtmlDashboard = @'
         .alert { padding: 15px 20px; border-radius: 6px; margin-bottom: 10px; font-size: 0.95em; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
         .alert-danger { background: #4C1D1D; color: #F87171; border: 1px solid #7F1D1D; }
         .alert-warning { background: #453015; color: #FBBF24; border: 1px solid #78350F; }
-        .alert .fix-btn { background: #FFF; color: #000; border: none; padding: 5px 12px; border-radius: 4px; font-size: 0.85em; font-weight: bold; cursor: pointer; }
-        .alert .fix-btn:hover { opacity: 0.9; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .card { background: #18181C; padding: 20px; border-radius: 10px; border: 1px solid #27272A; text-align: center; }
         .card h3 { margin: 0; color: #A1A1AA; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -233,26 +233,21 @@ $HtmlDashboard = @'
                     
                     const alertZone = document.getElementById('alerts-zone');
                     if (data.alerts && data.alerts.length > 0) {
-                        alertZone.innerHTML = data.alerts.map(a => {
-                            let actionButton = '';
-                            if (a.fixAction === 'sync') {
-                                actionButton = `<button class="fix-btn" onclick="triggerPipeline('sync')">Fix Now</button>`;
-                            } else if (a.fixAction === 'gitpull') {
-                                actionButton = `<button class="fix-btn" style="background:#00ADB5; color:#fff;" onclick="triggerPipeline('gitpull')">Git Pull</button>`;
-                            }
-                            return `
-                                <div class="alert alert-${a.type}">
-                                    <span>⚠️ ${a.message}</span>
-                                    ${actionButton}
-                                </div>
-                            `;
-                        }).join('');
+                        alertZone.innerHTML = data.alerts.map(a => `
+                            <div class="alert alert-${a.type}">
+                                <span>⚠️ ${a.message}</span>
+                            </div>
+                        `).join('');
                     } else {
                         alertZone.innerHTML = '';
                     }
 
                     fullTrackDb = data.tracks || [];
                     buildTable(fullTrackDb);
+                })
+                .catch(() => {
+                    // If network dropped due to a script restart, place visual indicator
+                    document.getElementById('terminal-feed').innerText = "[SYSTEM] Server connection dropped. Web service is recycling updates...";
                 });
         }
 
@@ -284,12 +279,7 @@ $HtmlDashboard = @'
 
         function triggerPipeline(mode) {
             document.getElementById('run-btn').disabled = true;
-            fetch('/run?mode=' + mode, { method: 'POST' })
-                .then(() => {
-                    if (mode === 'gitpull') {
-                        setTimeout(loadMetrics, 4000);
-                    }
-                });
+            fetch('/run?mode=' + mode, { method: 'POST' });
         }
 
         setInterval(() => {
@@ -302,9 +292,13 @@ $HtmlDashboard = @'
                         consoleBox.innerText = data.logs.join('\n');
                         consoleBox.scrollTop = consoleBox.scrollHeight;
                     }
+                })
+                .catch(() => {
+                     document.getElementById('terminal-feed').innerText = "[SYSTEM] Hot-reload triggered. Reconnecting to dashboard runtime engine...";
                 });
         } , 1000);
 
+        setInterval(loadMetrics, 5000);
         loadMetrics();
     </script>
 </body>
@@ -380,14 +374,10 @@ try {
             }
             else { $Response.StatusCode = 404 }
             $Response.OutputStream.Close()
-        } catch {
-            # Catch internal iteration errors and keep loop spinning
-        }
+        } catch {}
     }
 }
 finally {
-    # CRITICAL WORKAROUND: Forcefully close and unbind the socket if the script ends/restarts.
-    # This prevents the Windows Kernel (PID 4) from swallowing port 8080.
     if ($null -ne $Listener) {
         $Listener.Stop()
         $Listener.Close()
