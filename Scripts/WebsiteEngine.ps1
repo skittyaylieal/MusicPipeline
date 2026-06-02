@@ -212,7 +212,7 @@ $HtmlDashboard = @"
 
     <div class="main-layout">
         <div class="panel">
-            <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline('sync')">Run Master Sync</button></h2>
+            <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline(`"sync`")">Run Master Sync</button></h2>
             <div class="console" id="terminal-feed">Ready. Awaiting run commands...</div>
         </div>
 
@@ -254,9 +254,9 @@ $HtmlDashboard = @"
                         alertZone.innerHTML = data.alerts.map(a => {
                             let actionButton = '';
                             if (a.fixAction === 'sync') {
-                                actionButton = `<button class="fix-btn" onclick="triggerPipeline('sync')">Fix Now</button>`;
+                                actionButton = `<button class="fix-btn" onclick="triggerPipeline(\`"sync\`")">Fix Now</button>`;
                             } else if (a.fixAction === 'gitpull') {
-                                actionButton = `<button class="fix-btn" style="background:#00ADB5; color:#fff;" onclick="triggerPipeline('gitpull')">Git Pull</button>`;
+                                actionButton = `<button class="fix-btn" style="background:#00ADB5; color:#fff;" onclick="triggerPipeline(\`"gitpull\`")">Git Pull</button>`;
                             }
                             return `
                                 <div class="alert alert-\${a.type}">
@@ -302,7 +302,7 @@ $HtmlDashboard = @"
 
         function triggerPipeline(mode) {
             document.getElementById('run-btn').disabled = true;
-            fetch('/run?mode=' + mode, { method: 'POST' })
+            fetch(`/run?mode=\${mode}`, { method: 'POST' })
                 .then(() => {
                     if (mode === 'gitpull') {
                         setTimeout(loadMetrics, 4000);
@@ -328,6 +328,9 @@ $HtmlDashboard = @"
 </body>
 </html>
 "@
+
+
+
 
 # -----------------------------------------------------------------
 # 3.5 AUTOMATIC BACKGROUND TIMER (Every 30 Minutes)
