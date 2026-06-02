@@ -1,6 +1,6 @@
 Param (
-    [string]$BackupDir = "C:\MusicTools\MusicPipeline\YT_Music_Backup",
-    [string]$MobileDir = "C:\MusicTools\MusicPipeline\YT_Music_Mobile",
+    [string]$BackupDir = "C:\Users\filip\Music\YT_Music_Backup",
+    [string]$MobileDir = "C:\Users\filip\Music\YT_Music_Mobile",
     [string]$BatchScript = "C:\MusicTools\MusicPipeline\sync_music.bat"
 )
 
