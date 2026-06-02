@@ -36,7 +36,7 @@ if ($LastExitCode -ne 0) {
 
 Write-Host "[+] Cookies authenticated successfully." -ForegroundColor Green
 $MetricStopwatch.Stop()
-$Elapsed =  String -Format "{0:hh\:mm\:ss}" $MetricStopwatch.Elapsed
+$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
 Write-Host "[METRIC] $Elapsed"
 Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0
