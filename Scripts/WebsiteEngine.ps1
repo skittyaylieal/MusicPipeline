@@ -1,14 +1,17 @@
 Param (
-    [string]$BackupDir = "C:\\Users\\filip\\Music\\YT_Music_Backup",
-    [string]$MobileDir = "C:\\Users\\filip\\Music\\YT_Music_Mobile",
-    [string]$BatchScript = "C:\\MusicTools\\MusicPipeline\\sync_music.bat"
+    [string]$BackupDir = "C:\Users\filip\Music\YT_Music_Backup",
+    [string]$MobileDir = "C:\Users\filip\Music\YT_Music_Mobile",
+    [string]$BatchScript = "C:\MusicTools\MusicPipeline\sync_music.bat"
 )
 
 $Global:LogBuffer = New-Object System.Collections.Generic.List[string]
 $Global:IsPipelineRunning = $false
 
+# Establish repository working directory context dynamically
+$ScriptRepoDir = [System.IO.Path]::GetDirectoryName($BatchScript)
+
 # -----------------------------------------------------------------
-# 1. ENHANCED HELPER FUNCTION: SCAN METRICS & AUDIT FOR ALERTS
+# 1. HELPER FUNCTION: METRICS SCAN & INTEGRATED SYSTEM AUDITS
 # -----------------------------------------------------------------
 function Get-LibraryMetrics {
     if (-not (Test-Path -LiteralPath $BackupDir)) { return @{} }
@@ -20,28 +23,45 @@ function Get-LibraryMetrics {
     $MasterSize = ($MasterFiles | Measure-Object -Property Length -Sum).Sum / 1GB
     $MobileSize = ($MobileFiles | Measure-Object -Property Length -Sum).Sum / 1GB
 
-    # -------------------------------------------------------------
-    # LIVE AUDIT SYSTEM (Replaces manual Fix.ps1 logic)
-    # -------------------------------------------------------------
     $Alerts = @()
+
+    # --- AUDIT A: GIT REMOTE VERIFICATION ---
+    if (Test-Path -LiteralPath "$ScriptRepoDir\.git") {
+        Push-Location $ScriptRepoDir
+        try {
+            # Quietly fetch remote metadata index
+            [void](git fetch origin 2>&1)
+            $LocalHash  = (git rev-parse HEAD).Trim()
+            $RemoteHash = (git rev-parse @{u}).Trim()
+
+            if ($LocalHash -ne $RemoteHash) {
+                $Alerts += @{
+                    type = "warning"
+                    message = "Update Available: Your Mac pushed changes to GitHub that are missing on this PC."
+                    fixAction = "gitpull"
+                }
+            }
+        } catch {}
+        Pop-Location
+    }
     
-    # Audit 1: Synchronization Gap Mismatch
+    # --- AUDIT B: SYNCHRONIZATION GAP ---
     $CountGap = $MasterFiles.Count - $MobileFiles.Count
     if ($CountGap -gt 0) {
         $Alerts += @{
             type = "danger"
-            message = "Synchronization Gap: Master backup has $CountGap more track(s) than Mobile Storage. A compression or rsync thread may have skipped files."
+            message = "Synchronization Gap: Master backup has $CountGap more track(s) than Mobile Storage."
             fixAction = "sync"
         }
     }
 
-    # Audit 2: High Lyric Deficit
+    # --- AUDIT C: LYRIC COVERAGE DEFICIT ---
     if ($MasterFiles.Count -gt 0) {
         $LyricCoverage = ($LrcFiles.Count / $MasterFiles.Count) * 100
         if ($LyricCoverage -lt 75) {
             $Alerts += @{
                 type = "warning"
-                message = "Low Lyric Coverage: Only $([Math]::Round($LyricCoverage, 1))% of your library has time-synced (.lrc) files configured."
+                message = "Low Lyric Coverage: Only $([Math]::Round($LyricCoverage, 1))% of library has synced (.lrc) metadata."
                 fixAction = "none"
             }
         }
@@ -51,7 +71,6 @@ function Get-LibraryMetrics {
     foreach ($File in $MasterFiles) {
         $RelativePath = $File.FullName.Substring($BackupDir.Length).TrimStart('\')
         $PathParts = $RelativePath -split '\\'
-        
         $Artist = if ($PathParts.Count -ge 3) { $PathParts[0] } else { "Unknown Artist" }
         $Album  = if ($PathParts.Count -ge 3) { $PathParts[1] } else { "Single / Unknown" }
         $HasLrc = Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc"
@@ -78,23 +97,31 @@ function Get-LibraryMetrics {
 }
 
 # -----------------------------------------------------------------
-# 2. HELPER FUNCTION: EXECUTE PIPELINE WITH OUTPUT INTERCEPTION
+# 2. HELPER FUNCTION: ASYNC WORKER TASK ENGINE
 # -----------------------------------------------------------------
 function Invoke-PipelineExecution {
+    param([string]$Type = "sync")
     if ($Global:IsPipelineRunning) { return }
     $Global:IsPipelineRunning = $true
     $Global:LogBuffer.Clear()
-    $Global:LogBuffer.Add("[SYSTEM] Initializing Master Execution Loop...")
 
     $JobScript = {
-        param($ScriptPath)
+        param($ScriptPath, $RepoDir, $Mode)
+        
         $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $ProcessInfo.FileName = "cmd.exe"
-        $ProcessInfo.Arguments = "/c `"$ScriptPath`" headless"
         $ProcessInfo.RedirectStandardOutput = $true
         $ProcessInfo.RedirectStandardError = $true
         $ProcessInfo.UseShellExecute = $false
         $ProcessInfo.CreateNoWindow = $true
+
+        if ($Mode -eq "gitpull") {
+            $ProcessInfo.FileName = "git.exe"
+            $ProcessInfo.Arguments = "pull origin main"
+            $ProcessInfo.WorkingDirectory = $RepoDir
+        } else {
+            $ProcessInfo.FileName = "cmd.exe"
+            $ProcessInfo.Arguments = "/c `"$ScriptPath`" headless"
+        }
 
         $Process = New-Object System.Diagnostics.Process
         $Process.StartInfo = $ProcessInfo
@@ -106,13 +133,14 @@ function Invoke-PipelineExecution {
         }
         while (-not $Process.StandardError.EndOfStream) {
             $ErrLine = $Process.StandardError.ReadLine()
-            if ($ErrLine) { "[ERROR] " + $ErrLine }
+            if ($ErrLine) { "[DIAGNOSTIC] " + $ErrLine }
         }
         $Process.WaitForExit()
-        return "[SYSTEM] Pipeline task finalized with code: $($Process.ExitCode)"
+        return "[SYSTEM] Engine loop tracking complete (Exit code: $($Process.ExitCode))"
     }
 
-    $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript
+    $Global:LogBuffer.Add("[SYSTEM] Dispatching background process worker: Mode ($Type)...")
+    $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Type
 
     $null = Register-ObjectEvent -InputObject $Job -EventName "StateChanged" -Action {
         if ($Event.SourceEventArgs.JobStateInfo.State -eq "Completed") {
@@ -134,7 +162,7 @@ function Invoke-PipelineExecution {
 }
 
 # -----------------------------------------------------------------
-# 3. CORE FRONTEND DASHBOARD INTERFACE ASSET (WITH ALERT SYSTEM)
+# 3. CORE FRONTEND DASHBOARD INTERFACE ASSET
 # -----------------------------------------------------------------
 $HtmlDashboard = @"
 <!DOCTYPE html>
@@ -184,8 +212,8 @@ $HtmlDashboard = @"
 
     <div class="main-layout">
         <div class="panel">
-            <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline()">Run Master Sync</button></h2>
-            <div class="console" id="terminal-feed">Terminal offline. Awaiting pipeline run initialization...</div>
+            <h2>Execution Pipeline <button class="btn" id="run-btn" onclick="triggerPipeline('sync')">Run Master Sync</button></h2>
+            <div class="console" id="terminal-feed">Ready. Awaiting run commands...</div>
         </div>
 
         <div class="panel">
@@ -202,7 +230,7 @@ $HtmlDashboard = @"
                         </tr>
                     </thead>
                     <tbody id="metadata-rows">
-                        <tr><td colspan="4" style="text-align:center; color:#71717A;">Initializing index scan...</td></tr>
+                        <tr><td colspan="4" style="text-align:center; color:#71717A;">Scanning file layout...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -221,15 +249,22 @@ $HtmlDashboard = @"
                     document.getElementById('stat-lrc-count').innerText = `\${data.lrcCount} synced`;
                     document.getElementById('stat-sizes').innerText = `\${data.mobileSize} GB / \${data.masterSize} GB`;
                     
-                    // Render Alert Banners
                     const alertZone = document.getElementById('alerts-zone');
                     if (data.alerts && data.alerts.length > 0) {
-                        alertZone.innerHTML = data.alerts.map(a => `
-                            <div class="alert alert-\${a.type}">
-                                <span>⚠️ \${a.message}</span>
-                                \${a.fixAction === 'sync' ? '<button class="fix-btn" onclick="triggerPipeline()">Fix Now</button>' : ''}
-                            </div>
-                        `).join('');
+                        alertZone.innerHTML = data.alerts.map(a => {
+                            let actionButton = '';
+                            if (a.fixAction === 'sync') {
+                                actionButton = `<button class="fix-btn" onclick="triggerPipeline('sync')">Fix Now</button>`;
+                            } else if (a.fixAction === 'gitpull') {
+                                actionButton = `<button class="fix-btn" style="background:#00ADB5; color:#fff;" onclick="triggerPipeline('gitpull')">Git Pull</button>`;
+                            }
+                            return `
+                                <div class="alert alert-\${a.type}">
+                                    <span>⚠️ \${a.message}</span>
+                                    \${actionButton}
+                                </div>
+                            `;
+                        }).join('');
                     } else {
                         alertZone.innerHTML = '';
                     }
@@ -242,7 +277,7 @@ $HtmlDashboard = @"
         function buildTable(tracks) {
             const tbody = document.getElementById('metadata-rows');
             if(tracks.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#71717A;">No records match query bounds</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#71717A;">No records found</td></tr>`;
                 return;
             }
             tbody.innerHTML = tracks.map(t => `
@@ -265,9 +300,14 @@ $HtmlDashboard = @"
             buildTable(filtered);
         }
 
-        function triggerPipeline() {
+        function triggerPipeline(mode) {
             document.getElementById('run-btn').disabled = true;
-            fetch('/run', { method: 'POST' });
+            fetch('/run?mode=' + mode, { method: 'POST' })
+                .then(() => {
+                    if (mode === 'gitpull') {
+                        setTimeout(loadMetrics, 4000);
+                    }
+                });
         }
 
         setInterval(() => {
@@ -296,15 +336,13 @@ $TimerScript = {
     param($EngineUrl)
     while ($true) {
         Start-Sleep -Seconds 1800
-        try {
-            Invoke-RestMethod -Uri "$EngineUrl`run" -Method Post | Out-Null
-        } catch {}
+        try { Invoke-RestMethod -Uri "$EngineUrl`run?mode=sync" -Method Post | Out-Null } catch {}
     }
 }
 $null = Start-Job -ScriptBlock $TimerScript -ArgumentList "http://localhost:8080/"
 
 # -----------------------------------------------------------------
-# 4. HTTP LISTENER CORE SERVER TERMINAL ROUTING LOOP
+# 4. HTTP LISTENER CORE WEB ENGINE ROUTING LOOP
 # -----------------------------------------------------------------
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8080/")
@@ -348,8 +386,11 @@ while ($Running) {
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
         elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
+            $ExecutionMode = $Request.QueryString["mode"]
+            if ([string]::IsNullOrEmpty($ExecutionMode)) { $ExecutionMode = "sync" }
+            
             if (-not $Global:IsPipelineRunning) {
-                Invoke-PipelineExecution
+                Invoke-PipelineExecution -Type $ExecutionMode
             }
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
             $Response.ContentType = "application/json"
