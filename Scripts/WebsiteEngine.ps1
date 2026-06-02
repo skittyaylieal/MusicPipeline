@@ -9,7 +9,7 @@ $Global:IsPipelineRunning = $false
 $Global:DiagLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 $ScriptRepoDir = [System.IO.Path]::GetDirectoryName($BatchScript)
 
-# Shared Thread-Safe Memory Container for immediate web loading
+# Shared Memory Container for immediate web loading
 $Global:CachedMetrics = @{
     masterCount = 0
     mobileCount = 0
@@ -21,15 +21,19 @@ $Global:CachedMetrics = @{
 }
 
 # -----------------------------------------------------------------
-# 1. ASYNC BACKGROUND SCANNER (Keeps the web thread ultra-fast)
+# 1. NATIVE BACKGROUND SCANNER (PowerShell 5.1 Compatible)
 # -----------------------------------------------------------------
 function Start-AsyncLibraryScanner {
-    $null = Start-ThreadJob -ScriptBlock {
+    # If an old tracking job is lingering, clear it out
+    Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
+
+    $JobScript = {
         param($BDir, $MDir, $RDir)
+        
+        # We run a loop inside the background process
         while ($true) {
             if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 10; continue }
 
-            # Perform heavy disk scanning quietly away from the web thread
             $MasterFiles = Get-ChildItem -LiteralPath $BDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" }
             $MobileFiles = Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" }
             $LrcFiles    = Get-ChildItem -LiteralPath $BDir -Recurse -Filter "*.lrc" -File
@@ -38,8 +42,6 @@ function Start-AsyncLibraryScanner {
             $MobileSize = ($MobileFiles | Measure-Object -Property Length -Sum).Sum / 1GB
 
             $Alerts = @()
-            
-            # Safe Public Git update checker
             if (Test-Path -LiteralPath "$RDir\.git") {
                 try {
                     $Env:GIT_TERMINAL_PROMPT = "0"
@@ -57,7 +59,6 @@ function Start-AsyncLibraryScanner {
                 $Alerts += @{ type = "danger"; message = "Synchronization Gap: Master backup has $(($MasterFiles.Count - $MobileFiles.Count)) more track(s) than Mobile."; fixAction = "sync" }
             }
 
-            # Build the memory track list grid safely
             $TrackDatabase = @()
             foreach ($File in $MasterFiles) {
                 if ($null -eq $File.FullName) { continue }
@@ -76,8 +77,8 @@ function Start-AsyncLibraryScanner {
                 }
             }
 
-            # Swap the finished cache instantly into memory
-            $Global:CachedMetrics = @{
+            # Package up the data string to send back to the main script
+            @{
                 masterCount = $MasterFiles.Count
                 mobileCount = $MobileFiles.Count
                 lrcCount    = $LrcFiles.Count
@@ -85,16 +86,18 @@ function Start-AsyncLibraryScanner {
                 mobileSize  = [Math]::Round($MobileSize, 2)
                 alerts      = $Alerts
                 tracks      = $TrackDatabase
-            }
+            } | CliXml
 
-            # Rest the scanner loop for 30 seconds before re-checking disk changes
             Start-Sleep -Seconds 30
         }
-    } -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir
+    }
+
+    # Start the native background job entry
+    Start-Job -Name "MusicFolderScanner" -ScriptBlock $JobScript -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir
 }
 
 # -----------------------------------------------------------------
-# 2. FILE-STREAM BASED WORKER TRIGGER
+# 2. RUNTIME ACTIONS & EXECUTION ENGINE
 # -----------------------------------------------------------------
 function Invoke-PipelineExecution {
     if ($Global:IsPipelineRunning) { return }
@@ -103,18 +106,13 @@ function Invoke-PipelineExecution {
     if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
     "[SYSTEM] Dispatching background process worker..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
 
-    $JobScript = {
+    $PipelineJob = {
         param($ScriptPath, $RepoDir, $OutputFile)
         Set-Location -LiteralPath $RepoDir
         & "$env:SystemRoot\System32\cmd.exe" /c "`"$ScriptPath`" headless" > $OutputFile 2>&1
     }
     
-    $Job = Start-Job -ScriptBlock $JobScript -ArgumentList $BatchScript, $ScriptRepoDir, $Global:DiagLogFile
-    $null = Start-ThreadJob -ScriptBlock {
-        while ($using:Job.State -eq "Running") { Start-Sleep -Seconds 1 }
-        Remove-Job -Job $using:Job
-        $Global:IsPipelineRunning = $false
-    }
+    $Job = Start-Job -ScriptBlock $PipelineJob -ArgumentList $BatchScript, $ScriptRepoDir, $Global:DiagLogFile
 }
 
 function Invoke-HotReload {
@@ -129,8 +127,7 @@ function Invoke-HotReload {
     Pop-Location
 }
 
-# HTML String Asset (Kept intact from core interface build)
-# Includes your updated Fetch configuration
+# HTML System Layout Interface Asset
 $HtmlDashboard = @'
 <!DOCTYPE html>
 <html lang="en">
@@ -184,7 +181,7 @@ $HtmlDashboard = @'
             <div class="table-wrapper">
                 <table>
                     <thead><tr><th>Track Title</th><th>Artist</th><th>Album</th><th>Lyrics</th></tr></thead>
-                    <tbody id="metadata-rows"><tr><td colspan="4" style="text-align:center; color:#71717A;">Scanning file layout...</td></tr></tbody>
+                    <tbody id="metadata-rows"><tr><td colspan="4" style="text-align:center; color:#71717A;">Scanning directory layouts asynchronously...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -204,13 +201,15 @@ $HtmlDashboard = @'
                         return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span></div>`;
                     }).join('');
                 } else { alertZone.innerHTML = ''; }
-                fullTrackDb = data.tracks || [];
-                buildTable(fullTrackDb);
+                if(data.tracks && data.tracks.length > 0) {
+                    fullTrackDb = data.tracks;
+                    buildTable(fullTrackDb);
+                }
             }).catch(() => {});
         }
         function buildTable(tracks) {
             const tbody = document.getElementById('metadata-rows');
-            if(tracks.length === 0) {
+            if(!tracks || tracks.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#71717A;">Scanning directory layouts asynchronously...</td></tr>`;
                 return;
             }
@@ -241,7 +240,7 @@ $HtmlDashboard = @'
 '@
 
 # -----------------------------------------------------------------
-# 3. HTTP LISTENER PIPELINE ROUTER LOOP
+# 3. CORE WEB ENGINE LISTENER ROUTER LOOP
 # -----------------------------------------------------------------
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8080/")
@@ -249,7 +248,7 @@ $Listener.Prefixes.Add("http://localhost:8080/")
 try {
     $Listener.Start()
     
-    # KICK OFF FILE DISK SCANNING ON AN ISOLATED SYSTEM THREAD IMMEDIATELY
+    # Fire up the standard background loop
     Start-AsyncLibraryScanner
     
     $Running = $true
@@ -264,38 +263,49 @@ try {
             if ($UrlPath -eq "/" -and $Method -eq "GET") {
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlDashboard)
                 $Response.ContentType = "text/html; charset=utf-8"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
-                # Instantly returns whatever data is currently calculated without waiting
+                # Check if the background scanner job has sent new data back
+                $ScannerJob = Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue
+                if ($ScannerJob) {
+                    $LatestOutput = Receive-Job -Job $ScannerJob -Keep | Select-Object -Last 1
+                    if ($LatestOutput -is [string]) {
+                        # Convert data package back out of CliXml format
+                        $Global:CachedMetrics = [System.Management.Automation.PSSerializer]::Deserialize($LatestOutput)
+                    }
+                }
+                
                 $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 $Response.ContentType = "application/json"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
                 $CurrentLogs = @()
                 if (Test-Path $Global:DiagLogFile) { $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue }
+                
+                # Check status tracking variables dynamically
+                $ScannerJob = Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue
+                if ($CurrentLogs -match "Execution complete|completed successfully") {
+                    $Global:IsPipelineRunning = $false
+                }
+
                 $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs } | ConvertTo-Json -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 $Response.ContentType = "application/json"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
                 Invoke-PipelineExecution
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
                 $Response.ContentType = "application/json"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
                 Invoke-HotReload
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
                 $Response.ContentType = "application/json"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             else { $Response.StatusCode = 404 }
