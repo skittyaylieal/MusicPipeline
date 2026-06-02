@@ -109,7 +109,7 @@ function Invoke-HotReload {
     Pop-Location
 }
 
-# HTML Dashboard Asset - JavaScript completely streamlined
+# HTML Dashboard Asset
 $HtmlDashboard = @'
 <!DOCTYPE html>
 <html lang="en">
@@ -212,6 +212,9 @@ try {
             $UrlPath = $Request.Url.LocalPath
             $Method  = $Request.HttpMethod
 
+            # FORCE CONNECTION CLOSURE TO REMOVE FIREFOX "TRANSFERRING" HANG
+            $Response.Headers.Add("Connection", "close")
+
             if ($UrlPath -eq "/" -and $Method -eq "GET") {
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlDashboard)
                 $Response.ContentType = "text/html; charset=utf-8"
@@ -231,7 +234,6 @@ try {
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 }
                 $Response.ContentType = "application/json"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
@@ -243,21 +245,18 @@ try {
                 $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs } | ConvertTo-Json -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
                 $Response.ContentType = "application/json"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
                 Invoke-PipelineExecution
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
                 $Response.ContentType = "application/json"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             elif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
                 Invoke-HotReload
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
                 $Response.ContentType = "application/json"
-                $Response.ContentLength64 = $Buffer.Length
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
             else { $Response.StatusCode = 404 }
