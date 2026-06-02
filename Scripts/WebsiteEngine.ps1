@@ -262,7 +262,7 @@ $HtmlDashboard = @'
                                 <div class="alert alert-${a.type}">
                                     <span>⚠️ ${a.message}</span>
                                     ${actionButton}
-                               </div>
+                                </div>
                             `;
                         }).join('');
                     } else {
@@ -342,63 +342,72 @@ $TimerScript = {
 $null = Start-Job -ScriptBlock $TimerScript -ArgumentList "http://localhost:8080/"
 
 # -----------------------------------------------------------------
-# 4. HTTP LISTENER CORE WEB ENGINE ROUTING LOOP
+# 4. HTTP LISTENER CORE WEB ENGINE ROUTING LOOP WITH AUTO-CLEANUP
 # -----------------------------------------------------------------
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8080/")
-try { $Listener.Start() } catch {
-    Write-Host "[!] Port 8080 occupied." -ForegroundColor Red
-    Exit 1
-}
 
-$Running = $true
-while ($Running) {
-    try {
-        $Context = $Listener.GetContext()
-        $Request = $Context.Request
-        $Response = $Context.Response
-        $UrlPath = $Request.Url.LocalPath
-        $Method  = $Request.HttpMethod
+try {
+    $Listener.Start()
+    $Running = $true
+    
+    while ($Running) {
+        try {
+            $Context = $Listener.GetContext()
+            $Request = $Context.Request
+            $Response = $Context.Response
+            $UrlPath = $Request.Url.LocalPath
+            $Method  = $Request.HttpMethod
 
-        if ($UrlPath -eq "/" -and $Method -eq "GET") {
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlDashboard)
-            $Response.ContentType = "text/html; charset=utf-8"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-        }
-        elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
-            $DataMetrics = Get-LibraryMetrics
-            $JsonPayload = $DataMetrics | ConvertTo-Json -Depth 4 -Compress
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
-            $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-        }
-        elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
-            $StreamObj = @{
-                running = $Global:IsPipelineRunning
-                logs    = $Global:LogBuffer.ToArray()
+            if ($UrlPath -eq "/" -and $Method -eq "GET") {
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlDashboard)
+                $Response.ContentType = "text/html; charset=utf-8"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
-            $JsonPayload = $StreamObj | ConvertTo-Json -Compress
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
-            $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-        }
-        elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
-            $ExecutionMode = $Request.QueryString["mode"]
-            if ([string]::IsNullOrEmpty($ExecutionMode)) { $ExecutionMode = "sync" }
-            
-            if (-not $Global:IsPipelineRunning) {
-                Invoke-PipelineExecution -Type $ExecutionMode
+            elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
+                $DataMetrics = Get-LibraryMetrics
+                $JsonPayload = $DataMetrics | ConvertTo-Json -Depth 4 -Compress
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             }
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
-            $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
+                $StreamObj = @{
+                    running = $Global:IsPipelineRunning
+                    logs    = $Global:LogBuffer.ToArray()
+                }
+                $JsonPayload = $StreamObj | ConvertTo-Json -Compress
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            }
+            elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
+                $ExecutionMode = $Request.QueryString["mode"]
+                if ([string]::IsNullOrEmpty($ExecutionMode)) { $ExecutionMode = "sync" }
+                
+                if (-not $Global:IsPipelineRunning) {
+                    Invoke-PipelineExecution -Type $ExecutionMode
+                }
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            }
+            else { $Response.StatusCode = 404 }
+            $Response.OutputStream.Close()
+        } catch {
+            # Catch internal iteration errors and keep loop spinning
         }
-        else { $Response.StatusCode = 404 }
-        $Response.OutputStream.Close()
-    } catch {}
+    }
 }
-$Listener.Stop()
+finally {
+    # CRITICAL WORKAROUND: Forcefully close and unbind the socket if the script ends/restarts.
+    # This prevents the Windows Kernel (PID 4) from swallowing port 8080.
+    if ($null -ne $Listener) {
+        $Listener.Stop()
+        $Listener.Close()
+    }
+}
