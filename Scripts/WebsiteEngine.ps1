@@ -180,7 +180,7 @@ try {
             $Response.ContentType = "text/html; charset=utf-8"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
+        elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
             if (Test-Path $Global:CacheFile) {
                 try {
                     $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
@@ -197,7 +197,7 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
+        elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
             $CurrentLogs = @()
             if (Test-Path $Global:DiagLogFile) { $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue }
             if ($CurrentLogs -match "Execution complete|completed successfully") {
@@ -209,7 +209,7 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/debug" -and $Method -eq "GET") {
+        elseif ($UrlPath -eq "/debug" -and $Method -eq "GET") {
             $ScannerJob = Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue
             $RawCache = "No cache file found on disk"
             if (Test-Path $Global:CacheFile) {
@@ -225,14 +225,14 @@ try {
             $Response.ContentType = "application/json"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
+        elseif ($UrlPath -eq "/run" -and $Method -eq "POST") {
             Invoke-PipelineExecution
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
             $Response.ContentType = "application/json"
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
+        elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
             Invoke-HotReload
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
             $Response.ContentType = "application/json"
