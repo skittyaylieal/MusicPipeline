@@ -19,13 +19,13 @@ if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Forc
 
 # Shared Default Memory Container
 $Global:CachedMetrics = @{
-    masterCount = 0; mobileCount = 0; lrcCount = 0
-    masterSize  = 0; mobileSize  = 0; alerts = @(); tracks = @()
+    masterCount  = 0; mobileCount = 0; lrcCount = 0
+    masterSize   = 0; mobileSize  = 0; alerts = @(); tracks = @()
+    loadingState = "scanning"
 }
 
-
 # -----------------------------------------------------------------
-# 1. ROBUST BACKGROUND SCANNER
+# 1. ROBUST BACKGROUND SCANNER (LIVE PROGRESS MODE)
 # -----------------------------------------------------------------
 function Start-AsyncLibraryScanner {
     Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
@@ -37,6 +37,7 @@ function Start-AsyncLibraryScanner {
         while ($true) {
             if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 5; continue }
 
+            # Quick top-level look to gather general statistics
             $MasterFiles = Get-ChildItem -LiteralPath $BDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" }
             $MobileFiles = Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" }
             $LrcFiles    = Get-ChildItem -LiteralPath $BDir -Recurse -Filter "*.lrc" -File
@@ -44,6 +45,41 @@ function Start-AsyncLibraryScanner {
             $MasterSize = ($MasterFiles | Measure-Object -Property Length -Sum).Sum / 1GB
             $MobileSize = ($MobileFiles | Measure-Object -Property Length -Sum).Sum / 1GB
 
+            $TrackDatabase = @()
+
+            # Iterate through files and flush chunks live to the frontend layout
+            foreach ($File in $MasterFiles) {
+                if ($null -eq $File.FullName) { continue }
+                $RelativePath = $File.FullName.Substring($BDir.Length).TrimStart('\')
+                $PathParts = $RelativePath -split '\\'
+                $Artist = if ($PathParts.Count -ge 3) { $PathParts[0] } else { "Unknown Artist" }
+                $Album  = if ($PathParts.Count -ge 3) { $PathParts[1] } else { "Single / Unknown" }
+                
+                $TrackDatabase += @{
+                    title  = [string]$File.BaseName
+                    artist = [string]$Artist
+                    album  = [string]$Album
+                    sizeMb = [Math]::Round(($File.Length / 1MB), 2)
+                    hasLrc = [bool](Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc" -ErrorAction SilentlyContinue)
+                    type   = [string]$File.Extension.ToUpper().Replace('.','')
+                }
+
+                # Flush updates to the web interface every 150 parsed records
+                if ($TrackDatabase.Count % 150 -eq 0) {
+                    @{
+                        masterCount  = $MasterFiles.Count
+                        mobileCount  = $MobileFiles.Count
+                        lrcCount     = $LrcFiles.Count
+                        masterSize   = [Math]::Round($MasterSize, 2)
+                        mobileSize   = [Math]::Round($MobileSize, 2)
+                        alerts       = @()
+                        loadingState = "scanning"
+                        tracks       = $TrackDatabase
+                    } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force
+                }
+            }
+
+            # Git verification and repository delta analysis
             $Alerts = @()
             if (Test-Path -LiteralPath "$RDir\.git") {
                 try {
@@ -62,81 +98,16 @@ function Start-AsyncLibraryScanner {
                 $Alerts += @{ type = "danger"; message = "Synchronization Gap: Master backup has $(($MasterFiles.Count - $MobileFiles.Count)) more track(s) than Mobile."; fixAction = "sync" }
             }
 
-            $TrackDatabase = @()
-            foreach ($File in $MasterFiles) {
-                if ($null -eq $File.FullName) { continue }
-                $RelativePath = $File.FullName.Substring($BDir.Length).TrimStart('\')
-# -----------------------------------------------------------------
-# 3. NETWORK ENGINE ROUTER ROUTINE (LEAK-PROOF VERSION)
-# -----------------------------------------------------------------
-
-# Force-clear any orphaned socket registers before we start
-[System.Net.HttpListener]::IsSupported
-$Listener = New-Object System.Net.HttpListener
-$Listener.Prefixes.Add("http://localhost:8080/")
-
-try {
-    # Attempt to start the listener
-    $Listener.Start()
-    Start-AsyncLibraryScanner
-    
-    # Register a "Trap" to handle Ctrl+C or unexpected crashes
-    trap {
-        $Listener.Stop()
-        $Listener.Close()
-        exit
-    }
-
-    while ($true) {
-        $Context = $Listener.GetContext()
-        $Request = $Context.Request
-        $Response = $Context.Response
-        $UrlPath = $Request.Url.LocalPath
-        $Method  = $Request.HttpMethod
-
-        $Response.KeepAlive = $false
-        $Response.Headers.Add("Connection", "close")
-
-        # [The rest of your logic remains the same: / metrics, / stream, etc.]
-        if ($UrlPath -eq "/" -and $Method -eq "GET") {
-            $HtmlContent = Get-Content -LiteralPath $HtmlFile -Raw -Encoding utf8
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlContent)
-            $Response.ContentType = "text/html; charset=utf-8"
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-        }
-        # ... (keep your existing elif logic here) ...
-        
-        $Response.OutputStream.Close()
-    }
-} 
-catch [System.Net.HttpListenerException] {
-    Write-Host "PORT CONFLICT DETECTED: The port is still locked by the Kernel." -ForegroundColor Red
-    Write-Host "Please restart your computer to release the kernel-held socket." -ForegroundColor Yellow
-}
-finally {
-    if ($null -ne $Listener) { $Listener.Stop(); $Listener.Close() }
-}                $PathParts = $RelativePath -split '\\'
-                $Artist = if ($PathParts.Count -ge 3) { $PathParts[0] } else { "Unknown Artist" }
-                $Album  = if ($PathParts.Count -ge 3) { $PathParts[1] } else { "Single / Unknown" }
-                
-                $TrackDatabase += @{
-                    title  = [string]$File.BaseName
-                    artist = [string]$Artist
-                    album  = [string]$Album
-                    sizeMb = [Math]::Round(($File.Length / 1MB), 2)
-                    hasLrc = [bool](Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc" -ErrorAction SilentlyContinue)
-                    type   = [string]$File.Extension.ToUpper().Replace('.','')
-                }
-            }
-
+            # Final clean snapshot when execution iteration finishes
             @{
-                masterCount = $MasterFiles.Count
-                mobileCount = $MobileFiles.Count
-                lrcCount    = $LrcFiles.Count
-                masterSize  = [Math]::Round($MasterSize, 2)
-                mobileSize  = [Math]::Round($MobileSize, 2)
-                alerts      = $Alerts
-                tracks      = $TrackDatabase
+                masterCount  = $MasterFiles.Count
+                mobileCount  = $MobileFiles.Count
+                lrcCount     = $LrcFiles.Count
+                masterSize   = [Math]::Round($MasterSize, 2)
+                mobileSize   = [Math]::Round($MobileSize, 2)
+                alerts       = $Alerts
+                loadingState = "idle"
+                tracks       = $TrackDatabase
             } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force
 
             Start-Sleep -Seconds 60
@@ -176,17 +147,15 @@ function Invoke-HotReload {
     } catch {}
     Pop-Location
 }
-# -----------------------------------------------------------------
-# 3. NETWORK ENGINE ROUTER ROUTINE (LEAK-PROOF VERSION)
-# -----------------------------------------------------------------
 
-# Build the listener object cleanly without stray output
+# -----------------------------------------------------------------
+# 3. NETWORK ENGINE ROUTER ROUTINE
+# -----------------------------------------------------------------
 $Port = 49152
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:$Port/")
 
 try {
-    # Attempt to start the network socket
     $Listener.Start()
     Write-Host "--------------------------------------------------" -ForegroundColor Cyan
     Write-Host " SERVER LIVE: http://localhost:$Port/" -ForegroundColor Green
@@ -194,7 +163,6 @@ try {
     
     Start-AsyncLibraryScanner
     
-    # Register an emergency trap for unexpected script breaks
     trap {
         if ($null -ne $Listener -and $Listener.IsListening) { $Listener.Stop() }
         if ($null -ne $Listener) { $Listener.Close() }
@@ -269,7 +237,6 @@ catch {
     Write-Host "Startup execution error occurred: $_" -ForegroundColor Red
 }
 finally {
-    # Bulletproof cleanup sequence
     if ($null -ne $Listener) {
         if ($Listener.IsListening) { $Listener.Stop() }
         $Listener.Close()
