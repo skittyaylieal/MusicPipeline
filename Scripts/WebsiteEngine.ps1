@@ -174,24 +174,27 @@ function Invoke-HotReload {
     Pop-Location
 }
 # -----------------------------------------------------------------
-# 3. NETWORK ENGINE ROUTER ROUTINE
+# 3. NETWORK ENGINE ROUTER ROUTINE (LEAK-PROOF VERSION)
 # -----------------------------------------------------------------
-$Port = 49152 # We will try 49152, but if it's busy, the script handles it
+
+# Build the listener object cleanly without stray output
+$Port = 49152
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:$Port/")
 
 try {
+    # Attempt to start the network socket
     $Listener.Start()
-    Write-Host "---"
-    Write-Host "SERVER LIVE: http://localhost:$Port/" -ForegroundColor Green
-    Write-Host "---"
+    Write-Host "--------------------------------------------------" -ForegroundColor Cyan
+    Write-Host " SERVER LIVE: http://localhost:$Port/" -ForegroundColor Green
+    Write-Host "--------------------------------------------------" -ForegroundColor Cyan
     
     Start-AsyncLibraryScanner
     
-    # Register a "Trap" to handle Ctrl+C or unexpected crashes
+    # Register an emergency trap for unexpected script breaks
     trap {
-        $Listener.Stop()
-        $Listener.Close()
+        if ($null -ne $Listener -and $Listener.IsListening) { $Listener.Stop() }
+        if ($null -ne $Listener) { $Listener.Close() }
         exit
     }
 
@@ -205,22 +208,67 @@ try {
         $Response.KeepAlive = $false
         $Response.Headers.Add("Connection", "close")
 
-        # [The rest of your logic remains the same: / metrics, / stream, etc.]
         if ($UrlPath -eq "/" -and $Method -eq "GET") {
             $HtmlContent = Get-Content -LiteralPath $HtmlFile -Raw -Encoding utf8
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlContent)
             $Response.ContentType = "text/html; charset=utf-8"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        # ... (keep your existing elif logic here) ...
+        elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
+            if (Test-Path $Global:CacheFile) {
+                try {
+                    $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
+                    if ($RawJson) { $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawJson) }
+                } catch {
+                    $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
+                }
+            } else {
+                $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
+            }
+            $Response.ContentType = "application/json"
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+        }
+        elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
+            $CurrentLogs = @()
+            if (Test-Path $Global:DiagLogFile) { $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue }
+            if ($CurrentLogs -match "Execution complete|completed successfully") {
+                $Global:IsPipelineRunning = $false
+            }
+            $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs } | ConvertTo-Json -Compress
+            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
+            $Response.ContentType = "application/json"
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+        }
+        elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
+            Invoke-PipelineExecution
+            $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
+            $Response.ContentType = "application/json"
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+        }
+        elif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
+            Invoke-HotReload
+            $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
+            $Response.ContentType = "application/json"
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+        }
+        else { $Response.StatusCode = 404 }
         
         $Response.OutputStream.Close()
     }
 } 
-catch [System.Net.HttpListenerException] {
-    Write-Host "PORT CONFLICT DETECTED: The port is still locked by the Kernel." -ForegroundColor Red
-    Write-Host "Please restart your computer to release the kernel-held socket." -ForegroundColor Yellow
+catch {
+    Write-Host "Startup execution error occurred: $_" -ForegroundColor Red
 }
 finally {
-    if ($null -ne $Listener) { $Listener.Stop(); $Listener.Close() }
+    # Bulletproof cleanup sequence
+    if ($null -ne $Listener) {
+        if ($Listener.IsListening) { $Listener.Stop() }
+        $Listener.Close()
+    }
 }
