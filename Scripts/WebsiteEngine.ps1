@@ -214,6 +214,33 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
+        elif ($UrlPath -eq "/debug" -and $Method -eq "GET") {
+            # Gather background job statuses
+            $ScannerJob = Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue
+            $PipelineJob = Get-Job -ScriptBlock $PipelineJob -ErrorAction SilentlyContinue
+            
+            # Read the raw cache file directly if it exists
+            $RawCache = "No cache file found on disk"
+            if (Test-Path $Global:CacheFile) {
+                $RawCache = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
+            }
+
+            # Package up absolute raw diagnostics
+            $DebugPayload = @{
+                Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                CacheFilePath = $Global:CacheFile
+                CacheFileExists = [bool](Test-Path $Global:CacheFile)
+                DiagLogExists = [bool](Test-Path $Global:DiagLogFile)
+                ScannerJobStatus = if ($ScannerJob) { $ScannerJob.State } else { "Not Found" }
+                ScannerJobErrors = if ($ScannerJob) { Receive-Job -Job $ScannerJob -Keep -ErrorAction SilentlyContinue | Out-String } else { "None" }
+                RawCacheData = $RawCache
+            } | ConvertTo-Json -Depth 5
+
+            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DebugPayload)
+            $Response.ContentType = "application/json"
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+        }
         elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
             Invoke-PipelineExecution
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
