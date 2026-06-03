@@ -9,7 +9,9 @@ $Global:IsPipelineRunning = $false
 $Global:DiagLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 $Global:CacheFile = "C:\MusicTools\MusicPipeline\Config\dashboard_cache.json"
 $HtmlFile = "C:\MusicTools\MusicPipeline\Scripts\dashboard.html"
-$ScriptRepoDir = [System.IO.Path]::GetDirectoryName($BatchScript)
+
+# Native PowerShell path layout bypass (Headless Safe)
+$ScriptRepoDir = Split-Path -Parent $BatchScript
 
 # Create config directory if it doesn't exist
 $ConfigDir = Split-Path $Global:DiagLogFile
@@ -20,6 +22,7 @@ $Global:CachedMetrics = @{
     masterCount = 0; mobileCount = 0; lrcCount = 0
     masterSize  = 0; mobileSize  = 0; alerts = @(); tracks = @()
 }
+
 
 # -----------------------------------------------------------------
 # 1. ROBUST BACKGROUND SCANNER
