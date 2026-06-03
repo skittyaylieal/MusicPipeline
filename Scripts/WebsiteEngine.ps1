@@ -173,19 +173,19 @@ function Invoke-HotReload {
     } catch {}
     Pop-Location
 }
-
 # -----------------------------------------------------------------
-# 3. NETWORK ENGINE ROUTER ROUTINE (LEAK-PROOF VERSION)
+# 3. NETWORK ENGINE ROUTER ROUTINE
 # -----------------------------------------------------------------
-
-# Force-clear any orphaned socket registers before we start
-[System.Net.HttpListener]::IsSupported
+$Port = 49152 # We will try 49152, but if it's busy, the script handles it
 $Listener = New-Object System.Net.HttpListener
-$Listener.Prefixes.Add("http://localhost:8080/")
+$Listener.Prefixes.Add("http://localhost:$Port/")
 
 try {
-    # Attempt to start the listener
     $Listener.Start()
+    Write-Host "---"
+    Write-Host "SERVER LIVE: http://localhost:$Port/" -ForegroundColor Green
+    Write-Host "---"
+    
     Start-AsyncLibraryScanner
     
     # Register a "Trap" to handle Ctrl+C or unexpected crashes
