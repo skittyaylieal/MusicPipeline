@@ -20,12 +20,12 @@ if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Forc
 # Shared Default Memory Container
 $Global:CachedMetrics = @{
     masterCount  = 0; mobileCount = 0; lrcCount = 0
-    masterSize   = 0; mobileSize  = 0; alerts = @(); tracks = @()
-    loadingState = "scanning"
+    masterSize   = 0; mobileSize  = 0; alerts = @()
+    loadingState = "scanning"; tracks = @()
 }
 
 # -----------------------------------------------------------------
-# 1. ROBUST BACKGROUND SCANNER (LIVE PROGRESS MODE)
+# 1. ROBUST BACKGROUND SCANNER
 # -----------------------------------------------------------------
 function Start-AsyncLibraryScanner {
     Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
@@ -37,7 +37,6 @@ function Start-AsyncLibraryScanner {
         while ($true) {
             if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 5; continue }
 
-            # Quick top-level look to gather general statistics
             $MasterFiles = Get-ChildItem -LiteralPath $BDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" }
             $MobileFiles = Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" }
             $LrcFiles    = Get-ChildItem -LiteralPath $BDir -Recurse -Filter "*.lrc" -File
@@ -47,7 +46,6 @@ function Start-AsyncLibraryScanner {
 
             $TrackDatabase = @()
 
-            # Iterate through files and flush chunks live to the frontend layout
             foreach ($File in $MasterFiles) {
                 if ($null -eq $File.FullName) { continue }
                 $RelativePath = $File.FullName.Substring($BDir.Length).TrimStart('\')
@@ -64,7 +62,6 @@ function Start-AsyncLibraryScanner {
                     type   = [string]$File.Extension.ToUpper().Replace('.','')
                 }
 
-                # Flush updates to the web interface every 150 parsed records
                 if ($TrackDatabase.Count % 150 -eq 0) {
                     @{
                         masterCount  = $MasterFiles.Count
@@ -79,7 +76,6 @@ function Start-AsyncLibraryScanner {
                 }
             }
 
-            # Git verification and repository delta analysis
             $Alerts = @()
             if (Test-Path -LiteralPath "$RDir\.git") {
                 try {
@@ -98,7 +94,6 @@ function Start-AsyncLibraryScanner {
                 $Alerts += @{ type = "danger"; message = "Synchronization Gap: Master backup has $(($MasterFiles.Count - $MobileFiles.Count)) more track(s) than Mobile."; fixAction = "sync" }
             }
 
-            # Final clean snapshot when execution iteration finishes
             @{
                 masterCount  = $MasterFiles.Count
                 mobileCount  = $MobileFiles.Count
@@ -215,30 +210,19 @@ try {
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
         elif ($UrlPath -eq "/debug" -and $Method -eq "GET") {
-            # Gather background job statuses
             $ScannerJob = Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue
-            $PipelineJob = Get-Job -ScriptBlock $PipelineJob -ErrorAction SilentlyContinue
-            
-            # Read the raw cache file directly if it exists
             $RawCache = "No cache file found on disk"
             if (Test-Path $Global:CacheFile) {
                 $RawCache = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
             }
-
-            # Package up absolute raw diagnostics
             $DebugPayload = @{
                 Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
-                CacheFilePath = $Global:CacheFile
                 CacheFileExists = [bool](Test-Path $Global:CacheFile)
-                DiagLogExists = [bool](Test-Path $Global:DiagLogFile)
                 ScannerJobStatus = if ($ScannerJob) { $ScannerJob.State } else { "Not Found" }
-                ScannerJobErrors = if ($ScannerJob) { Receive-Job -Job $ScannerJob -Keep -ErrorAction SilentlyContinue | Out-String } else { "None" }
                 RawCacheData = $RawCache
             } | ConvertTo-Json -Depth 5
-
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DebugPayload)
             $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
         elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
