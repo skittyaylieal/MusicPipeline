@@ -265,13 +265,23 @@ function Invoke-HotReload {
         $Env:GIT_TERMINAL_PROMPT = "0"
         $Env:GIT_SSH_COMMAND = ""
         
-        # Capture git output cleanly as a clean UTF-8 string block to prevent null-byte bloating
+        # Capture git's output straight to a variable first to stop PowerShell from corrupting the stream
         $PullOutput = & "git" pull origin main 2>&1 | Out-String
+        
+        # Safely append it using an explicit UTF-8 encoding flag
         $PullOutput | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+        
+        # --- THE RESURRECTION TRICK ---
+        $CurrentPID = $PID
+        Start-Process powershell -ArgumentList "-NoProfile -Command `& { Start-Sleep -Seconds 2; Start-Process powershell -ArgumentList '-NoProfile -NoExit -File `\"$PSCommandPath`\"' }`" -WindowStyle Hidden
+
     } catch {
         "  ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
     }
     Pop-Location
+
+    # Kill this instance immediately so the port frees up for the new one
+    Stop-Process -Id $PID -Force
 }
 
 # -----------------------------------------------------------------
