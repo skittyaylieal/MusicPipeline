@@ -265,15 +265,18 @@ function Invoke-HotReload {
         $Env:GIT_TERMINAL_PROMPT = "0"
         $Env:GIT_SSH_COMMAND = ""
         
-        # Capture git's output straight to a variable first to stop PowerShell from corrupting the stream
+        # Capture git's output straight to a variable first to stop stream corruption
         $PullOutput = & "git" pull origin main 2>&1 | Out-String
-        
-        # Safely append it using an explicit UTF-8 encoding flag
         $PullOutput | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
         
-        # --- THE RESURRECTION TRICK ---
-        $CurrentPID = $PID
-        Start-Process powershell -ArgumentList "-NoProfile -Command `& { Start-Sleep -Seconds 2; Start-Process powershell -ArgumentList '-NoProfile -NoExit -File `\"$PSCommandPath`\"' }`" -WindowStyle Hidden
+        # --- THE RESURRECTION TRICK (NO NESTED QUOTES) ---
+        # Passing arguments as clean, separate array items stops Sublime's parser from breaking
+        $ArgsList = @(
+            "-NoProfile",
+            "-Command",
+            "& { Start-Sleep -Seconds 2; Start-Process powershell -ArgumentList '-NoProfile', '-NoExit', '-File', '$PSCommandPath' }"
+        )
+        Start-Process powershell -ArgumentList $ArgsList -WindowStyle Hidden
 
     } catch {
         "  ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
