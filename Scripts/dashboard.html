@@ -20,7 +20,24 @@
         .bottom-layout { display: grid; grid-template-columns: 1fr; gap: 25px; }
         
         /* Panels - Prevents horizontal blowout */
-        .panel { background: #18181C; border-radius: 10px; border: 1px solid #27272A; padding: 20px; display: flex; flex-direction: column; height: 380px; min-width: 0; overflow: hidden; }
+        .panel { 
+            background: #18181C; 
+            border-radius: 10px; 
+            border: 1px solid #27272A; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            height: 380px; 
+            min-width: 0; 
+            position: relative;   /* <-- Keeps child containment locked */
+            overflow: hidden;     /* <-- Cuts off the scrollbar from escaping to the title/search zone */
+        }
+
+        .table-wrapper { 
+            overflow-y: auto; 
+            flex-grow: 1; 
+            min-height: 0;        /* <-- Forces the wrapper to accurately calculate the remaining flex space */
+        }
         .panel-extended { height: 450px; }
         
         h2 { margin-top: 0; color: #FFF; font-size: 1.3em; border-bottom: 1px solid #27272A; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
@@ -35,7 +52,6 @@
         /* Console Terminal Viewport Updates */
         .console { background: #09090B; border-radius: 6px; padding: 15px; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 1.05em; line-height: 1.45; color: #39FF14; overflow-y: auto; flex-grow: 1; white-space: pre-wrap; word-break: break-all; border: 1px solid #18181B; }
         .search-box { background: #222226; border: 1px solid #3F3F46; color: #FFF; padding: 10px; border-radius: 5px; width: calc(100% - 22px); margin-bottom: 15px; font-size: 0.95em; }
-        .table-wrapper { overflow-y: auto; flex-grow: 1; }
         
         table { width: 100%; border-collapse: collapse; font-size: 0.9em; text-align: left; }
         th { background: #222226; color: #A1A1AA; padding: 10px; font-weight: 600; position: sticky; top: 0; z-index: 10; }
