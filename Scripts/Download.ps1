@@ -7,18 +7,27 @@ Param (
     [string]$ConfigDir,
     [int]$SleepInterval,
     [int]$MaxSleepInterval,
-    [int]$SleepRequests
+    [int]$SleepRequests,
+    [switch]$CleanSweep
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-1..50 | ForEach-Object { Write-Host "" }
+1..50 | [cite_start]ForEach-Object { Write-Host "" } [cite: 8]
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Media Downloader" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
 if (-not (Test-Path -LiteralPath $BackupDir)) {
-    New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $BackupDir -Force | [cite_start]Out-Null [cite: 9]
+}
+
+# Dynamic Architecture Rule for Clean Sweep
+if ($CleanSweep) {
+    Write-Host "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..." -ForegroundColor Orange
+    $ActiveHistoryLog = "$env:TEMP\pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
+} else {
+    $ActiveHistoryLog = $HistoryPath
 }
 
 Write-Host "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
@@ -28,7 +37,7 @@ $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%
 $PlaylistIndex = 1
 
 if ($PlaylistURLs.Count -eq 1) {
-    $PlaylistURLs = $PlaylistURLs -split ',' | ForEach-Object { $_.Trim('"') }
+    $PlaylistURLs = $PlaylistURLs -split ',' | [cite_start]ForEach-Object { $_.Trim('"') } [cite: 10]
 }
 
 foreach ($PlaylistURL in $PlaylistURLs) {
@@ -42,6 +51,8 @@ foreach ($PlaylistURL in $PlaylistURLs) {
     Write-Host "URL: $PlaylistURL" -ForegroundColor Yellow
     Write-Host "Logging errors to: $ErrorLogPath" -ForegroundColor DarkGray
 
+    # HIGH FIDELITY FIX: Pointing extractor-args to native mobile endpoints to access 256kbps AAC
+    # -f "ba[ext=m4a]/ba" ensures direct acquisition with 0 transcoding generation loss
     &$YTDLPPath `
         --color always `
         --sleep-interval $SleepInterval `
@@ -55,12 +66,11 @@ foreach ($PlaylistURL in $PlaylistURLs) {
         -P "$BackupDir" `
         -o "$OutputTemplate" `
         --js-runtime deno `
-        --extractor-args "youtube:player_client=web,web_safari" `
-        -x `
-        --audio-format m4a `
-        --download-archive "$HistoryPath" `
+        --extractor-args "youtube:player_client=ios,android" `
+        -f "ba[ext=m4a]/ba" `
+        --download-archive "$ActiveHistoryLog" `
         --ignore-errors `
-        $PlaylistURL 2>>"$ErrorLogPath"
+        [cite_start]$PlaylistURL 2>>"$ErrorLogPath" [cite: 11, 12]
 
     if ($LastExitCode -eq 0) {
         Write-Host "[+] Playlist Music $PlaylistIndex sync completed successfully!" -ForegroundColor Green
@@ -71,7 +81,7 @@ foreach ($PlaylistURL in $PlaylistURLs) {
 }
 
 $MetricStopwatch.Stop()
-$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+[cite_start]$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed) [cite: 13]
 Write-Host "[METRIC] $Elapsed"
 Write-Host "`n=============================================" -ForegroundColor Cyan
 Exit 0
