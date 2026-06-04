@@ -258,7 +258,18 @@
                 
                 if(data.logs && data.logs.length > 0) {
                     const consoleBox = document.getElementById('terminal-feed');
-                    consoleBox.innerText = data.logs.join('\n');
+                    
+                    // Safely unpack lines whether they are raw strings or complex objects
+                    const cleanLines = data.logs.map(line => {
+                        if (line === null || line === undefined) return '';
+                        if (typeof line === 'object') {
+                            // Grabs internal message properties if present, otherwise unpacks JSON tokens cleanly
+                            return line.message || line.text || JSON.stringify(line);
+                        }
+                        return String(line);
+                    });
+
+                    consoleBox.innerText = cleanLines.join('\n');
                     consoleBox.scrollTop = consoleBox.scrollHeight;
                 }
                 setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000);
@@ -266,7 +277,6 @@
                 setTimeout(runLogStreamer, 4000);
             });
         }
-
         // Interval Loop Management Engine
         setInterval(loadMetrics, 3000); 
         setInterval(loadAnalytics, 5000);
