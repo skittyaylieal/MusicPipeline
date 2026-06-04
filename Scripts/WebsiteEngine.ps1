@@ -264,8 +264,13 @@ function Invoke-HotReload {
     try {
         $Env:GIT_TERMINAL_PROMPT = "0"
         $Env:GIT_SSH_COMMAND = ""
-        & "git" pull origin main >> $Global:DiagLogFile 2>&1
-    } catch {}
+        
+        # Capture git output cleanly as a clean UTF-8 string block to prevent null-byte bloating
+        $PullOutput = & "git" pull origin main 2>&1 | Out-String
+        $PullOutput | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+    } catch {
+        "  ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+    }
     Pop-Location
 }
 

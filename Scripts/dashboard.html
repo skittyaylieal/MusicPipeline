@@ -31,7 +31,19 @@
         .btn:hover { opacity: 0.9; }
         .btn:disabled { background: #3F3F46; cursor: not-allowed; opacity: 0.6; }
         
-        .console { background: #09090B; border-radius: 6px; padding: 15px; font-family: monospace; font-size: 0.85em; color: #39FF14; overflow-y: auto; flex-grow: 1; white-space: pre-wrap; border: 1px solid #18181B; }
+        .console { 
+            background: #09090B; 
+            border-radius: 6px; 
+            padding: 15px; 
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace; 
+            font-size: 1.05em;          /* <-- Bumps it up so it stands out clearly without squinting */
+            line-height: 1.45;          /* <-- Adds clean vertical breathing room between your stream steps */
+            color: #39FF14; 
+            overflow-y: auto; 
+            flex-grow: 1; 
+            white-space: pre-wrap; 
+            border: 1px solid #18181B; 
+        }
         .search-box { background: #222226; border: 1px solid #3F3F46; color: #FFF; padding: 10px; border-radius: 5px; width: calc(100% - 22px); margin-bottom: 15px; font-size: 0.95em; }
         .table-wrapper { overflow-y: auto; flex-grow: 1; }
         
