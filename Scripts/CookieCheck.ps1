@@ -5,7 +5,7 @@ Param (
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-1..50 | ForEach-Object { Write-Host "" }
+Clear-Host
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Cookie Validator" -ForegroundColor Cyan
@@ -36,7 +36,7 @@ if ($LastExitCode -ne 0) {
 
 Write-Host "[+] Cookies authenticated successfully." -ForegroundColor Green
 $MetricStopwatch.Stop()
-$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Write-Host "[METRIC] $Elapsed"
 Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0

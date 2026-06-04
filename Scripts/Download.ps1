@@ -12,7 +12,7 @@ Param (
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-1..50 | ForEach-Object { Write-Host "" }
+Clear-Host
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Media Downloader" -ForegroundColor Cyan
@@ -23,11 +23,11 @@ if (-not (Test-Path -LiteralPath $BackupDir)) {
 }
 
 # Dynamic Architecture Rule for Clean Sweep
-if ($CleanSweep) {
+$ActiveHistoryLog = if ($CleanSweep) {
     Write-Host "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..." -ForegroundColor Orange
-    $ActiveHistoryLog = "$env:TEMP\pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
+    Join-Path $env:TEMP "pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
 } else {
-    $ActiveHistoryLog = $HistoryPath
+    $HistoryPath
 }
 
 Write-Host "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
@@ -36,63 +36,60 @@ Write-Host "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
 
 # Always sanitize quotes out of all incoming URLs regardless of array size
-$SanitizedURLs = @()
-foreach ($URL in $PlaylistURLs) {
+$SanitizedURLs = foreach ($URL in $PlaylistURLs) {
     if ($URL -match ',') {
-        $SanitizedURLs += $URL -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
+        $URL -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
     } else {
-        $SanitizedURLs += $URL.Trim().Trim('"').Trim("'")
+        $URL.Trim().Trim('"').Trim("'")
     }
 }
 
-$PlaylistIndex = 1
-foreach ($PlaylistURL in $SanitizedURLs) {
-    if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { continue }
+# Optimization: Parallel Playlist Auditing Capability via PS7 thread pooling
+$SanitizedURLs | ForEach-Object -Parallel {
+    $PlaylistURL = $_
+    if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
     
-    $ErrorLogPath = "$ConfigDir\playlist${PlaylistIndex}_errors.txt"
+    $Index = [array]::IndexOf($using:SanitizedURLs, $PlaylistURL) + 1
+    $ErrorLogPath = Join-Path $using:ConfigDir "playlist${Index}_errors.txt"
 
     if (Test-Path -LiteralPath $ErrorLogPath) {
         Remove-Item -LiteralPath $ErrorLogPath -Force
     }
 
-    Write-Host "`n[*] Processing Playlist $PlaylistIndex..." -ForegroundColor Cyan
+    Write-Host "`n[*] Processing Playlist $Index..." -ForegroundColor Cyan
     Write-Host "URL: $PlaylistURL" -ForegroundColor Yellow
-    Write-Host "Logging errors to: $ErrorLogPath" -ForegroundColor DarkGray
 
-    # High fidelity array declaration to ensure clean parameter parsing
     $YTDLArgs = @(
         "--color", "always",
-        "--sleep-interval", $SleepInterval,
-        "--max-sleep-interval", $MaxSleepInterval,
-        "--sleep-requests", $SleepRequests,
+        "--sleep-interval", $using:SleepInterval,
+        "--max-sleep-interval", $using:MaxSleepInterval,
+        "--sleep-requests", $using:SleepRequests,
         "--embed-thumbnail",
         "--embed-metadata",
         "--no-keep-video",
         "--force-overwrites",
-        "--cookies", $CookiePath,
-        "-P", $BackupDir,
-        "-o", $OutputTemplate,
+        "--cookies", $using:CookiePath,
+        "-P", $using:BackupDir,
+        "-o", $using:OutputTemplate,
         "--js-runtime", "deno",
         "--extractor-args", "youtube:player_client=ios,android",
         "-f", "ba[ext=m4a]/ba",
-        "--download-archive", $ActiveHistoryLog,
+        "--download-archive", $using:ActiveHistoryLog,
         "--ignore-errors",
         $PlaylistURL
     )
 
-    # Execute with error redirection
-    & $YTDLPPath $YTDLArgs 2>>"$ErrorLogPath"
+    & $using:YTDLPPath $YTDLArgs 2>>"$ErrorLogPath"
 
     if ($LastExitCode -eq 0) {
-        Write-Host "[+] Playlist Music $PlaylistIndex sync completed successfully!" -ForegroundColor Green
+        Write-Host "[+] Playlist Music $Index sync completed successfully!" -ForegroundColor Green
     } else {
-        Write-Host "[!] Playlist Music $PlaylistIndex finished with warnings/errors." -ForegroundColor Yellow
+        Write-Host "[!] Playlist Music $Index finished with warnings/errors." -ForegroundColor Yellow
     }
-    $PlaylistIndex++
-}
+} -ThrottleLimit 3
 
 $MetricStopwatch.Stop()
-$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Write-Host "[METRIC] $Elapsed"
 Write-Host "`n=============================================" -ForegroundColor Cyan
 Exit 0

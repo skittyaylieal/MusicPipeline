@@ -4,7 +4,7 @@ Param (
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 $env:PYTHONIOENCODING = "utf-8"
-1..50 | ForEach-Object { Write-Host "" }
+Clear-Host
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Headless Lyric Engine & Tag Embedder" -ForegroundColor Cyan
@@ -34,8 +34,8 @@ Write-Host "---------------------------------------------" -ForegroundColor Dark
 foreach ($File in $AudioFiles) {
     Write-Host "[*] Processing: $($File.Name)" -ForegroundColor Cyan
     $DirName = $File.DirectoryName
-    $LrcFile = "$DirName\$($File.BaseName).lrc"
-    $TxtFile = "$DirName\$($File.BaseName).txt"
+    $LrcFile = Join-Path $DirName "$($File.BaseName).lrc"
+    $TxtFile = Join-Path $DirName "$($File.BaseName).txt"
     
     if (Test-Path -LiteralPath $LrcFile) {
          Write-Host "    [-] Synced .lrc companion already exists. Skipping API call." -ForegroundColor Gray
@@ -43,31 +43,30 @@ foreach ($File in $AudioFiles) {
          continue
     }
 
-    $EscapedAudioPath = $File.FullName -replace '\\', '\\\\' -replace "'", "\'"
+    # Python Execution Block
+    $TmpPyCheck = Join-Path $env:TEMP "mutagen_check.py"
     $PreCheckPython = @"
-import mutagen
+import mutagen, sys
 from mutagen.mp4 import MP4
 from mutagen.flac import FLAC
-import sys
 try:
-    audio = mutagen.File('$EscapedAudioPath')
+    audio = mutagen.File(r'$($File.FullName)')
     if audio is not None:
-        if isinstance(audio, MP4) and '\xa9lyr' in audio and audio['\xa9lyr']:
-             sys.exit(2)
-        elif isinstance(audio, FLAC) and 'lyrics' in audio and audio['lyrics']:
-            sys.exit(2)
+        if isinstance(audio, MP4) and '\xa9lyr' in audio and audio['\xa9lyr']: sys.exit(2)
+        elif isinstance(audio, FLAC) and 'lyrics' in audio and audio['lyrics']: sys.exit(2)
     sys.exit(0)
-except Exception:
-    sys.exit(0)
+except Exception: sys.exit(0)
 "@
-    
-    $PreCheckPython | python -
+    $PreCheckPython | Out-File $TmpPyCheck -Encoding utf8NoBOM
+    python $TmpPyCheck
     $HasUnsyncedLyrics = ($LASTEXITCODE -eq 2)
+    Remove-Item $TmpPyCheck -Force
+
     $SearchQuery = $File.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' '
-    
     Write-Host "    [*] Querying all global databases for synced timelines (.lrc)..." -ForegroundColor DarkCyan
-    $SyncedArgs = @("-m", "syncedlyrics", "`"$SearchQuery`"", "-o", "`"$LrcFile`"", "--providers", "lrclib", "musixmatch", "netease", "megalyrics", "megalobiz", "lyricsify")
-    $null = Start-Process -FilePath "python" -ArgumentList $SyncedArgs -Wait -NoNewWindow
+    
+    $SyncedArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers", "lrclib", "musixmatch", "netease", "megalyrics", "megalobiz", "lyricsify")
+    Start-Process -FilePath "python" -ArgumentList $SyncedArgs -Wait -NoNewWindow
 
     if (Test-Path -LiteralPath $LrcFile) {
         Write-Host "    [+] Found pristine synced lyrics (.lrc). Preserving file next to track." -ForegroundColor Green
@@ -83,23 +82,22 @@ except Exception:
     }
 
     Write-Host "    [!] No timed lyrics found. Attempting absolute plain text fallback..." -ForegroundColor Yellow
-    $FallbackArgs = @("-m", "syncedlyrics", "`"$SearchQuery`"", "-o", "`"$LrcFile`"", "--providers", "genius")
-    $null = Start-Process -FilePath "python" -ArgumentList $FallbackArgs -Wait -NoNewWindow
+    $FallbackArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers", "genius")
+    Start-Process -FilePath "python" -ArgumentList $FallbackArgs -Wait -NoNewWindow
 
     if (Test-Path -LiteralPath $TxtFile) {
         Write-Host "    [+] Found flat unsynced lyrics (.txt fallback). Embedding tag into metadata container..." -ForegroundColor DarkGray
-        $EscapedLyricPath = $TxtFile -replace '\\', '\\\\' -replace "'", "\'"
+        
+        $TmpPyEmbed = Join-Path $env:TEMP "mutagen_embed.py"
         $PythonCode = @"
-import os
-import mutagen
+import os, mutagen
 from mutagen.mp4 import MP4
 from mutagen.flac import FLAC
 try:
-    with open('$EscapedLyricPath', 'r', encoding='utf-8') as f_lyric:
-        lyrics_text = f_lyric.read()
-    audio = mutagen.File('$EscapedAudioPath')
+    with open(r'$TxtFile', 'r', encoding='utf-8') as f: lyrics_text = f.read()
+    audio = mutagen.File(r'$($File.FullName)')
     if audio is not None:
-         if isinstance(audio, MP4):
+        if isinstance(audio, MP4):
             audio['\xa9lyr'] = [lyrics_text]
             audio.save()
             print('    [+] Unsynced text tag cleanly written to M4A (\xa9lyr atom).')
@@ -107,12 +105,12 @@ try:
             audio['lyrics'] = lyrics_text
             audio.save()
             print('    [+] Unsynced text tag cleanly written to FLAC (Vorbis comments).')
-    if os.path.exists('$EscapedLyricPath'):
-        os.remove('$EscapedLyricPath')
-except Exception as e:
-    print(f'    [!-ERROR] Mutagen execution failed: {e}')
+    if os.path.exists(r'$TxtFile'): os.remove(r'$TxtFile')
+except Exception as e: print(f'    [!-ERROR] Mutagen execution failed: {e}')
 "@
-        $PythonCode | python -
+        $PythonCode | Out-File $TmpPyEmbed -Encoding utf8NoBOM
+        python $TmpPyEmbed
+        Remove-Item $TmpPyEmbed -Force
     } else {
         Write-Host "    [-] No matching lyrics found across any scanned repositories." -ForegroundColor Yellow
         if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force }
@@ -121,7 +119,7 @@ except Exception as e:
 }
 
 $MetricStopwatch.Stop()
-$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Write-Host "[METRIC] $Elapsed"
 Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0

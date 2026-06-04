@@ -5,17 +5,17 @@ Param (
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-1..10 | ForEach-Object { Write-Host "" }
+Clear-Host
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Headless Link Auditor" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
-$QueueFile = "$ConfigDir\audit_queue.json"
-$HtmlPath  = "$ConfigDir\music_audit.html"
-$ShortcutPath = "$env:USERPROFILE\Desktop\Review Broken Music.url"
+$QueueFile = Join-Path $ConfigDir "audit_queue.json"
+$HtmlPath  = Join-Path $ConfigDir "music_audit.html"
+$ShortcutPath = Join-Path $env:USERPROFILE "Desktop\Review Broken Music.url"
 
-# Detect if running in background task scheduler mode or terminal mode
+# Modern PS7 Headless check (Checks current Process context instead of session IDs)
 $IsHeadless = (Get-Process -Id $PID).SessionId -eq 0
 
 # -----------------------------------------------------------------
@@ -36,19 +36,16 @@ if ($IsHeadless) {
         try { $Queue = Get-Content -LiteralPath $QueueFile -Raw | ConvertFrom-Json } catch { $Queue = @() }
     }
 
-    $VideoIdRegex = 'ERROR:\s*\[youtube\]\s*([a-zA-Z0-9_-]{11}):'
+    $VideoIdRegex = [regex]'ERROR:\s*\[youtube\]\s*([a-zA-Z0-9_-]{11}):'
 
     foreach ($Log in $ErrorLogs) {
-        if ((Get-Item -LiteralPath $Log.FullName).Length -eq 0) { continue }
+        if ($Log.Length -eq 0) { continue }
         $Content = Get-Content -LiteralPath $Log.FullName
         foreach ($Line in $Content) {
-            if ($Line -match $VideoIdRegex) {
-                $Id = $Matches[1]
-                $AlreadyExists = $false
-                foreach ($Item in $Queue) {
-                    if ($Item.id -eq $Id) { $AlreadyExists = $true; break }
-                }
-                if (-not $AlreadyExists) {
+            $Match = $VideoIdRegex.Match($Line)
+            if ($Match.Success) {
+                $Id = $Match.Groups[1].Value
+                if (-not ($Queue | Where-Object { $_.id -eq $Id })) {
                     $Queue += [PSCustomObject]@{
                         id    = $Id
                         error = $Line.Trim()
@@ -61,24 +58,18 @@ if ($IsHeadless) {
     if ($Queue.Count -eq 0) {
         if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
         $MetricStopwatch.Stop()
-        $Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
-        Write-Host "[METRIC] $Elapsed"
+        Write-Host "[METRIC] 00:00:00"
         Exit 0
     }
 
-    $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8
+    $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8NoBOM
 
-    $ShortcutContent = @"
-[InternetShortcut]
-URL=$HtmlPath
-IconIndex=0
-IconFile=$FirefoxPath
-"@
+    $ShortcutContent = "[InternetShortcut]`nURL=$HtmlPath`nIconIndex=0`nIconFile=$FirefoxPath"
     $ShortcutContent | Out-File -LiteralPath $ShortcutPath -Encoding ascii
     
     Write-Host "[+] Background extraction complete. Queue saved with $($Queue.Count) links." -ForegroundColor Green
     $MetricStopwatch.Stop()
-    $Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+    $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
     Write-Host "[METRIC] $Elapsed"
     Write-Host "=============================================" -ForegroundColor Cyan
     Exit 0
@@ -176,9 +167,8 @@ $HtmlContent = @"
 </body>
 </html>
 "@
-$HtmlContent | Out-File -LiteralPath $HtmlPath -Encoding utf8
+$HtmlContent | Out-File -LiteralPath $HtmlPath -Encoding utf8NoBOM
 
-# FIXED: Shifted port to 8082 to allow parallel processing alongside the Web Server Console
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8082/")
 try { $Listener.Start() } catch {
@@ -212,7 +202,7 @@ while ($Looping) {
 
             $Queue = $Queue | Where-Object { $_.id -ne $TargetID }
             if ($Queue) {
-                $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8
+                $Queue | ConvertTo-Json | Out-File -LiteralPath $QueueFile -Encoding utf8NoBOM
             } else {
                 if (Test-Path -LiteralPath $QueueFile) { Remove-Item -LiteralPath $QueueFile -Force }
                 if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
@@ -222,7 +212,7 @@ while ($Looping) {
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
             $Response.OutputStream.Close()
         }
-        elif ($Url -eq "/shutdown") {
+        elseif ($Url -eq "/shutdown") {
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes("Goodbye")
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
@@ -233,7 +223,7 @@ while ($Looping) {
 }
 $Listener.Stop()
 $MetricStopwatch.Stop()
-$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
+$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Write-Host "[METRIC] $Elapsed"
 Write-Host "=============================================" -ForegroundColor Cyan
 Exit 0
