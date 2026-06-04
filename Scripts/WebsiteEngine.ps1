@@ -269,13 +269,14 @@ function Invoke-HotReload {
         $PullOutput = & "git" pull origin main 2>&1 | Out-String
         $PullOutput | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
         
-        # --- THE RESURRECTION TRICK (NO NESTED QUOTES) ---
-        # Passing arguments as clean, separate array items stops Sublime's parser from breaking
+        # --- THE RESURRECTION TRICK (TOTALLY SILENT DETACH) ---
+        # Adding -WindowStyle Hidden to both layers keeps the new terminal window invisible
         $ArgsList = @(
             "-NoProfile",
             "-Command",
-            "& { Start-Sleep -Seconds 2; Start-Process powershell -ArgumentList '-NoProfile', '-NoExit', '-File', '$PSCommandPath' }"
+            "& { Start-Sleep -Seconds 2; Start-Process powershell -ArgumentList '-NoProfile', '-NoExit', '-File', '$PSCommandPath' -WindowStyle Hidden }"
         )
+        Start-Process powershell -ArgumentList $ArgsList -WindowStyle Hidden
         Start-Process powershell -ArgumentList $ArgsList -WindowStyle Hidden
 
     } catch {
