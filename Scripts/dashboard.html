@@ -99,4 +99,206 @@
         </div>
 
         <div class="panel">
-            <h2>📈 Pipeline Performance
+            <h2>📈 Pipeline Performance Analytics</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Execution Timestamp</th>
+                            <th>Trigger</th>
+                            <th>Step 1</th>
+                            <th>Step 2</th>
+                            <th>Step 3</th>
+                            <th>Step 4</th>
+                            <th>Step 5</th>
+                            <th style="color: #00ADB5;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timing-history-rows">
+                        <tr><td colspan="8" style="text-align:center; color:#71717A;">Loading metric stream logs...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-layout">
+        <div class="panel panel-extended">
+            <h2>Archive Metadata Navigator <span id="scan-indicator" class="scan-status"></span></h2>
+            <input type="text" class="search-box" id="search-input" placeholder="Search archive by title, artist, or album..." onkeyup="filterDatabase()">
+            <div class="table-wrapper" style="border: 1px solid #27272A; border-radius: 6px; background: #0B0B0E;">
+                <table>
+                    <thead style="position: sticky; top: 0; background: #222226; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">
+                        <tr>
+                            <th style="padding: 12px 10px;">Track Title</th>
+                            <th style="padding: 12px 10px;">Artist</th>
+                            <th style="padding: 12px 10px;">Album</th>
+                            <th style="padding: 12px 10px; text-align: center;">Lyrics Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="metadata-rows">
+                        <tr><td colspan="4" style="text-align:center; padding: 20px; color:#71717A;">Initializing directory layout stream...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let fullTrackDb = [];
+        let isPipelineActive = false;
+
+        // Core Endpoint Poller: Core Metrics
+        function loadMetrics() {
+            fetch('/metrics').then(res => res.json()).then(data => {
+                document.getElementById('stat-master-count').innerText = `${data.masterCount} files`;
+                document.getElementById('stat-mobile-count').innerText = `${data.mobileCount} compressed`;
+                document.getElementById('stat-lrc-count').innerText = `${data.lrcCount} synced`;
+                document.getElementById('stat-sizes').innerText = `${data.mobileSize} GB / ${data.masterSize} GB`;
+                
+                const indicator = document.getElementById('scan-indicator');
+                if (data.loadingState === "scanning") {
+                    indicator.innerHTML = `(Indexing layout... <div class="spinner"></div>)`;
+                } else {
+                    indicator.innerHTML = `(<span style="color:#4ADE80;">✓ Indexed</span>)`;
+                }
+
+                const alertZone = document.getElementById('alerts-zone');
+                if (data.alerts && data.alerts.length > 0) {
+                    alertZone.innerHTML = data.alerts.map(a => {
+                        if (a.fixAction === "gitpull") return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span><button class="btn btn-warn" onclick="triggerPull()">Pull & Hot-Reload Script</button></div>`;
+                        return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span></div>`;
+                    }).join('');
+                } else { alertZone.innerHTML = ''; }
+                
+                if(data.tracks && data.tracks.length > 0 && fullTrackDb.length !== data.tracks.length) {
+                    fullTrackDb = data.tracks;
+                    buildTable(fullTrackDb);
+                }
+            }).catch(() => {});
+        }
+
+        // Core Endpoint Poller: Telemetry Metric Arrays
+        function loadAnalytics() {
+            fetch('/analytics').then(res => res.json()).then(data => {
+                const tbody = document.getElementById('timing-history-rows');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#71717A;">No historical metrics found on file database.</td></tr>`;
+                    return;
+                }
+                
+                // Show latest records cleanly at the top of the grid
+                tbody.innerHTML = data.slice().reverse().map(run => {
+                    let typeClass = 'badge-manual';
+                    let rowClass = '';
+                    
+                    if (run.type === 'Automated') {
+                        typeClass = 'badge-auto';
+                    } else if (run.type === 'Clean Sweep') {
+                        typeClass = 'badge-sweep';
+                        rowClass = 'row-clean-sweep';
+                    }
+
+                    const timeStyle = (run.type === 'Clean Sweep') ? 'color: #FBBF24; font-style: italic;' : 'color: #A1A1AA;';
+
+                    return `
+                        <tr class="${rowClass}">
+                            <td style="font-size:0.95em; font-family:monospace; ${run.type === 'Clean Sweep' ? 'padding-left: 7px;' : ''}">${run.timestamp}</td>
+                            <td><span class="badge ${typeClass}">${run.type}</span></td>
+                            <td style="${timeStyle} font-family:monospace;">${run.step1}</td>
+                            <td style="${timeStyle} font-family:monospace;">${run.step2}</td>
+                            <td style="${timeStyle} font-family:monospace;">${run.step3}</td>
+                            <td style="${timeStyle} font-family:monospace;">${run.step4}</td>
+                            <td style="${timeStyle} font-family:monospace;">${run.step5}</td>
+                            <td style="color:#00ADB5; font-weight:bold; font-family:monospace;">${run.total}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }).catch(() => {});
+        }
+
+        function buildTable(tracks) {
+            const tbody = document.getElementById('metadata-rows');
+            if(!tracks || tracks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px; color:#71717A;">No matching tracks found in archive.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = tracks.map(t => `
+                <tr style="border-bottom: 1px solid #1F1F23;">
+                    <td style="padding: 10px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <strong>${t.title}</strong> <span style="color:#71717A; font-size:0.8em;">(${t.type})</span>
+                    </td>
+                    <td style="padding: 10px; color: #CBD5E1;">${t.artist || 'Unknown Artist'}</td>
+                    <td style="padding: 10px; color: #94A3B8;">${t.album || 'Single / Unknown'}</td>
+                    <td style="padding: 10px; text-align: center;">
+                        ${t.hasLrc ? '<span class="badge badge-lrc">LRC</span>' : '<span class="badge badge-missing">TXT/NONE</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterDatabase() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            
+            if (!query) {
+                buildTable(fullTrackDb);
+                return;
+            }
+            
+            const filtered = fullTrackDb.filter(t => {
+                const titleMatch  = t.title  ? t.title.toLowerCase().includes(query)  : false;
+                const artistMatch = t.artist ? t.artist.toLowerCase().includes(query) : false;
+                const albumMatch  = t.album  ? t.album.toLowerCase().includes(query)  : false;
+                return titleMatch || artistMatch || albumMatch;
+            });
+            buildTable(filtered);
+        }
+
+        // Action Trigger Framework
+        function triggerPipeline(isSweep) { 
+            document.getElementById('run-btn').disabled = true; 
+            document.getElementById('sweep-btn').disabled = true; 
+            isPipelineActive = true;
+            
+            const targetUrl = isSweep ? '/run?sweep=true' : '/run';
+            fetch(targetUrl, { method: 'POST' }); 
+        }
+        
+        function triggerPull() { fetch('/pull', { method: 'POST' }); }
+
+        // Core Endpoint Poller: Live Transcode Logs Feed Reader
+        function runLogStreamer() {
+            fetch('/stream').then(res => res.json()).then(data => {
+                isPipelineActive = data.running;
+                document.getElementById('run-btn').disabled = data.running;
+                document.getElementById('sweep-btn').disabled = data.running;
+                
+                if(data.logs && data.logs.length > 0) {
+                    const consoleBox = document.getElementById('terminal-feed');
+                    
+                    const cleanLines = data.logs.map(line => {
+                        if (line === null || line === undefined) return '';
+                        if (typeof line === 'object') {
+                            return line.message || line.text || JSON.stringify(line);
+                        }
+                        return String(line);
+                    });
+
+                    consoleBox.innerText = cleanLines.join('\n');
+                    consoleBox.scrollTop = consoleBox.scrollHeight;
+                }
+                setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000);
+            }).catch(() => {
+                setTimeout(runLogStreamer, 4000);
+            });
+        }
+        
+        setInterval(loadMetrics, 3000); 
+        setInterval(loadAnalytics, 5000);
+        setTimeout(runLogStreamer, 1000);
+        
+        loadMetrics();
+        loadAnalytics();
+    </script>
+</body>
+</html>
