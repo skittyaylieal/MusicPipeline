@@ -12,14 +12,14 @@ Param (
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-1..50 | [cite_start]ForEach-Object { Write-Host "" } [cite: 8]
+1..50 | ForEach-Object { Write-Host "" }
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "    PowerShell Module: Media Downloader" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
 if (-not (Test-Path -LiteralPath $BackupDir)) {
-    New-Item -ItemType Directory -Path $BackupDir -Force | [cite_start]Out-Null [cite: 9]
+    New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
 }
 
 # Dynamic Architecture Rule for Clean Sweep
@@ -34,13 +34,21 @@ Write-Host "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
 & $YTDLPPath --update-to nightly
 
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
-$PlaylistIndex = 1
 
-if ($PlaylistURLs.Count -eq 1) {
-    $PlaylistURLs = $PlaylistURLs -split ',' | [cite_start]ForEach-Object { $_.Trim('"') } [cite: 10]
+# Always sanitize quotes out of all incoming URLs regardless of array size
+$SanitizedURLs = @()
+foreach ($URL in $PlaylistURLs) {
+    if ($URL -match ',') {
+        $SanitizedURLs += $URL -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
+    } else {
+        $SanitizedURLs += $URL.Trim().Trim('"').Trim("'")
+    }
 }
 
-foreach ($PlaylistURL in $PlaylistURLs) {
+$PlaylistIndex = 1
+foreach ($PlaylistURL in $SanitizedURLs) {
+    if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { continue }
+    
     $ErrorLogPath = "$ConfigDir\playlist${PlaylistIndex}_errors.txt"
 
     if (Test-Path -LiteralPath $ErrorLogPath) {
@@ -51,26 +59,29 @@ foreach ($PlaylistURL in $PlaylistURLs) {
     Write-Host "URL: $PlaylistURL" -ForegroundColor Yellow
     Write-Host "Logging errors to: $ErrorLogPath" -ForegroundColor DarkGray
 
-    # HIGH FIDELITY FIX: Pointing extractor-args to native mobile endpoints to access 256kbps AAC
-    # -f "ba[ext=m4a]/ba" ensures direct acquisition with 0 transcoding generation loss
-    &$YTDLPPath `
-        --color always `
-        --sleep-interval $SleepInterval `
-        --max-sleep-interval $MaxSleepInterval `
-        --sleep-requests $SleepRequests `
-        --embed-thumbnail `
-        --embed-metadata `
-        --no-keep-video `
-        --force-overwrites `
-        --cookies "$CookiePath" `
-        -P "$BackupDir" `
-        -o "$OutputTemplate" `
-        --js-runtime deno `
-        --extractor-args "youtube:player_client=ios,android" `
-        -f "ba[ext=m4a]/ba" `
-        --download-archive "$ActiveHistoryLog" `
-        --ignore-errors `
-        [cite_start]$PlaylistURL 2>>"$ErrorLogPath" [cite: 11, 12]
+    # HIGH FIDELITY FIX: Arguments packed into a Splatting Array to prevent backtick space parser failures
+    $YTDLArgs = @(
+        "--color", "always",
+        "--sleep-interval", $SleepInterval,
+        "--max-sleep-interval", $MaxSleepInterval,
+        "--sleep-requests", $SleepRequests,
+        "--embed-thumbnail",
+        "--embed-metadata",
+        "--no-keep-video",
+        "--force-overwrites",
+        "--cookies", $CookiePath,
+        "-P", $BackupDir,
+        "-o", $OutputTemplate,
+        "--js-runtime", "deno",
+        "--extractor-args", "youtube:player_client=ios,android",
+        "-f", "ba[ext=m4a]/ba",
+        "--download-archive", $ActiveHistoryLog,
+        "--ignore-errors",
+        $PlaylistURL
+    )
+
+    # Execute with error redirection
+    & $YTDLPPath $YTDLArgs 2>>"$ErrorLogPath"
 
     if ($LastExitCode -eq 0) {
         Write-Host "[+] Playlist Music $PlaylistIndex sync completed successfully!" -ForegroundColor Green
@@ -81,7 +92,7 @@ foreach ($PlaylistURL in $PlaylistURLs) {
 }
 
 $MetricStopwatch.Stop()
-[cite_start]$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed) [cite: 13]
+$Elapsed = [string]::Format("{0:hh\:mm\:ss}", $MetricStopwatch.Elapsed)
 Write-Host "[METRIC] $Elapsed"
 Write-Host "`n=============================================" -ForegroundColor Cyan
 Exit 0
