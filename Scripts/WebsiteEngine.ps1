@@ -294,14 +294,14 @@ try {
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
         # NEW ENDPOINT: Route to serve timing data directly onto your tracking grid
-        elif ($UrlPath -eq "/analytics" -and $Method -eq "GET") {
+        elseif ($UrlPath -eq "/analytics" -and $Method -eq "GET") {
             $RawData = "[]"
             if (Test-Path $Global:TimingFile) { $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw }
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
             $Response.ContentType = "application/json"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
+        elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") {
             if (Test-Path $Global:CacheFile) {
                 try {
                     $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
@@ -318,7 +318,7 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
+        elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") {
             $CurrentLogs = @()
             if (Test-Path $Global:DiagLogFile) { $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue }
             
@@ -333,7 +333,7 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/run" -and $Method -eq "POST") {
+        elseif ($UrlPath -eq "/run" -and $Method -eq "POST") {
             $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true")
             
             # Determine if trigger came via Chron daemon parameter or web button click
@@ -348,12 +348,15 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        elif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
+        elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
             Invoke-HotReload
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
             $Response.ContentType = "application/json"
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            $Response.OutputStream.Close() # Close the socket first
+
+            if ($true) { Stop-Process -Id $PID -Force } 
         }
         else { $Response.StatusCode = 404 }
         
