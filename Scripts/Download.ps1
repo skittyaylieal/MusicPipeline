@@ -59,7 +59,7 @@ foreach ($PlaylistURL in $SanitizedURLs) {
     Write-Host "URL: $PlaylistURL" -ForegroundColor Yellow
     Write-Host "Logging errors to: $ErrorLogPath" -ForegroundColor DarkGray
 
-    # HIGH FIDELITY FIX: Arguments packed into a Splatting Array to prevent backtick space parser failures
+    # High fidelity array declaration to ensure clean parameter parsing
     $YTDLArgs = @(
         "--color", "always",
         "--sleep-interval", $SleepInterval,
