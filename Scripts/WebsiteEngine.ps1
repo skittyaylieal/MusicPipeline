@@ -82,12 +82,26 @@ function Start-AsyncLibraryScanner {
                     $Env:GIT_TERMINAL_PROMPT = "0"
                     $Env:GIT_SSH_COMMAND = ""
                     Push-Location $RDir
-                    [void](git -c network.timeout=3 fetch origin main 2>&1)
-                    if ((git rev-parse HEAD).Trim() -ne (git rev-parse "@{upstream}").Trim()) {
-                        $Alerts += @{ type = "warning"; message = "Repository Update Available: Changes pushed from Mac are ready."; fixAction = "gitpull" }
+                    
+                    # 1. Silently fetch from the remote repository to see if changes exist
+                    [void](git -c network.timeout=5 fetch origin main 2>&1)
+                    
+                    # 2. Grab the precise hashes for local vs remote tracking branch
+                    $LocalHash  = (git rev-parse HEAD).Trim()
+                    $RemoteHash = (git rev-parse origin/main).Trim()
+
+                    # 3. If they don't match, fire the warning to the dashboard cache
+                    if ($LocalHash -ne $RemoteHash) {
+                        $Alerts += @{ 
+                            type      = "warning" 
+                            message   = "Repository Update Available: Changes pushed from Mac are ready." 
+                            fixAction = "gitpull" 
+                        }
                     }
                     Pop-Location
-                } catch {}
+                } catch {
+                    if ($null -ne $RDir) { Pop-Location }
+                }
             }
 
             if ($MasterFiles.Count -gt $MobileFiles.Count) {
