@@ -11,6 +11,16 @@ Param (
     [switch]$CleanSweep
 )
 
+# THREADING SAFETIES: Copy everything to explicit script-scope variables 
+# so the ForEach-Object -Parallel threads can grab them reliably
+$LocalYTDLPPath      = $YTDLPPath
+$LocalBackupDir      = $BackupDir
+$LocalCookiePath     = $CookiePath
+$LocalConfigDir      = $ConfigDir
+$LocalSleepInterval  = $SleepInterval
+$LocalMaxSleepInterval = $MaxSleepInterval
+$LocalSleepRequests  = $SleepRequests
+
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
@@ -44,13 +54,17 @@ $SanitizedURLs = foreach ($URL in $PlaylistURLs) {
     }
 }
 
+# Store a strict array copy for tracking the loop positions inside threads
+$GlobalURLsCopy = $SanitizedURLs
+
 # Optimization: Parallel Playlist Auditing Capability via PS7 thread pooling
 $SanitizedURLs | ForEach-Object -Parallel {
     $PlaylistURL = $_
     if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
     
-    $Index = [array]::IndexOf($using:SanitizedURLs, $PlaylistURL) + 1
-    $ErrorLogPath = Join-Path $using:ConfigDir "playlist${Index}_errors.txt"
+    # Calculate index safely by referencing our clean array copy
+    $Index = [array]::IndexOf($using:GlobalURLsCopy, $PlaylistURL) + 1
+    $ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${Index}_errors.txt"
 
     if (Test-Path -LiteralPath $ErrorLogPath) {
         Remove-Item -LiteralPath $ErrorLogPath -Force
@@ -61,15 +75,15 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $YTDLArgs = @(
         "--color", "always",
-        "--sleep-interval", $using:SleepInterval,
-        "--max-sleep-interval", $using:MaxSleepInterval,
-        "--sleep-requests", $using:SleepRequests,
+        "--sleep-interval", $using:LocalSleepInterval,
+        "--max-sleep-interval", $using:LocalMaxSleepInterval,
+        "--sleep-requests", $using:LocalSleepRequests,
         "--embed-thumbnail",
         "--embed-metadata",
         "--no-keep-video",
         "--force-overwrites",
-        "--cookies", $using:CookiePath,
-        "-P", $using:BackupDir,
+        "--cookies", $using:LocalCookiePath,
+        "-P", $using:LocalBackupDir,
         "-o", $using:OutputTemplate,
         "--js-runtime", "deno",
         "--extractor-args", "youtube:player_client=ios,android",
@@ -79,7 +93,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $PlaylistURL
     )
 
-    & $using:YTDLPPath $YTDLArgs 2>>"$ErrorLogPath"
+    # Execute with verified threading context and error streams
+    & $using:LocalYTDLPPath $YTDLArgs 2>>"$ErrorLogPath"
 
     if ($LastExitCode -eq 0) {
         Write-Host "[+] Playlist Music $Index sync completed successfully!" -ForegroundColor Green
