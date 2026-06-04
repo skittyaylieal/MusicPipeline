@@ -366,6 +366,23 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
+        elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") {
+            try {
+                # This clears the content completely, leaving a clean, empty UTF-8 file
+                Clear-Content -LiteralPath $Global:DiagLogFile -ErrorAction Stop
+                "[SYSTEM] Console logs manually cleared." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+                
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"cleared"}')
+                $Response.StatusCode = 200
+            } catch {
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to clear logs"}')
+                $Response.StatusCode = 500
+            }
+            
+            $Response.ContentType = "application/json"
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+        }
         elseif ($UrlPath -eq "/run" -and $Method -eq "POST") {
             $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true")
             

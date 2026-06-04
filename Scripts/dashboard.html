@@ -91,6 +91,7 @@
             <h2>
                 Execution Pipeline Terminal
                 <div class="control-group">
+                    <button class="btn btn-warn" id="clear-btn" onclick="triggerClearLogs()">🧹 Clear View</button>
                     <button class="btn" id="run-btn" onclick="triggerPipeline(false)">Run Master Sync</button>
                     <button class="btn btn-danger" id="sweep-btn" onclick="triggerPipeline(true)">🔥 Clean Sweep</button>
                 </div>
@@ -266,6 +267,24 @@
         
         function triggerPull() { fetch('/pull', { method: 'POST' }); }
 
+        function triggerClearLogs() {
+            const consoleBox = document.getElementById('terminal-feed');
+            consoleBox.innerText = "Clearing server logs...";
+            
+            fetch('/clear-logs', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === "cleared") {
+                        consoleBox.innerText = "[SYSTEM] Console logs manually cleared. Awaiting commands...";
+                    } else {
+                        consoleBox.innerText = "[ERROR] Could not clear logs on server: " + data.message;
+                    }
+                })
+                .catch(() => {
+                    consoleBox.innerText = "[ERROR] Network failure trying to reach log cleaner endpoint.";
+                });
+        }
+
         // Core Endpoint Poller: Live Transcode Logs Feed Reader
         function runLogStreamer() {
             fetch('/stream').then(res => res.json()).then(data => {
@@ -279,7 +298,8 @@
                     const cleanLines = data.logs.map(line => {
                         if (line === null || line === undefined) return '';
                         if (typeof line === 'object') {
-                            return line.message || line.text || JSON.stringify(line);
+                            // Extract actual string contents out of PowerShell stream block objects
+                            return line.value || line.message || line.text || JSON.stringify(line);
                         }
                         return String(line);
                     });
