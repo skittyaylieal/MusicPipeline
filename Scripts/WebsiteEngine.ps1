@@ -330,9 +330,9 @@ $Listener.Prefixes.Add("http://+:$Port/")
 
 try {
     $Listener.Start()
-    Write-Host "--------------------------------------------------" -ForegroundColor Cyan
-    Write-Host " SERVER LIVE: http://localhost:$Port/" -ForegroundColor Green
-    Write-Host "--------------------------------------------------" -ForegroundColor Cyan
+    Write-Output "--------------------------------------------------" -ForegroundColor Cyan
+    Write-Output " SERVER LIVE: http://localhost:$Port/" -ForegroundColor Green
+    Write-Output "--------------------------------------------------" -ForegroundColor Cyan
     
     Start-AsyncLibraryScanner
     Start-AutomatedChronDaemon
@@ -446,7 +446,7 @@ try {
         $Response.OutputStream.Close()
     }
 } 
-catch { Write-Host "Startup execution error occurred: $_" -ForegroundColor Red }
+catch { Write-Output "Startup execution error occurred: $_" -ForegroundColor Red }
 finally {
     if ($null -ne $Listener) { if ($Listener.IsListening) { $Listener.Stop() }; $Listener.Close() }
 }

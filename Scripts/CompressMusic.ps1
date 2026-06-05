@@ -8,9 +8,9 @@ Param (
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
-Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "    PowerShell Module: Parallel Audio Compressor" -ForegroundColor Cyan
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
+Write-Output "    PowerShell Module: Parallel Audio Compressor" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
 
 if (-not (Test-Path -LiteralPath $BackupDir)) {
     Write-Error "CRITICAL: The Source Directory '$BackupDir' does not exist!"
@@ -21,22 +21,22 @@ if (-not (Test-Path -LiteralPath $MobileDir)) {
     New-Item -ItemType Directory -LiteralPath $MobileDir -Force | Out-Null
 }
 
-Write-Host "[*] Purging leftover artwork files..." -ForegroundColor Yellow
+Write-Output "[*] Purging leftover artwork files..." -ForegroundColor Yellow
 Get-ChildItem -LiteralPath $BackupDir -Recurse -File | 
     Where-Object { $_.Extension -match '\.(webp|jpg|jpeg|png)$' } | 
     Remove-Item -Force -ErrorAction SilentlyContinue
 
-Write-Host "[*] Scanning source directory for master audio tracks..." -ForegroundColor Cyan
+Write-Output "[*] Scanning source directory for master audio tracks..." -ForegroundColor Cyan
 $AllFiles = Get-ChildItem -LiteralPath $BackupDir -Recurse -File | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|ogg)$' }
 
 if ($AllFiles.Count -eq 0) {
-    Write-Host "[+] No source audio tracks found to process!" -ForegroundColor Green
+    Write-Output "[+] No source audio tracks found to process!" -ForegroundColor Green
     $MetricStopwatch.Stop()
-    Write-Host "[METRIC] 00:00:00"
+    Write-Output "[METRIC] 00:00:00"
     Exit 0
 }
 
-Write-Host "[*] Syncing timed lyric (.lrc) files..." -ForegroundColor Cyan
+Write-Output "[*] Syncing timed lyric (.lrc) files..." -ForegroundColor Cyan
 Get-ChildItem -LiteralPath $BackupDir -Filter *.lrc -Recurse -File | ForEach-Object {
     if ($_.Name -notlike "*cookie*") {
         $RelativePath = $_.FullName.Substring($BackupDir.Length)
@@ -49,7 +49,7 @@ Get-ChildItem -LiteralPath $BackupDir -Filter *.lrc -Recurse -File | ForEach-Obj
     }
 }
 
-Write-Host "[*] Filtering out already compressed files..." -ForegroundColor Yellow
+Write-Output "[*] Filtering out already compressed files..." -ForegroundColor Yellow
 $Queue = @()
 foreach ($File in $AllFiles) {
     $RelativePath = $File.FullName.SubString($BackupDir.Length)
@@ -65,21 +65,21 @@ foreach ($File in $AllFiles) {
 }
 
 if ($Queue.Count -eq 0) {
-    Write-Host "[+] Mobile folder completely up to date. 0 tracks queued." -ForegroundColor Green
+    Write-Output "[+] Mobile folder completely up to date. 0 tracks queued." -ForegroundColor Green
     $MetricStopwatch.Stop()
-    Write-Host "[METRIC] $("{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed)"
+    Write-Output "[METRIC] $("{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed)"
     Exit 0
 }
 
-Write-Host "[+] Filtering complete! $($Queue.Count) tracks require compression." -ForegroundColor Green
-Write-Host "[+] Spawning parallel ffmpeg processing threads (Max Workers: $MaxThreads)`n" -ForegroundColor Yellow
+Write-Output "[+] Filtering complete! $($Queue.Count) tracks require compression." -ForegroundColor Green
+Write-Output "[+] Spawning parallel ffmpeg processing threads (Max Workers: $MaxThreads)`n" -ForegroundColor Yellow
 
 # Optimization: Modern Parallel Multi-threaded Core Architecture
 $Queue | ForEach-Object -Parallel {
     $TargetFolder = [System.IO.Path]::GetDirectoryName($_.Destination)
     if (-not (Test-Path -LiteralPath $TargetFolder)) { New-Item -ItemType Directory -LiteralPath $TargetFolder -Force | Out-Null }
 
-    Write-Host "[LAUNCH] $($_.Name) -> Mobile M4A" -ForegroundColor Green
+    Write-Output "[LAUNCH] $($_.Name) -> Mobile M4A" -ForegroundColor Green
 
     $FFmpegArgs = @(
         "-y", "-loglevel", "quiet",
@@ -95,7 +95,7 @@ $Queue | ForEach-Object -Parallel {
 
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Write-Host "[BAKED] Mobile library is perfectly synced and compressed!" -ForegroundColor Green
-Write-Host "[METRIC] $Elapsed"
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "[BAKED] Mobile library is perfectly synced and compressed!" -ForegroundColor Green
+Write-Output "[METRIC] $Elapsed"
+Write-Output "=============================================" -ForegroundColor Cyan
 Exit 0

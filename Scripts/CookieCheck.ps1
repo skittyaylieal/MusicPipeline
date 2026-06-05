@@ -7,36 +7,36 @@ Param (
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
-Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "    PowerShell Module: Cookie Validator" -ForegroundColor Cyan
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
+Write-Output "    PowerShell Module: Cookie Validator" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
 
 if (-not (Test-Path -LiteralPath $CookiePath -PathType Leaf)) {
-    Write-Host "[ERROR] Target cookie file couldn't be found" -ForegroundColor Red
+    Write-Output "[ERROR] Target cookie file couldn't be found" -ForegroundColor Red
     Exit 1
 }
 
 if (-not (Test-Path -LiteralPath $YTDLPPath -PathType Leaf)) {
-    Write-Host "[ERROR] yt-dlp executable couldn't be found" -ForegroundColor Red
+    Write-Output "[ERROR] yt-dlp executable couldn't be found" -ForegroundColor Red
     Exit 1
 }
 
-Write-Host "[+] Cookie and yt-dlp files located successfully" -ForegroundColor Green
-Write-Host "[*] Testing YouTube cookie status" -ForegroundColor Yellow
+Write-Output "[+] Cookie and yt-dlp files located successfully" -ForegroundColor Green
+Write-Output "[*] Testing YouTube cookie status" -ForegroundColor Yellow
 
 & $YTDLPPath --cookies "$CookiePath" --simulate --quiet $TestURL 2>$null
 
 if ($LastExitCode -ne 0) {
-    Write-Host "=============================================" -ForegroundColor Red
-    Write-Host "[ERROR] YouTube authentication failed!" -ForegroundColor Red
-    Write-Host "The cookies.txt has expired or is invalid." -ForegroundColor Yellow
-    Write-Host "=============================================" -ForegroundColor Red
+    Write-Output "=============================================" -ForegroundColor Red
+    Write-Output "[ERROR] YouTube authentication failed!" -ForegroundColor Red
+    Write-Output "The cookies.txt has expired or is invalid." -ForegroundColor Yellow
+    Write-Output "=============================================" -ForegroundColor Red
     Exit 1
 }
 
-Write-Host "[+] Cookies authenticated successfully." -ForegroundColor Green
+Write-Output "[+] Cookies authenticated successfully." -ForegroundColor Green
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Write-Host "[METRIC] $Elapsed"
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "[METRIC] $Elapsed"
+Write-Output "=============================================" -ForegroundColor Cyan
 Exit 0

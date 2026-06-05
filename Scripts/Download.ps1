@@ -24,9 +24,9 @@ $LocalSleepRequests  = $SleepRequests
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
-Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "    PowerShell Module: Media Downloader" -ForegroundColor Cyan
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
+Write-Output "    PowerShell Module: Media Downloader" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
 
 if (-not (Test-Path -LiteralPath $BackupDir)) {
     New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
@@ -34,13 +34,13 @@ if (-not (Test-Path -LiteralPath $BackupDir)) {
 
 # Dynamic Architecture Rule for Clean Sweep
 $ActiveHistoryLog = if ($CleanSweep) {
-    Write-Host "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..." -ForegroundColor Orange
+    Write-Output "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..." -ForegroundColor Orange
     Join-Path $env:TEMP "pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
 } else {
     $HistoryPath
 }
 
-Write-Host "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
+Write-Output "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
 & $YTDLPPath --update-to nightly
 
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
@@ -70,8 +70,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Remove-Item -LiteralPath $ErrorLogPath -Force
     }
 
-    Write-Host "`n[*] Processing Playlist $Index..." -ForegroundColor Cyan
-    Write-Host "URL: $PlaylistURL" -ForegroundColor Yellow
+    Write-Output "`n[*] Processing Playlist $Index..." -ForegroundColor Cyan
+    Write-Output "URL: $PlaylistURL" -ForegroundColor Yellow
 
     $YTDLArgs = @(
         "--color", "always",
@@ -97,14 +97,14 @@ $SanitizedURLs | ForEach-Object -Parallel {
     & $using:LocalYTDLPPath $YTDLArgs 2>>"$ErrorLogPath"
 
     if ($LastExitCode -eq 0) {
-        Write-Host "[+] Playlist Music $Index sync completed successfully!" -ForegroundColor Green
+        Write-Output "[+] Playlist Music $Index sync completed successfully!" -ForegroundColor Green
     } else {
-        Write-Host "[!] Playlist Music $Index finished with warnings/errors." -ForegroundColor Yellow
+        Write-Output "[!] Playlist Music $Index finished with warnings/errors." -ForegroundColor Yellow
     }
 } -ThrottleLimit 3
 
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Write-Host "[METRIC] $Elapsed"
-Write-Host "`n=============================================" -ForegroundColor Cyan
+Write-Output "[METRIC] $Elapsed"
+Write-Output "`n=============================================" -ForegroundColor Cyan
 Exit 0

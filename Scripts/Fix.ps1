@@ -7,9 +7,9 @@ Param (
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
-Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "    PowerShell Module: Headless Link Auditor" -ForegroundColor Cyan
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
+Write-Output "    PowerShell Module: Headless Link Auditor" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
 
 $QueueFile = Join-Path $ConfigDir "audit_queue.json"
 $HtmlPath  = Join-Path $ConfigDir "music_audit.html"
@@ -22,12 +22,12 @@ $IsHeadless = (Get-Process -Id $PID).SessionId -eq 0
 # MODE A: HEADLESS ERROR PARSING (Runs silently in background)
 # -----------------------------------------------------------------
 if ($IsHeadless) {
-    Write-Host "[*] Headless execution environment verified. Scanning logs..." -ForegroundColor Yellow
+    Write-Output "[*] Headless execution environment verified. Scanning logs..." -ForegroundColor Yellow
     
     $ErrorLogs = Get-ChildItem -LiteralPath $ConfigDir -Filter "playlist*_errors.txt"
     if (-not $ErrorLogs) { 
         $MetricStopwatch.Stop()
-        Write-Host "[METRIC] 00:00:00"
+        Write-Output "[METRIC] 00:00:00"
         Exit 0 
     }
 
@@ -58,7 +58,7 @@ if ($IsHeadless) {
     if ($Queue.Count -eq 0) {
         if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
         $MetricStopwatch.Stop()
-        Write-Host "[METRIC] 00:00:00"
+        Write-Output "[METRIC] 00:00:00"
         Exit 0
     }
 
@@ -67,32 +67,32 @@ if ($IsHeadless) {
     $ShortcutContent = "[InternetShortcut]`nURL=$HtmlPath`nIconIndex=0`nIconFile=$FirefoxPath"
     $ShortcutContent | Out-File -LiteralPath $ShortcutPath -Encoding ascii
     
-    Write-Host "[+] Background extraction complete. Queue saved with $($Queue.Count) links." -ForegroundColor Green
+    Write-Output "[+] Background extraction complete. Queue saved with $($Queue.Count) links." -ForegroundColor Green
     $MetricStopwatch.Stop()
     $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-    Write-Host "[METRIC] $Elapsed"
-    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Output "[METRIC] $Elapsed"
+    Write-Output "=============================================" -ForegroundColor Cyan
     Exit 0
 }
 
 # -----------------------------------------------------------------
 # MODE B: INTERACTIVE REVIEW PLATFORM (When clicked from Desktop)
 # -----------------------------------------------------------------
-Write-Host "[*] Interactive console detected. Launching local Auditor interface..." -ForegroundColor Cyan
+Write-Output "[*] Interactive console detected. Launching local Auditor interface..." -ForegroundColor Cyan
 
 if (-not (Test-Path -LiteralPath $QueueFile)) {
-    Write-Host "[+] No audit data found. Queue file is missing." -ForegroundColor Green
+    Write-Output "[+] No audit data found. Queue file is missing." -ForegroundColor Green
     $MetricStopwatch.Stop()
-    Write-Host "[METRIC] 00:00:00"
+    Write-Output "[METRIC] 00:00:00"
     Exit 0
 }
 
 $Queue = Get-Content -LiteralPath $QueueFile -Raw | ConvertFrom-Json
 if ($Queue.Count -eq 0) {
-    Write-Host "[+] Audit queue is completely empty!" -ForegroundColor Green
+    Write-Output "[+] Audit queue is completely empty!" -ForegroundColor Green
     if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
     $MetricStopwatch.Stop()
-    Write-Host "[METRIC] 00:00:00"
+    Write-Output "[METRIC] 00:00:00"
     Exit 0
 }
 
@@ -172,12 +172,12 @@ $HtmlContent | Out-File -LiteralPath $HtmlPath -Encoding utf8NoBOM
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8082/")
 try { $Listener.Start() } catch {
-    Write-Host "[!] Port 8082 occupied. Is another instance of the deck running?" -ForegroundColor Red
+    Write-Output "[!] Port 8082 occupied. Is another instance of the deck running?" -ForegroundColor Red
     Exit 1
 }
 
-Write-Host "[+] Local database engine loop listening on port 8082." -ForegroundColor Green
-Write-Host "[*] Spawning Firefox interface panel..." -ForegroundColor Yellow
+Write-Output "[+] Local database engine loop listening on port 8082." -ForegroundColor Green
+Write-Output "[*] Spawning Firefox interface panel..." -ForegroundColor Yellow
 Start-Process -FilePath $FirefoxPath -ArgumentList "`"$HtmlPath`""
 
 $Looping = $true
@@ -195,9 +195,9 @@ while ($Looping) {
 
             if ($Action -eq "fixed" -or $Action -eq "ignore") {
                 "youtube $TargetID" | Out-File -LiteralPath $HistoryPath -Append -Encoding ascii
-                Write-Host "[ARCHIVED] Successfully added ID: $TargetID to history." -ForegroundColor Green
+                Write-Output "[ARCHIVED] Successfully added ID: $TargetID to history." -ForegroundColor Green
             } else {
-                Write-Host "[SKIPPED] Track $TargetID skipped by user choice." -ForegroundColor Yellow
+                Write-Output "[SKIPPED] Track $TargetID skipped by user choice." -ForegroundColor Yellow
             }
 
             $Queue = $Queue | Where-Object { $_.id -ne $TargetID }
@@ -224,6 +224,6 @@ while ($Looping) {
 $Listener.Stop()
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Write-Host "[METRIC] $Elapsed"
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "[METRIC] $Elapsed"
+Write-Output "=============================================" -ForegroundColor Cyan
 Exit 0

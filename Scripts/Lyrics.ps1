@@ -6,40 +6,40 @@ $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 $env:PYTHONIOENCODING = "utf-8"
 Clear-Host
 
-Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "    PowerShell Module: Headless Lyric Engine & Tag Embedder" -ForegroundColor Cyan
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
+Write-Output "    PowerShell Module: Headless Lyric Engine & Tag Embedder" -ForegroundColor Cyan
+Write-Output "=============================================" -ForegroundColor Cyan
 
-Write-Host "Updating Python package" -ForegroundColor Cyan
+Write-Output "Updating Python package" -ForegroundColor Cyan
 pip install --upgrade syncedlyrics
 
 if (-not (Test-Path -LiteralPath $BackupDir -PathType Container)) {
-    Write-Host "[ERROR] Target directory could not be found: $BackupDir" -ForegroundColor Red
+    Write-Output "[ERROR] Target directory could not be found: $BackupDir" -ForegroundColor Red
     Exit 1
 }
 
-Write-Host "[*] Scanning directory for audio files..." -ForegroundColor Yellow
+Write-Output "[*] Scanning directory for audio files..." -ForegroundColor Yellow
 $AudioFiles = Get-ChildItem -LiteralPath $BackupDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" }
 
 if ($AudioFiles.Count -eq 0) {
-    Write-Host "[+] No audio tracks found to process." -ForegroundColor Green
+    Write-Output "[+] No audio tracks found to process." -ForegroundColor Green
     $MetricStopwatch.Stop()
-    Write-Host "[METRIC] 00:00:00"
+    Write-Output "[METRIC] 00:00:00"
     Exit 0
 }
 
-Write-Host "[+] Found $($AudioFiles.Count) track(s). Initializing scraper..." -ForegroundColor Green
-Write-Host "---------------------------------------------" -ForegroundColor DarkGray
+Write-Output "[+] Found $($AudioFiles.Count) track(s). Initializing scraper..." -ForegroundColor Green
+Write-Output "---------------------------------------------" -ForegroundColor DarkGray
 
 foreach ($File in $AudioFiles) {
-    Write-Host "[*] Processing: $($File.Name)" -ForegroundColor Cyan
+    Write-Output "[*] Processing: $($File.Name)" -ForegroundColor Cyan
     $DirName = $File.DirectoryName
     $LrcFile = Join-Path $DirName "$($File.BaseName).lrc"
     $TxtFile = Join-Path $DirName "$($File.BaseName).txt"
     
     if (Test-Path -LiteralPath $LrcFile) {
-         Write-Host "    [-] Synced .lrc companion already exists. Skipping API call." -ForegroundColor Gray
-         Write-Host "---------------------------------------------" -ForegroundColor DarkGray
+         Write-Output "    [-] Synced .lrc companion already exists. Skipping API call." -ForegroundColor Gray
+         Write-Output "---------------------------------------------" -ForegroundColor DarkGray
          continue
     }
 
@@ -63,30 +63,30 @@ except Exception: sys.exit(0)
     Remove-Item $TmpPyCheck -Force
 
     $SearchQuery = $File.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' '
-    Write-Host "    [*] Querying all global databases for synced timelines (.lrc)..." -ForegroundColor DarkCyan
+    Write-Output "    [*] Querying all global databases for synced timelines (.lrc)..." -ForegroundColor DarkCyan
     
     $SyncedArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers", "lrclib", "musixmatch", "netease", "megalyrics", "megalobiz", "lyricsify")
     Start-Process -FilePath "python" -ArgumentList $SyncedArgs -Wait -NoNewWindow
 
     if (Test-Path -LiteralPath $LrcFile) {
-        Write-Host "    [+] Found pristine synced lyrics (.lrc). Preserving file next to track." -ForegroundColor Green
-        Write-Host "---------------------------------------------" -ForegroundColor DarkGray
+        Write-Output "    [+] Found pristine synced lyrics (.lrc). Preserving file next to track." -ForegroundColor Green
+        Write-Output "---------------------------------------------" -ForegroundColor DarkGray
         if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force }
         continue
     }
 
     if ($HasUnsyncedLyrics) {
-        Write-Host "    [-] Synced missing, but track already has embedded plain text tags. Skipping fallback." -ForegroundColor Gray
-        Write-Host "---------------------------------------------" -ForegroundColor DarkGray
+        Write-Output "    [-] Synced missing, but track already has embedded plain text tags. Skipping fallback." -ForegroundColor Gray
+        Write-Output "---------------------------------------------" -ForegroundColor DarkGray
         continue
     }
 
-    Write-Host "    [!] No timed lyrics found. Attempting absolute plain text fallback..." -ForegroundColor Yellow
+    Write-Output "    [!] No timed lyrics found. Attempting absolute plain text fallback..." -ForegroundColor Yellow
     $FallbackArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers", "genius")
     Start-Process -FilePath "python" -ArgumentList $FallbackArgs -Wait -NoNewWindow
 
     if (Test-Path -LiteralPath $TxtFile) {
-        Write-Host "    [+] Found flat unsynced lyrics (.txt fallback). Embedding tag into metadata container..." -ForegroundColor DarkGray
+        Write-Output "    [+] Found flat unsynced lyrics (.txt fallback). Embedding tag into metadata container..." -ForegroundColor DarkGray
         
         $TmpPyEmbed = Join-Path $env:TEMP "mutagen_embed.py"
         $PythonCode = @"
@@ -112,14 +112,14 @@ except Exception as e: print(f'    [!-ERROR] Mutagen execution failed: {e}')
         python $TmpPyEmbed
         Remove-Item $TmpPyEmbed -Force
     } else {
-        Write-Host "    [-] No matching lyrics found across any scanned repositories." -ForegroundColor Yellow
+        Write-Output "    [-] No matching lyrics found across any scanned repositories." -ForegroundColor Yellow
         if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force }
     }
-    Write-Host "---------------------------------------------" -ForegroundColor DarkGray
+    Write-Output "---------------------------------------------" -ForegroundColor DarkGray
 }
 
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Write-Host "[METRIC] $Elapsed"
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Output "[METRIC] $Elapsed"
+Write-Output "=============================================" -ForegroundColor Cyan
 Exit 0
