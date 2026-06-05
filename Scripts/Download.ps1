@@ -13,20 +13,20 @@ Param (
 
 # THREADING SAFETIES: Copy everything to explicit script-scope variables 
 # so the ForEach-Object -Parallel threads can grab them reliably
-$LocalYTDLPPath      = $YTDLPPath
-$LocalBackupDir      = $BackupDir
-$LocalCookiePath     = $CookiePath
-$LocalConfigDir      = $ConfigDir
-$LocalSleepInterval  = $SleepInterval
+$LocalYTDLPPath       = $YTDLPPath
+$LocalBackupDir       = $BackupDir
+$LocalCookiePath      = $CookiePath
+$LocalConfigDir       = $ConfigDir
+$LocalSleepInterval   = $SleepInterval
 $LocalMaxSleepInterval = $MaxSleepInterval
-$LocalSleepRequests  = $SleepRequests
+$LocalSleepRequests   = $SleepRequests
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
-Write-Output "=============================================" -ForegroundColor Cyan
-Write-Output "    PowerShell Module: Media Downloader" -ForegroundColor Cyan
-Write-Output "=============================================" -ForegroundColor Cyan
+Write-Output "============================================="
+Write-Output "    PowerShell Module: Media Downloader"
+Write-Output "============================================="
 
 if (-not (Test-Path -LiteralPath $BackupDir)) {
     New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
@@ -34,13 +34,13 @@ if (-not (Test-Path -LiteralPath $BackupDir)) {
 
 # Dynamic Architecture Rule for Clean Sweep
 $ActiveHistoryLog = if ($CleanSweep) {
-    Write-Output "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..." -ForegroundColor Orange
+    Write-Output "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..."
     Join-Path $env:TEMP "pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
 } else {
     $HistoryPath
 }
 
-Write-Output "[*] Updating yt-dlp to nightly" -ForegroundColor Yellow
+Write-Output "[*] Updating yt-dlp to nightly"
 & $YTDLPPath --update-to nightly
 
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
@@ -70,11 +70,14 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Remove-Item -LiteralPath $ErrorLogPath -Force
     }
 
-    Write-Output "`n[*] Processing Playlist $Index..." -ForegroundColor Cyan
-    Write-Output "URL: $PlaylistURL" -ForegroundColor Yellow
+    Write-Output "`n[*] Processing Playlist $Index..."
+    Write-Output "URL: $PlaylistURL"
 
+    # FIXED: Added --no-colors and --no-progress parameters natively 
+    # to stop yt-dlp from creating garbage multi-carriage-return string lines
     $YTDLArgs = @(
-        "--color", "always",
+        "--no-colors",
+        "--no-progress",
         "--sleep-interval", $using:LocalSleepInterval,
         "--max-sleep-interval", $using:LocalMaxSleepInterval,
         "--sleep-requests", $using:LocalSleepRequests,
@@ -93,18 +96,27 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $PlaylistURL
     )
 
-    # Execute with verified threading context and error streams
-    & $using:LocalYTDLPPath $YTDLArgs 2>>"$ErrorLogPath"
+    # Execute with verified threading context, clear out terminal garbage strings dynamically,
+    # and safely push clean stdout directly back up to the master engine loop stream.
+    & $using:LocalYTDLPPath $YTDLArgs 2>>"$ErrorLogPath" | ForEach-Object {
+        if ($null -ne $_) {
+            # Strip out carriage returns and trailing ANSI escape brackets completely
+            $CleanText = $_.ToString() -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+            if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
+                Write-Output $CleanText
+            }
+        }
+    }
 
     if ($LastExitCode -eq 0) {
-        Write-Output "[+] Playlist Music $Index sync completed successfully!" -ForegroundColor Green
+        Write-Output "[+] Playlist Music $Index sync completed successfully!"
     } else {
-        Write-Output "[!] Playlist Music $Index finished with warnings/errors." -ForegroundColor Yellow
+        Write-Output "[!] Playlist Music $Index finished with warnings/errors."
     }
 } -ThrottleLimit 3
 
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Write-Output "[METRIC] $Elapsed"
-Write-Output "`n=============================================" -ForegroundColor Cyan
+Write-Output "`n============================================="
 Exit 0

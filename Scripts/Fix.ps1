@@ -7,9 +7,9 @@ Param (
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
-Write-Output "=============================================" -ForegroundColor Cyan
-Write-Output "    PowerShell Module: Headless Link Auditor" -ForegroundColor Cyan
-Write-Output "=============================================" -ForegroundColor Cyan
+Write-Output "============================================="
+Write-Output "    PowerShell Module: Headless Link Auditor"
+Write-Output "============================================="
 
 $QueueFile = Join-Path $ConfigDir "audit_queue.json"
 $HtmlPath  = Join-Path $ConfigDir "music_audit.html"
@@ -22,7 +22,7 @@ $IsHeadless = (Get-Process -Id $PID).SessionId -eq 0
 # MODE A: HEADLESS ERROR PARSING (Runs silently in background)
 # -----------------------------------------------------------------
 if ($IsHeadless) {
-    Write-Output "[*] Headless execution environment verified. Scanning logs..." -ForegroundColor Yellow
+    Write-Output "[*] Headless execution environment verified. Scanning logs..."
     
     $ErrorLogs = Get-ChildItem -LiteralPath $ConfigDir -Filter "playlist*_errors.txt"
     if (-not $ErrorLogs) { 
@@ -67,21 +67,21 @@ if ($IsHeadless) {
     $ShortcutContent = "[InternetShortcut]`nURL=$HtmlPath`nIconIndex=0`nIconFile=$FirefoxPath"
     $ShortcutContent | Out-File -LiteralPath $ShortcutPath -Encoding ascii
     
-    Write-Output "[+] Background extraction complete. Queue saved with $($Queue.Count) links." -ForegroundColor Green
+    Write-Output "[+] Background extraction complete. Queue saved with $($Queue.Count) links."
     $MetricStopwatch.Stop()
     $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
     Write-Output "[METRIC] $Elapsed"
-    Write-Output "=============================================" -ForegroundColor Cyan
+    Write-Output "============================================="
     Exit 0
 }
 
 # -----------------------------------------------------------------
 # MODE B: INTERACTIVE REVIEW PLATFORM (When clicked from Desktop)
 # -----------------------------------------------------------------
-Write-Output "[*] Interactive console detected. Launching local Auditor interface..." -ForegroundColor Cyan
+Write-Output "[*] Interactive console detected. Launching local Auditor interface..."
 
 if (-not (Test-Path -LiteralPath $QueueFile)) {
-    Write-Output "[+] No audit data found. Queue file is missing." -ForegroundColor Green
+    Write-Output "[+] No audit data found. Queue file is missing."
     $MetricStopwatch.Stop()
     Write-Output "[METRIC] 00:00:00"
     Exit 0
@@ -89,7 +89,7 @@ if (-not (Test-Path -LiteralPath $QueueFile)) {
 
 $Queue = Get-Content -LiteralPath $QueueFile -Raw | ConvertFrom-Json
 if ($Queue.Count -eq 0) {
-    Write-Output "[+] Audit queue is completely empty!" -ForegroundColor Green
+    Write-Output "[+] Audit queue is completely empty!"
     if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
     $MetricStopwatch.Stop()
     Write-Output "[METRIC] 00:00:00"
@@ -172,12 +172,12 @@ $HtmlContent | Out-File -LiteralPath $HtmlPath -Encoding utf8NoBOM
 $Listener = New-Object System.Net.HttpListener
 $Listener.Prefixes.Add("http://localhost:8082/")
 try { $Listener.Start() } catch {
-    Write-Output "[!] Port 8082 occupied. Is another instance of the deck running?" -ForegroundColor Red
+    Write-Output "[!] Port 8082 occupied. Is another instance of the deck running?"
     Exit 1
 }
 
-Write-Output "[+] Local database engine loop listening on port 8082." -ForegroundColor Green
-Write-Output "[*] Spawning Firefox interface panel..." -ForegroundColor Yellow
+Write-Output "[+] Local database engine loop listening on port 8082."
+Write-Output "[*] Spawning Firefox interface panel..."
 Start-Process -FilePath $FirefoxPath -ArgumentList "`"$HtmlPath`""
 
 $Looping = $true
@@ -195,9 +195,9 @@ while ($Looping) {
 
             if ($Action -eq "fixed" -or $Action -eq "ignore") {
                 "youtube $TargetID" | Out-File -LiteralPath $HistoryPath -Append -Encoding ascii
-                Write-Output "[ARCHIVED] Successfully added ID: $TargetID to history." -ForegroundColor Green
+                Write-Output "[ARCHIVED] Successfully added ID: $TargetID to history."
             } else {
-                Write-Output "[SKIPPED] Track $TargetID skipped by user choice." -ForegroundColor Yellow
+                Write-Output "[SKIPPED] Track $TargetID skipped by user choice."
             }
 
             $Queue = $Queue | Where-Object { $_.id -ne $TargetID }
@@ -225,5 +225,5 @@ $Listener.Stop()
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Write-Output "[METRIC] $Elapsed"
-Write-Output "=============================================" -ForegroundColor Cyan
+Write-Output "============================================="
 Exit 0
