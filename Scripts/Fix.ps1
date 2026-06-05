@@ -1,7 +1,8 @@
 Param (
     [string]$ConfigDir,
     [string]$HistoryPath,
-    [string]$FirefoxPath
+    [string]$FirefoxPath,
+    [switch]$HeadlessOverride  # Explicit flag capability from master engine runner
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -15,8 +16,12 @@ $QueueFile = Join-Path $ConfigDir "audit_queue.json"
 $HtmlPath  = Join-Path $ConfigDir "music_audit.html"
 $ShortcutPath = Join-Path $env:USERPROFILE "Desktop\Review Broken Music.url"
 
-# Modern PS7 Headless check (Checks current Process context instead of session IDs)
-$IsHeadless = (Get-Process -Id $PID).SessionId -eq 0
+# ROBUST HEADLESS CHECK: True if explicit switch passed, if running inside a Background Job, or SessionId is 0
+$IsHeadless = $HeadlessOverride -or 
+              ($null -ne $MyInvocation.線 -and $MyInvocation.ScriptName -eq $null) -or 
+              ($null -ne $PSCmdlet -and $PSCmdlet.MyInvocation.WrappedCommand) -or
+              (Get-Process -Id $PID).SessionId -eq 0 -or
+              ($env:USERNAME -match 'SYSTEM' -or $env:COMPUTERNAME -match 'SERVER')
 
 # -----------------------------------------------------------------
 # MODE A: HEADLESS ERROR PARSING (Runs silently in background)
@@ -26,6 +31,7 @@ if ($IsHeadless) {
     
     $ErrorLogs = Get-ChildItem -LiteralPath $ConfigDir -Filter "playlist*_errors.txt"
     if (-not $ErrorLogs) { 
+        Write-Output "[+] No playlist error logs found in configuration space."
         $MetricStopwatch.Stop()
         Write-Output "[METRIC] 00:00:00"
         Exit 0 
@@ -56,6 +62,7 @@ if ($IsHeadless) {
     }
 
     if ($Queue.Count -eq 0) {
+        Write-Output "[+] Diagnostics complete. No new extraction errors identified."
         if (Test-Path -LiteralPath $ShortcutPath) { Remove-Item -LiteralPath $ShortcutPath -Force }
         $MetricStopwatch.Stop()
         Write-Output "[METRIC] 00:00:00"
