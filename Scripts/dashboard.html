@@ -92,8 +92,9 @@
                 Execution Pipeline Terminal
                 <div class="control-group">
                     <button class="btn btn-warn" id="clear-btn" onclick="triggerClearLogs()">🧹 Clear View</button>
+                    <button class="btn btn-danger" id="stop-btn" onclick="stopPipeline()" disabled>🛑 Stop Run</button>
                     <button class="btn" id="run-btn" onclick="triggerPipeline(false)">Run Master Sync</button>
-                    <button class="btn btn-danger" id="sweep-btn" onclick="triggerPipeline(true)">🔥 Clean Sweep</button>
+                    <button class="btn btn-danger" id="sweep-btn" onclick="triggerPipeline(true)" style="background: #78350F; border: 1px solid #D97706;">🔥 Clean Sweep</button>
                 </div>
             </h2>
             <div class="console" id="terminal-feed">Ready. Awaiting run commands...</div>
@@ -259,10 +260,27 @@
         function triggerPipeline(isSweep) { 
             document.getElementById('run-btn').disabled = true; 
             document.getElementById('sweep-btn').disabled = true; 
+            document.getElementById('stop-btn').disabled = false;
             isPipelineActive = true;
             
             const targetUrl = isSweep ? '/run?sweep=true' : '/run';
             fetch(targetUrl, { method: 'POST' }); 
+        }
+
+        function stopPipeline() {
+            if (!confirm("Forcefully terminate the current download pipeline run?")) return;
+            
+            document.getElementById('stop-btn').disabled = true;
+            document.getElementById('stop-btn').innerText = "Stopping...";
+            
+            fetch('/stop', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'stopped') {
+                        console.log("Terminating signal dispatched to pipeline background host.");
+                    }
+                })
+                .catch(err => console.error("Failed to transmit halt target execution signal:", err));
         }
         
         function triggerPull() { fetch('/pull', { method: 'POST' }); }
@@ -289,8 +307,18 @@
         function runLogStreamer() {
             fetch('/stream').then(res => res.json()).then(data => {
                 isPipelineActive = data.running;
+                
+                // Synchronize global control button locking mechanics
                 document.getElementById('run-btn').disabled = data.running;
                 document.getElementById('sweep-btn').disabled = data.running;
+                
+                if (data.running) {
+                    document.getElementById('stop-btn').disabled = false;
+                    document.getElementById('stop-btn').innerText = "🛑 Stop Run";
+                } else {
+                    document.getElementById('stop-btn').disabled = true;
+                    document.getElementById('stop-btn').innerText = "🛑 Stop Run";
+                }
                 
                 if(data.logs && data.logs.length > 0) {
                     const consoleBox = document.getElementById('terminal-feed');
@@ -298,7 +326,6 @@
                     const cleanLines = data.logs.map(line => {
                         if (line === null || line === undefined) return '';
                         if (typeof line === 'object') {
-                            // Extract actual string contents out of PowerShell stream block objects
                             return line.value || line.message || line.text || JSON.stringify(line);
                         }
                         return String(line);

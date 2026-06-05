@@ -431,6 +431,33 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
+        elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") {
+            try {
+                $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue
+                if ($DownloadJob) {
+                    # Forcefully stop and purge the thread pool execution
+                    Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue
+                    Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue
+                }
+                
+                # Reset global state flags instantly
+                $Global:IsPipelineRunning = $false
+                
+                # Append termination stamp to the live log stream
+                $Timestamp = (Get-Date).ToString("HH:mm:ss")
+                "[$Timestamp] [SYSTEM] Pipeline manually terminated by user." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+                
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}')
+                $Response.StatusCode = 200
+            } catch {
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to terminate job"}')
+                $Response.StatusCode = 500
+            }
+            
+            $Response.ContentType = "application/json"
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+        }
         elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
             Invoke-HotReload
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
