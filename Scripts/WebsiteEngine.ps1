@@ -126,7 +126,7 @@ function Start-AsyncLibraryScanner {
     Start-Job -Name "MusicFolderScanner" -ScriptBlock $JobScript -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir, $Global:CacheFile
 }
 
-# NEW: Automated Chron Trigger (Runs every 30 minutes natively)
+# Automated Chron Trigger (Runs every 30 minutes natively)
 function Start-AutomatedChronDaemon {
     Get-Job -Name "ChronDaemon" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
     
@@ -192,42 +192,74 @@ function Invoke-PipelineExecution {
         $OverallStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
         try {
-            # STEP 1
+            # STEP 1: Cookie Validation
             Log-Progress "[STEP 1/5] Running Cookie Validation..."
             $S1Watch = [System.Diagnostics.Stopwatch]::StartNew()
-            $Step1Result = & "$($EnvMap.ScriptDir)\CookieCheck.ps1" @{ CookiePath = $EnvMap.CookieFile; YTDLPPath = $EnvMap.YTDLPExe; TestURL = $EnvMap.CheckURL } 2>&1
+            $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1"
+            $S1Params = @{
+                CookiePath = $EnvMap.CookieFile
+                YTDLPPath  = $EnvMap.YTDLPExe
+                TestURL    = $EnvMap.CheckURL
+            }
+            $Step1Result = & $S1ScriptPath @S1Params 2>&1
             $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
             $S1Watch.Stop(); $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed)
 
-            # STEP 2
+            # STEP 2: Downloader Script (Fixed Splatting/Ampersand Context for PS7)
             Log-Progress "[STEP 2/5] Running Native Pipeline Downloader..."
             $S2Watch = [System.Diagnostics.Stopwatch]::StartNew()
-            $Step2Result = & "$($EnvMap.ScriptDir)\Download.ps1" @{
-                BackupDir = $EnvMap.BackupDir; YTDLPPath = $EnvMap.YTDLPExe; CookiePath = $EnvMap.CookieFile;
-                HistoryPath = $EnvMap.HistoryFile; PlaylistURLs = $EnvMap.Playlists; ConfigDir = $EnvMap.ConfigDir;
-                SleepInterval = 4; MaxSleepInterval = 12; SleepRequests = 3; CleanSweep = $EnvMap.CleanSweep
-            } 2>&1
+            $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1"
+            $S2Params = @{
+                BackupDir        = $EnvMap.BackupDir
+                YTDLPPath        = $EnvMap.YTDLPExe
+                CookiePath       = $EnvMap.CookieFile
+                HistoryPath      = $EnvMap.HistoryFile
+                PlaylistURLs     = $EnvMap.Playlists
+                ConfigDir        = $EnvMap.ConfigDir
+                SleepInterval    = 4
+                MaxSleepInterval = 12
+                SleepRequests    = 3
+                CleanSweep       = $EnvMap.CleanSweep
+            }
+            $Step2Result = & $S2ScriptPath @S2Params 2>&1
             $Step2Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
             $S2Watch.Stop(); $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed)
 
-            # STEP 3
+            # STEP 3: Error Analysis
             Log-Progress "[STEP 3/5] Running Error Log Analysis..."
             $S3Watch = [System.Diagnostics.Stopwatch]::StartNew()
-            $Step3Result = & "$($EnvMap.ScriptDir)\Fix.ps1" @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe } 2>&1
+            $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1"
+            $S3Params = @{
+                ConfigDir   = $EnvMap.ConfigDir
+                HistoryPath = $EnvMap.HistoryFile
+                FirefoxPath = $EnvMap.FirefoxExe
+            }
+            $Step3Result = & $S3ScriptPath @S3Params 2>&1
             $Step3Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
             $S3Watch.Stop(); $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed)
 
-            # STEP 4
+            # STEP 4: Lyrics Database Sync
             Log-Progress "[STEP 4/5] Syncing Local Lyrics Databases..."
             $S4Watch = [System.Diagnostics.Stopwatch]::StartNew()
-            $Step4Result = & "$($EnvMap.ScriptDir)\Lyrics.ps1" @{ BackupDir = $EnvMap.BackupDir } 2>&1
+            $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1"
+            $S4Params = @{
+                BackupDir = $EnvMap.BackupDir
+            }
+            $Step4Result = & $S4ScriptPath @S4Params 2>&1
             $Step4Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
             $S4Watch.Stop(); $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed)
 
-            # STEP 5
+            # STEP 5: Transcoding Engine
             Log-Progress "[STEP 5/5] Executing Lossy Mobile Deployment Transcoding..."
             $S5Watch = [System.Diagnostics.Stopwatch]::StartNew()
-            $Step5Result = & "$($EnvMap.ScriptDir)\CompressMusic.ps1" @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = 3 } 2>&1
+            $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1"
+            $S5Params = @{
+                BackupDir  = $EnvMap.BackupDir
+                MobileDir  = $EnvMap.MobileDir
+                FFmpegPath = $EnvMap.FFmpegExe
+                MaxThreads = 3
+            }
+            $Step5Result = & $S5ScriptPath @S5Params 2>&1
             $Step5Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
             $S5Watch.Stop(); $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed)
 
@@ -327,7 +359,7 @@ try {
             $Response.ContentType = "text/html; charset=utf-8"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        # NEW ENDPOINT: Route to serve timing data directly onto your tracking grid
+        # ENDPOINT: Route to serve timing data directly onto your tracking grid
         elseif ($UrlPath -eq "/analytics" -and $Method -eq "GET") {
             $RawData = "[]"
             if (Test-Path $Global:TimingFile) { $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw }
