@@ -11,15 +11,24 @@ Param (
     [switch]$CleanSweep
 )
 
+# Dynamic Architecture Rule for Clean Sweep (Defined early for script scope safety)
+$ActiveHistoryLog = if ($CleanSweep) {
+    # Generate a temporary, isolated text file path in the system TEMP directory
+    Join-Path $env:TEMP "pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
+} else {
+    $HistoryPath
+}
+
 # THREADING SAFETIES: Copy everything to explicit script-scope variables 
 # so the ForEach-Object -Parallel threads can grab them reliably
-$LocalYTDLPPath       = $YTDLPPath
-$LocalBackupDir       = $BackupDir
-$LocalCookiePath      = $CookiePath
-$LocalConfigDir       = $ConfigDir
-$LocalSleepInterval   = $SleepInterval
+$LocalYTDLPPath        = $YTDLPPath
+$LocalBackupDir        = $BackupDir
+$LocalCookiePath       = $CookiePath
+$LocalConfigDir        = $ConfigDir
+$LocalSleepInterval    = $SleepInterval
 $LocalMaxSleepInterval = $MaxSleepInterval
-$LocalSleepRequests   = $SleepRequests
+$LocalSleepRequests    = $SleepRequests
+$LocalActiveHistoryLog = $ActiveHistoryLog # Safe thread assignment
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
@@ -28,16 +37,12 @@ Write-Output "============================================="
 Write-Output "    PowerShell Module: Media Downloader"
 Write-Output "============================================="
 
-if (-not (Test-Path -LiteralPath $BackupDir)) {
-    New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+if ($CleanSweep) {
+    Write-Output "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..."
 }
 
-# Dynamic Architecture Rule for Clean Sweep
-$ActiveHistoryLog = if ($CleanSweep) {
-    Write-Output "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..."
-    Join-Path $env:TEMP "pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
-} else {
-    $HistoryPath
+if (-not (Test-Path -LiteralPath $BackupDir)) {
+    New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
 }
 
 Write-Output "[*] Updating yt-dlp to nightly"
@@ -73,8 +78,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
     Write-Output "`n[*] Processing Playlist $Index..."
     Write-Output "URL: $PlaylistURL"
 
-    # FIXED: Added --no-colors and --no-progress parameters natively 
-    # to stop yt-dlp from creating garbage multi-carriage-return string lines
     $YTDLArgs = @(
         "--no-colors",
         "--no-progress",
@@ -91,16 +94,14 @@ $SanitizedURLs | ForEach-Object -Parallel {
         "--js-runtime", "deno",
         "--extractor-args", "youtube:player_client=ios,android",
         "-f", "ba[ext=m4a]/ba",
-        "--download-archive", $using:ActiveHistoryLog,
+        "--download-archive", $using:LocalActiveHistoryLog, # <-- FIXED: Points to thread-safe mapped variable
         "--ignore-errors",
         $PlaylistURL
     )
 
-    # Execute with verified threading context, clear out terminal garbage strings dynamically,
-    # and safely push clean stdout directly back up to the master engine loop stream.
+    # Execute with verified threading context
     & $using:LocalYTDLPPath $YTDLArgs 2>>"$ErrorLogPath" | ForEach-Object {
         if ($null -ne $_) {
-            # Strip out carriage returns and trailing ANSI escape brackets completely
             $CleanText = $_.ToString() -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
             if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
                 Write-Output $CleanText
@@ -114,6 +115,11 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Write-Output "[!] Playlist Music $Index finished with warnings/errors."
     }
 } -ThrottleLimit 3
+
+# Post-run cleanup: Clear out temporary history file if a Clean Sweep was active
+if ($CleanSweep -and (Test-Path -LiteralPath $ActiveHistoryLog)) {
+    Remove-Item -LiteralPath $ActiveHistoryLog -Force -ErrorAction SilentlyContinue
+}
 
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
