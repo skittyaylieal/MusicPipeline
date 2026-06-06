@@ -5,8 +5,21 @@
     <title>Music Pipeline Master Console</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0F0F11; color: #E2E8F0; margin: 0; padding: 25px; }
-        .alert-container { margin-bottom: 20px; }
-        .alert { padding: 15px 20px; border-radius: 6px; margin-bottom: 10px; font-size: 0.95em; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+        .alert-container { 
+            margin: -25px -25px 20px -25px; /* Pulls the container flush to the browser edge, bypassing body padding */
+        }
+
+        .alert { 
+            padding: 18px 24px;              /* Fatten up the top/bottom and sides for touch targets */
+            border-radius: 0 0 4px 4px;      /* Sharp top corners to blend into the browser header, soft rounded bottom */
+            margin-bottom: 4px;              /* Tight grid stack if multiple warnings pull down at once */
+            font-size: 1.1em;                /* Bump readability up from 0.95em */
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-weight: 600;                /* Give the text a slightly punchier presence */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); /* Adds a drop shadow so it stands out above the stats cards */
+        }
         .alert-danger { background: #4C1D1D; color: #F87171; border: 1px solid #7F1D1D; }
         .alert-warning { background: #453015; color: #FBBF24; border: 1px solid #78350F; }
         
@@ -81,6 +94,23 @@
         @media (max-width: 768px) {
             body { padding: 15px; }
             
+            /* Pulls back the container by the modified 15px mobile body padding */
+            .alert-container { 
+                margin: -15px -15px 15px -15px; 
+            }
+            
+            .alert { 
+                font-size: 1.05em; 
+                padding: 16px 18px; 
+                flex-direction: column;  /* Stacks text above the button on narrow screens so nothing gets clipped */
+                gap: 12px;
+                text-align: center;
+            }
+            
+            .alert button {
+                width: 100%;             /* Full-width action button on mobile for easy tapping */
+            }
+
             /* Forces the 4 telemetry blocks into a exact 2x2 grid matrix */
             .grid { 
                 grid-template-columns: 1fr 1fr; 
