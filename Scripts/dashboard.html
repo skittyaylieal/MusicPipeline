@@ -387,16 +387,28 @@
                 if(data.logs && data.logs.length > 0) {
                     const consoleBox = document.getElementById('terminal-feed');
                     
-                    const cleanLines = data.logs.map(line => {
-                        if (line === null || line === undefined) return '';
-                        if (typeof line === 'object') {
-                            return line.value || line.message || line.text || JSON.stringify(line);
-                        }
-                        return String(line);
-                    });
+                    // CHECK 1: Is the user currently highlighting text? If yes, preserve it.
+                    const userSelection = window.getSelection().toString();
+                    
+                    if (!userSelection) { 
+                        const cleanLines = data.logs.map(line => {
+                            if (line === null || line === undefined) return '';
+                            if (typeof line === 'object') {
+                                return line.value || line.message || line.text || JSON.stringify(line);
+                            }
+                            return String(line);
+                        });
 
-                    consoleBox.innerText = cleanLines.join('\n');
-                    consoleBox.scrollTop = consoleBox.scrollHeight;
+                        // CHECK 2: Is the user scrolled up trying to read history?
+                        // If they are within 50px of the bottom, lock scroll to bottom. Otherwise, leave it.
+                        const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 50;
+
+                        consoleBox.innerText = cleanLines.join('\n');
+                        
+                        if (isScrolledToBottom) {
+                            consoleBox.scrollTop = consoleBox.scrollHeight;
+                        }
+                    }
                 }
                 setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000);
             }).catch(() => {
