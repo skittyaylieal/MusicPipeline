@@ -326,7 +326,7 @@ function Invoke-HotReload {
 # -----------------------------------------------------------------
 $Port = 49152
 $Listener = New-Object System.Net.HttpListener
-$Listener.Prefixes.Add("http://+:$Port/")
+$Listener.Prefixes.Add("http://*:$Port/")
 
 try {
     $Listener.Start()
