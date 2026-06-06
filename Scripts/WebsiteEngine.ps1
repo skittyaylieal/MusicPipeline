@@ -291,29 +291,53 @@ function Invoke-PipelineExecution {
 
 function Invoke-HotReload {
     if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
-    "[SYSTEM] Hot-reload triggered. Executing Git Pull..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+    "[SYSTEM] Hot-reload triggered. Checking for remote updates..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
     Push-Location $ScriptRepoDir
     try {
         $Env:GIT_TERMINAL_PROMPT = "0"
         $Env:GIT_SSH_COMMAND = ""
         
+        # 1. Grab the current commit hash BEFORE pulling changes
+        $BeforeHash = (& "git" rev-parse HEAD).Trim()
+
+        # 2. Pull the incoming changes down from GitHub
         $PullOutput = & "git" pull origin main 2>&1 | Out-String
         $PullOutput | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
         
-        $ArgsList = @(
-            "-NoProfile",
-            "-WindowStyle", "Hidden",
-            "-File", "$PSCommandPath"
-        )
-        
-        Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList $ArgsList
+        # 3. Grab the new commit hash AFTER pulling
+        $AfterHash = (& "git" rev-parse HEAD).Trim()
+
+        # 4. Check if WebsiteEngine.ps1 actually changed between these two commits
+        $EngineChanged = $false
+        if ($BeforeHash -ne $AfterHash) {
+            # Inspect the file names modified in this commit window
+            $ChangedFiles = & "git" diff --name-only $BeforeHash $AfterHash
+            if ($ChangedFiles -contains "Scripts/WebsiteEngine.ps1" -or $ChangedFiles -contains "WebsiteEngine.ps1") {
+                $EngineChanged = $true
+            }
+        }
+
+        # 5. Conditional Restart Logic
+        if ($EngineChanged) {
+            "  ↳ WebsiteEngine.ps1 modification detected. Respawning core process..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+            
+            $ArgsList = @(
+                "-NoProfile",
+                "-WindowStyle", "Hidden",
+                "-File", "$PSCommandPath"
+            )
+            
+            Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList $ArgsList
+            Pop-Location
+            Stop-Process -Id $PID -Force
+        } else {
+            "  ↳ Asset update only (HTML/CSS). Engine restart skipped. Core server remains live." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+        }
 
     } catch {
         "   ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
     }
     Pop-Location
-
-    Stop-Process -Id $PID -Force
 }
 
 # -----------------------------------------------------------------
