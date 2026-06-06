@@ -205,7 +205,7 @@ function Invoke-PipelineExecution {
             $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
             $S1Watch.Stop(); $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed)
 
-            # STEP 2: Downloader Script (Fixed Splatting/Ampersand Context for PS7)
+            # STEP 2: Downloader Script
             Log-Progress "[STEP 2/5] Running Native Pipeline Downloader..."
             $S2Watch = [System.Diagnostics.Stopwatch]::StartNew()
             $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1"
@@ -297,27 +297,22 @@ function Invoke-HotReload {
         $Env:GIT_TERMINAL_PROMPT = "0"
         $Env:GIT_SSH_COMMAND = ""
         
-        # Capture git's output straight to a variable first to stop stream corruption
         $PullOutput = & "git" pull origin main 2>&1 | Out-String
         $PullOutput | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
         
-        # --- FIXED FOR POWERSHELL 7 NATIVE COMPATIBILITY ---
-        # Explicitly targets the absolute system path to bring the engine back alive cleanly
         $ArgsList = @(
             "-NoProfile",
             "-WindowStyle", "Hidden",
             "-File", "$PSCommandPath"
         )
         
-        # Spawn exactly ONE detached instance using the verified system executable
         Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList $ArgsList
 
     } catch {
-        "  ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+        "   ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
     }
     Pop-Location
 
-    # Kill this instance cleanly so the port frees up instantly for the incoming pwsh process
     Stop-Process -Id $PID -Force
 }
 
@@ -351,8 +346,9 @@ try {
         $Method  = $Request.HttpMethod
 
         $Response.KeepAlive = $false
+        
+        # Anti-Caching Headers safely applied on every network lifecycle request loop
         $Response.Headers.Add("Connection", "close")
-        # Add these right before the response buffer writes out to the browser
         $Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate")
         $Response.Headers.Add("Pragma", "no-cache")
         $Response.Headers.Add("Expires", "0")
@@ -363,7 +359,6 @@ try {
             $Response.ContentType = "text/html; charset=utf-8"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        # ENDPOINT: Route to serve timing data directly onto your tracking grid
         elseif ($UrlPath -eq "/analytics" -and $Method -eq "GET") {
             $RawData = "[]"
             if (Test-Path $Global:TimingFile) { $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw }
@@ -405,7 +400,6 @@ try {
         }
         elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") {
             try {
-                # This clears the content completely, leaving a clean, empty UTF-8 file
                 Clear-Content -LiteralPath $Global:DiagLogFile -ErrorAction Stop
                 "[SYSTEM] Console logs manually cleared." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
                 
@@ -423,7 +417,6 @@ try {
         elseif ($UrlPath -eq "/run" -and $Method -eq "POST") {
             $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true")
             
-            # Determine if trigger came via Chron daemon parameter or web button click
             $RunContext = "Manual"
             if ($Request.Url.Query -match "type=Automated") { $RunContext = "Automated" }
             if ($IsSweepRequested) { $RunContext = "Clean Sweep" }
@@ -439,15 +432,12 @@ try {
             try {
                 $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue
                 if ($DownloadJob) {
-                    # Forcefully stop and purge the thread pool execution
                     Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue
                     Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue
                 }
                 
-                # Reset global state flags instantly
                 $Global:IsPipelineRunning = $false
                 
-                # Append termination stamp to the live log stream
                 $Timestamp = (Get-Date).ToString("HH:mm:ss")
                 "[$Timestamp] [SYSTEM] Pipeline manually terminated by user." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
                 
@@ -468,15 +458,15 @@ try {
             $Response.ContentType = "application/json"
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close() # Close the socket first
-
-            if ($true) { Stop-Process -Id $PID -Force } 
+            $Response.OutputStream.Close()
+            
+            Stop-Process -Id $PID -Force
         }
         else { $Response.StatusCode = 404 }
         
         $Response.OutputStream.Close()
     }
-} 
+}  
 catch { Write-Output "Startup execution error occurred: $_" }
 finally {
     if ($null -ne $Listener) { if ($Listener.IsListening) { $Listener.Stop() }; $Listener.Close() }
