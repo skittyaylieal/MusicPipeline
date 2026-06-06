@@ -352,6 +352,10 @@ try {
 
         $Response.KeepAlive = $false
         $Response.Headers.Add("Connection", "close")
+        # Add these right before the response buffer writes out to the browser
+        $Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate")
+        $Response.Headers.Add("Pragma", "no-cache")
+        $Response.Headers.Add("Expires", "0")
 
         if ($UrlPath -eq "/" -and $Method -eq "GET") {
             $HtmlContent = Get-Content -LiteralPath $HtmlFile -Raw -Encoding utf8
