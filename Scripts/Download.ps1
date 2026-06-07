@@ -100,7 +100,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         # FIX: Removed "--no-buf" to fix execution crash. PYTHONUNBUFFERED handles this at the system layer.
         $YTDLArgs = @(
             "--no-colors",
-            "--no-progress",
+            "--verbose",
             "--sleep-interval", $using:LocalSleepInterval,
             "--max-sleep-interval", $using:LocalMaxSleepInterval,
             "--sleep-requests", $using:LocalSleepRequests,
