@@ -49,14 +49,14 @@ Write-Output "[*] Updating yt-dlp to nightly"
 
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
 
-# FIX: Scrub the input collection of empty strings or trailing comma gaps
-$SanitizedURLs = foreach ($URL in $PlaylistURLs) {
+# FIX: Native syntax correction. Group the loop statement inside parenthesis so it compiles perfectly to the pipeline stream
+$SanitizedURLs = $(foreach ($URL in $PlaylistURLs) {
     if ($URL -match ',') {
         $URL -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
     } else {
         $URL.Trim().Trim('"').Trim("'")
     }
-} | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+}) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
 # Strongly cast array directly into a Generic List to prevent thread constructor collapse
 [System.Collections.Generic.List[string]]$GlobalURLsCopy = $SanitizedURLs
@@ -67,8 +67,8 @@ $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 # Optimization: Parallel Playlist Auditing
 $SanitizedURLs | ForEach-Object -Parallel {
     $PlaylistURL = $_
-    if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
     
+    # Safety: Fetch loop index safely out of the shared memory frame
     $LocalList = $using:GlobalURLsCopy
     $LoopIndex = $LocalList.IndexOf($PlaylistURL) + 1
     
@@ -78,7 +78,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue
     }
 
-    # Native local function inherits loop scope context naturally
+    # Native local logging handler
     function Invoke-LogMsg([string]$Text) {
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         $FormattedLine = "[$Timestamp] [Playlist $LoopIndex] $Text"
@@ -92,111 +92,123 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
     }
 
-    Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
-
-    $YTDLArgs = @(
-        "--no-buf",                      
-        "--no-colors",
-        "--no-progress",
-        "--sleep-interval", $using:LocalSleepInterval,
-        "--max-sleep-interval", $using:LocalMaxSleepInterval,
-        "--sleep-requests", $using:LocalSleepRequests,
-        "--embed-thumbnail",
-        "--embed-metadata",
-        "--no-keep-video",
-        "--force-overwrites",
-        "--cookies", $using:LocalCookiePath,
-        "-P", $using:LocalBackupDir,
-        "-o", $using:OutputTemplate,
-        "--js-runtime", "deno",
-        "--extractor-args", "youtube:player_client=ios,android",
-        "-f", "ba[ext=m4a]/ba",
-        "--download-archive", $using:LocalActiveHistoryLog, 
-        "--ignore-errors",
-        $PlaylistURL
-    )
-
-    $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.RedirectStandardOutput = $true
-    
-    # FIX: Native binary hook. Intercept both stdout and stderr independently at the process layer
-    $psi.RedirectStandardError  = $true 
-    $psi.UseShellExecute        = $false
-    $psi.CreateNoWindow         = $true
-    
-    if ($IsWindows) {
-        $psi.FileName = $using:LocalYTDLPPath
-        foreach ($arg in $YTDLArgs) {
-            $psi.ArgumentList.Add($arg)
+    # ADVANCED DEBUG SYSTEM: Wrap the thread execution block in a diagnostic container
+    try {
+        if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { 
+            Invoke-LogMsg "Skipping blank or invalid configuration element row slot."
+            return 
         }
-    } else {
-        $psi.FileName = "sh"
-        $EscapedArgs = @()
-        foreach ($arg in $YTDLArgs) { $EscapedArgs += "'$arg'" }
-        $CombinedArgs = $EscapedArgs -join ' '
-        $psi.Arguments = "-c ""'$using:LocalYTDLPPath' $CombinedArgs 2>&1"""
-    }
 
-    $proc = [System.Diagnostics.Process]::Start($psi)
-    
-    # ASYNC CHAR BUFFER ENGINE: Intercept both streams character-by-character
-    $StdoutReader = $proc.StandardOutput
-    $StderrReader = $proc.StandardError
-    $CharBuffer   = [char[]]::new(4096)
-    $CurrentLine  = [System.Text.StringBuilder]::new()
+        Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
 
-    # Re-usable dynamic processing helper to keep execution dry
-    $ProcessStreamChunk = {
-        param([System.IO.StreamReader]$Stream)
-        if ($Stream.Peek() -ge 0) {
-            $CharsRead = $Stream.Read($CharBuffer, 0, $CharBuffer.Length)
-            for ($i = 0; $i -lt $CharsRead; $i++) {
-                $c = $CharBuffer[$i]
+        $YTDLArgs = @(
+            "--no-buf",                      
+            "--no-colors",
+            "--no-progress",
+            "--sleep-interval", $using:LocalSleepInterval,
+            "--max-sleep-interval", $using:LocalMaxSleepInterval,
+            "--sleep-requests", $using:LocalSleepRequests,
+            "--embed-thumbnail",
+            "--embed-metadata",
+            "--no-keep-video",
+            "--force-overwrites",
+            "--cookies", $using:LocalCookiePath,
+            "-P", $using:LocalBackupDir,
+            "-o", $using:OutputTemplate,
+            "--js-runtime", "deno",
+            "--extractor-args", "youtube:player_client=ios,android",
+            "-f", "ba[ext=m4a]/ba",
+            "--download-archive", $using:LocalActiveHistoryLog, 
+            "--ignore-errors",
+            $PlaylistURL
+        )
 
-                if ($c -eq "`n" -or $c -eq "`r") {
-                    if ($CurrentLine.Length -gt 0) {
-                        $LineText = $CurrentLine.ToString()
-                        $CleanText = $LineText -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-                        
-                        if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
-                            Invoke-LogMsg $CleanText
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError  = $true 
+        $psi.UseShellExecute        = $false
+        $psi.CreateNoWindow         = $true
+        
+        if ($IsWindows) {
+            $psi.FileName = $using:LocalYTDLPPath
+            foreach ($arg in $YTDLArgs) {
+                $psi.ArgumentList.Add($arg)
+            }
+        } else {
+            $psi.FileName = "sh"
+            $EscapedArgs = @()
+            foreach ($arg in $YTDLArgs) { $EscapedArgs += "'$arg'" }
+            $CombinedArgs = $EscapedArgs -join ' '
+            $psi.Arguments = "-c ""'$using:LocalYTDLPPath' $CombinedArgs 2>&1"""
+        }
+
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        
+        # ASYNC CHAR BUFFER ENGINE: Intercept both streams character-by-character
+        $StdoutReader = $proc.StandardOutput
+        $StderrReader = $proc.StandardError
+        $CharBuffer   = [char[]]::new(4096)
+        $CurrentLine  = [System.Text.StringBuilder]::new()
+
+        $ProcessStreamChunk = {
+            param([System.IO.StreamReader]$Stream)
+            if ($Stream.Peek() -ge 0) {
+                $CharsRead = $Stream.Read($CharBuffer, 0, $CharBuffer.Length)
+                for ($i = 0; $i -lt $CharsRead; $i++) {
+                    $c = $CharBuffer[$i]
+
+                    if ($c -eq "`n" -or $c -eq "`r") {
+                        if ($CurrentLine.Length -gt 0) {
+                            $LineText = $CurrentLine.ToString()
+                            $CleanText = $LineText -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
                             
-                            if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
-                                [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+                            if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
+                                Invoke-LogMsg $CleanText
+                                
+                                if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
+                                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+                                }
                             }
+                            $CurrentLine.Clear()
                         }
-                        $CurrentLine.Clear()
+                    } else {
+                        $CurrentLine.Append($c) | Out-Null
                     }
-                } else {
-                    $CurrentLine.Append($c) | Out-Null
                 }
             }
         }
-    }
 
-    while (-not $proc.HasExited) {
+        while (-not $proc.HasExited) {
+            & $ProcessStreamChunk $StdoutReader
+            & $ProcessStreamChunk $StderrReader
+            [System.Threading.Thread]::Sleep(50)
+        }
+
+        # Flush trailing data remaining inside buffers post-execution
         & $ProcessStreamChunk $StdoutReader
         & $ProcessStreamChunk $StderrReader
-        [System.Threading.Thread]::Sleep(50)
-    }
 
-    # Flush any trailing bytes remaining inside buffers post-execution
-    & $ProcessStreamChunk $StdoutReader
-    & $ProcessStreamChunk $StderrReader
-
-    if ($CurrentLine.Length -gt 0) {
-        $CleanText = $CurrentLine.ToString() -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-        if (-not [string]::IsNullOrWhiteSpace($CleanText)) { 
-            Invoke-LogMsg $CleanText 
-            if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
-                [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+        if ($CurrentLine.Length -gt 0) {
+            $CleanText = $CurrentLine.ToString() -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+            if (-not [string]::IsNullOrWhiteSpace($CleanText)) { 
+                Invoke-LogMsg $CleanText 
+                if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+                }
             }
         }
-    }
 
-    if ($proc.ExitCode -eq 0) {
-        Invoke-LogMsg "Sync completed successfully!"
-    } else {
+        if ($proc.ExitCode -eq 0) {
+            Invoke-LogMsg "Sync completed successfully!"
+        } else {
+            Invoke-LogMsg "Finished with warnings/errors."
+        }
+
+    } catch {
+        # Catch and broadcast internal script runtime errors instantly to the stream log
+        $InternalErrMsg = $_.Exception.Message
+        $FailedLineNum  = $_.InvocationInfo.ScriptLineNumber
+        Invoke-LogMsg "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
         Invoke-LogMsg "Finished with warnings/errors."
     }
 } -ThrottleLimit 3
