@@ -491,6 +491,7 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
+        # ... your existing endpoint if/elseif blocks ...
         elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
             Invoke-HotReload
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
@@ -501,12 +502,24 @@ try {
             
             Stop-Process -Id $PID -Force
         }
-        else { $Response.StatusCode = 404 }
+        # FIX: Catch background browser requests (like icons) so they don't break the listener stream
+        elseif ($UrlPath -eq "/favicon.ico") {
+            $Response.StatusCode = 404
+        }
+        else { 
+            $Response.StatusCode = 404 
+        }
         
-        $Response.OutputStream.Close()
+        # SAFETY FLUSH: Ensure the stream closes cleanly no matter what
+        try {
+            $Response.OutputStream.Close()
+        } catch {}
     }
 }  
-catch { Write-Output "Startup execution error occurred: $_" }
+catch { 
+    # Log the exact error to the terminal window instead of hiding it!
+    Write-Host "⚠️ Router Stream Exception: $_" -ForegroundColor Yellow
+}
 finally {
     if ($null -ne $Listener) { if ($Listener.IsListening) { $Listener.Stop() }; $Listener.Close() }
 }
