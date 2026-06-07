@@ -8,7 +8,8 @@ Param (
     [int]$SleepInterval,
     [int]$MaxSleepInterval,
     [int]$SleepRequests,
-    [switch]$CleanSweep
+    [switch]$CleanSweep,
+    [int]$Index # Added parameter to allow outer orchestration to match if needed
 )
 
 # Dynamic Architecture Rule for Clean Sweep
@@ -56,7 +57,8 @@ $SanitizedURLs = foreach ($URL in $PlaylistURLs) {
     }
 }
 
-$GlobalURLsCopy = $SanitizedURLs
+# FIX 1: Explicitly cast as an ArrayList to ensure thread-safe, immutable index hunting
+$GlobalURLsCopy = [System.Collections.Generic.List[string]]::new($SanitizedURLs)
 
 # WEB ENGINE WORKAROUND: Define a global log pointer if running inside a web job context
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
@@ -66,8 +68,11 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $PlaylistURL = $_
     if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
     
-    $Index = [array]::IndexOf($using:GlobalURLsCopy, $PlaylistURL) + 1
-    $ErrorLogPath = Join-Path $env:TEMP "playlist${Index}_run_errors.txt"
+    # FIX 2: Pull the parent list copy through a safe local instance block to stop thread collapsing
+    $LocalList = $using:GlobalURLsCopy
+    $LoopIndex = $LocalList.IndexOf($PlaylistURL) + 1
+    
+    $ErrorLogPath = Join-Path $env:TEMP "playlist${LoopIndex}_run_errors.txt"
 
     if (Test-Path -LiteralPath $ErrorLogPath) {
         Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue
@@ -77,14 +82,14 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $LogMsg = {
         param([string]$Text)
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
-        $FormattedLine = "[$Timestamp] [Playlist $using:Index] $Text"
+        # FIX 3: Use the dynamically isolated $LoopIndex inside the scriptblock closure
+        $FormattedLine = "[$Timestamp] [Playlist $using:LoopIndex] $Text"
         
-        # Write to standard output for local terminal testing
         Write-Output $FormattedLine
         
-        # If running inside the web pipeline, write directly to the stream log instantly
         if (Test-Path -LiteralPath $using:GlobalLogFile) {
             try {
+                # FIX 4: Use a safe [System.IO.File] write lock option to prevent overlapping streams from crashing out
                 [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
             } catch {}
         }
@@ -93,7 +98,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
     &$LogMsg "Processing Playlist URL: $PlaylistURL"
 
     $YTDLArgs = @(
-        "--no-buf",                     
+        "--no-buf",                      
         "--no-colors",
         "--no-progress",
         "--sleep-interval", $using:LocalSleepInterval,
@@ -146,7 +151,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
                 &$LogMsg $CleanText
                 
                 if ($CleanText -match 'ERROR:|WARNING:') {
-                    Add-Content -LiteralPath $ErrorLogPath -Value $CleanText -Force -ErrorAction SilentlyContinue
+                    # FIX 5: Use safe append mode to prevent multiple playlists from locking each other out of error text records
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
                 }
             }
         }

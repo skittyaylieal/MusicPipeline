@@ -160,7 +160,6 @@ function Invoke-PipelineExecution {
     "[SYSTEM] ($TriggerType Run) Initializing Master Pipeline..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
 
     $ContextBundle = @{
-        Index           = 1
         ScriptDir       = "C:\MusicTools\MusicPipeline\Scripts"
         ConfigDir       = "C:\MusicTools\MusicPipeline\Config"
         BackupDir       = $BackupDir
@@ -211,7 +210,6 @@ function Invoke-PipelineExecution {
             $S2Watch = [System.Diagnostics.Stopwatch]::StartNew()
             $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1"
             $S2Params = @{
-                Index            = $EnvMap.Index
                 BackupDir        = $EnvMap.BackupDir
                 YTDLPPath        = $EnvMap.YTDLPExe
                 CookiePath       = $EnvMap.CookieFile
