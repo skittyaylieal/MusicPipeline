@@ -57,8 +57,8 @@ $SanitizedURLs = foreach ($URL in $PlaylistURLs) {
     }
 }
 
-# FIX 1: Explicitly cast as an ArrayList to ensure thread-safe, immutable index hunting
-$GlobalURLsCopy = [System.Collections.Generic.List[string]]::new($SanitizedURLs)
+# FIX 1: Strongly cast array directly into a Generic List to prevent thread constructor collapse
+[System.Collections.Generic.List[string]]$GlobalURLsCopy = $SanitizedURLs
 
 # WEB ENGINE WORKAROUND: Define a global log pointer if running inside a web job context
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
