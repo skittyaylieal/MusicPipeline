@@ -117,15 +117,23 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError  = $true
+    
+    # FIX: Crucial change. We merge Standard Error directly into Standard Output 
+    # at the OS layer so our stream reader captures warnings instantly.
+    $psi.RedirectStandardError  = $false 
+    
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
     
     if ($IsWindows) {
-        $psi.FileName = $using:LocalYTDLPPath
+        # On Windows, we use cmd.exe to launch the executable to allow the 2>&1 stream merge operator
+        $psi.FileName = "cmd.exe"
+        $EscapedArgs = @()
         foreach ($arg in $YTDLArgs) {
-            $psi.ArgumentList.Add($arg)
+            if ($arg -match ' ') { $EscapedArgs += """$arg""" } else { $EscapedArgs += $arg }
         }
+        $CombinedArgs = $EscapedArgs -join ' '
+        $psi.Arguments = "/c """"$using:LocalYTDLPPath"" $CombinedArgs 2>&1"""
     } else {
         $psi.FileName = "sh"
         $EscapedArgs = @()
@@ -136,7 +144,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $proc = [System.Diagnostics.Process]::Start($psi)
     
-    # ASYNC CHAR BUFFER ENGINE: Continuously drains stdout without blocking on newlines
+    # ASYNC CHAR BUFFER ENGINE: Intercepts combined streams character-by-character
     $StreamReader = $proc.StandardOutput
     $CharBuffer = [char[]]::new(4096)
     $CurrentLine = [System.Text.StringBuilder]::new()
@@ -147,7 +155,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
             for ($i = 0; $i -lt $CharsRead; $i++) {
                 $c = $CharBuffer[$i]
 
-                # Flush line whenever a newline or carriage return hits
                 if ($c -eq "`n" -or $c -eq "`r") {
                     if ($CurrentLine.Length -gt 0) {
                         $LineText = $CurrentLine.ToString()
@@ -155,7 +162,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
                         
                         if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
                             Invoke-LogMsg $CleanText
-                            if ($CleanText -match 'ERROR:|WARNING:') {
+                            
+                            # Keep an eye out for errors/warnings and save them to the log file space
+                            if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
                                 [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
                             }
                         }
@@ -169,19 +178,15 @@ $SanitizedURLs | ForEach-Object -Parallel {
             [System.Threading.Thread]::Sleep(50)
         }
     }
-    
-    # Catch absolute binary runtime failures
-    $RawErrors = $proc.StandardError.ReadToEnd()
-    if (-not [string]::IsNullOrWhiteSpace($RawErrors)) {
-        $CleanErr = $RawErrors -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-        Invoke-LogMsg "SYSTEM EXECUTABLE ERROR: $CleanErr"
-    }
 
-    # Flush out any leftover trailing data in the string cache
+    # Flush out any leftover trailing tokens
     if ($CurrentLine.Length -gt 0) {
         $CleanText = $CurrentLine.ToString() -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
         if (-not [string]::IsNullOrWhiteSpace($CleanText)) { 
             Invoke-LogMsg $CleanText 
+            if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
+                [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+            }
         }
     }
 
