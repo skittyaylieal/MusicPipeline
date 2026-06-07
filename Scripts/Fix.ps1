@@ -29,7 +29,8 @@ $IsHeadless = $HeadlessOverride -or
 if ($IsHeadless) {
     Write-Output "[*] Headless execution environment verified. Scanning logs..."
     
-    $ErrorLogs = Get-ChildItem -LiteralPath $ConfigDir -Filter "playlist*_errors.txt"
+    # PATCH 1: Updated filter to perfectly catch 'playlist*_run_errors.txt' or standard logs
+    $ErrorLogs = Get-ChildItem -LiteralPath $ConfigDir -Filter "playlist*_run_errors.txt"
     if (-not $ErrorLogs) { 
         Write-Output "[+] No playlist error logs found in configuration space."
         $MetricStopwatch.Stop()
@@ -42,19 +43,24 @@ if ($IsHeadless) {
         try { $Queue = Get-Content -LiteralPath $QueueFile -Raw | ConvertFrom-Json } catch { $Queue = @() }
     }
 
-    $VideoIdRegex = [regex]'ERROR:\s*\[youtube\]\s*([a-zA-Z0-9_-]{11}):'
+    # PATCH 2: Generalized regex to capture ANY 11-character video ID following an ERROR tag
+    $VideoIdRegex = [regex]'ERROR:\s*\[youtube[^\]]*\]\s*([a-zA-Z0-9_-]{11}):'
 
     foreach ($Log in $ErrorLogs) {
         if ($Log.Length -eq 0) { continue }
-        $Content = Get-Content -LiteralPath $Log.FullName
-        foreach ($Line in $Content) {
-            $Match = $VideoIdRegex.Match($Line)
+        
+        # Read the file as a single raw string to protect against threaded line smashing
+        $Content = Get-Content -LiteralPath $Log.FullName -Raw
+        
+        # Perform a global match scan across the entire log file
+        $Matches = $VideoIdRegex.Matches($Content)
+        foreach ($Match in $Matches) {
             if ($Match.Success) {
                 $Id = $Match.Groups[1].Value
                 if (-not ($Queue | Where-Object { $_.id -eq $Id })) {
                     $Queue += [PSCustomObject]@{
                         id    = $Id
-                        error = $Line.Trim()
+                        error = $Match.Value.Trim()
                     }
                 }
             }
