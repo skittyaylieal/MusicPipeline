@@ -347,14 +347,11 @@ function Invoke-HotReload {
 # -----------------------------------------------------------------
 # 3. ADAPTIVE NETWORK ENGINE ROUTER ROUTINE
 # -----------------------------------------------------------------
-# FAILSAFE: Forcefully tear down any residual Windows port proxy mappings from old crashed sessions
-Write-Host "🧼 Flushing old proxy tables..." -ForegroundColor Yellow
+Write-Host "🧼 Flushing old proxy tables and cleaning session jobs..." -ForegroundColor Yellow
 netsh interface portproxy reset | Out-Null
-
-# Clear any zombie jobs that might be clinging to the pipeline name space
 Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
 
-# Find an open port dynamically starting from 49152 to host the script safely behind the scenes
+# Find an open port dynamically starting from 49152
 $TargetPort = 49152
 while ($true) {
     $Conflict = Get-NetTCPConnection -LocalPort $TargetPort -ErrorAction SilentlyContinue
@@ -362,7 +359,7 @@ while ($true) {
     $TargetPort++
 }
 
-# Re-build the fresh native Windows Port Forwarder mapping: Port 80 -> Free High Port
+# FIX: Only map the proxy AFTER we are 100% sure the target port is vacant
 Write-Host "🔗 Aligning fresh Windows port proxy map: 80 ---> $TargetPort" -ForegroundColor Cyan
 netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1
 
