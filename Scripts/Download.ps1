@@ -75,10 +75,13 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Remove-Item -LiteralPath $ErrorLogPath -Force
     }
 
-    Write-Output "`n[*] Processing Playlist $Index..."
-    Write-Output "URL: $PlaylistURL"
+    # Inter-thread safe terminal string injection
+    [Console]::WriteLine("[*] Processing Playlist $Index...")
+    [Console]::WriteLine("URL: $PlaylistURL")
 
+    # Arguments array tailored for real-time unbuffered stream printing
     $YTDLArgs = @(
+        "--no-buf",                     # Force unbuffered stdout/stderr delivery across streams
         "--no-colors",
         "--no-progress",
         "--sleep-interval", $using:LocalSleepInterval,
@@ -94,25 +97,52 @@ $SanitizedURLs | ForEach-Object -Parallel {
         "--js-runtime", "deno",
         "--extractor-args", "youtube:player_client=ios,android",
         "-f", "ba[ext=m4a]/ba",
-        "--download-archive", $using:LocalActiveHistoryLog, # <-- FIXED: Points to thread-safe mapped variable
+        "--download-archive", $using:LocalActiveHistoryLog, 
         "--ignore-errors",
         $PlaylistURL
     )
 
-    # Execute with verified threading context
-    & $using:LocalYTDLPPath $YTDLArgs 2>>"$ErrorLogPath" | ForEach-Object {
-        if ($null -ne $_) {
-            $CleanText = $_.ToString() -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+    # Process start architecture to force thread-independent line capturing
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName               = $using:LocalYTDLPPath
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.UseShellExecute        = $false
+    $psi.CreateNoWindow         = $true
+    
+    foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
+
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    
+    # Stream-reader loop: Catches live fragments instantly before buffers can lock them down
+    while (-not $proc.HasExited) {
+        $line = $proc.StandardOutput.ReadLine()
+        if ($null -ne $line) {
+            $CleanText = $line -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
             if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
-                Write-Output $CleanText
+                # Writes directly to the underlying host process tracking your console monitor
+                [Console]::WriteLine("[Playlist $Index] $CleanText")
             }
         }
     }
+    
+    # Empty trailing lines out of buffer cache post-completion
+    $remaining = $proc.StandardOutput.ReadToEnd()
+    if (-not [string]::IsNullOrWhiteSpace($remaining)) {
+        $CleanText = $remaining -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+        [Console]::WriteLine("[Playlist $Index] $CleanText")
+    }
 
-    if ($LastExitCode -eq 0) {
-        Write-Output "[+] Playlist Music $Index sync completed successfully!"
+    # Dump streaming error stack to local disk logs seamlessly
+    $errs = $proc.StandardError.ReadToEnd()
+    if (-not [string]::IsNullOrWhiteSpace($errs)) {
+        Set-Content -LiteralPath $ErrorLogPath -Value $errs -Force
+    }
+
+    if ($proc.ExitCode -eq 0) {
+        [Console]::WriteLine("[+] Playlist Music $Index sync completed successfully!")
     } else {
-        Write-Output "[!] Playlist Music $Index finished with warnings/errors."
+        [Console]::WriteLine("[!] Playlist Music $Index finished with warnings/errors.")
     }
 } -ThrottleLimit 3
 
