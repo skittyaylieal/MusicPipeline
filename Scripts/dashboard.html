@@ -365,37 +365,63 @@
             });
         }
 
-        // 4. ANSI ESCAPE TO HTML TRANSLATOR
+        // 4. ANSI ESCAPE TO HTML TRANSLATOR (Hardened for standalone brackets and playlist tags)
         function parseAnsiToHtml(text) {
-            // Escape native raw HTML syntax characters to prevent terminal XSS breaks
+            if (!text) return '';
+
+            // 1. Escape native raw HTML syntax characters to prevent layout breaks
             let clean = text
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;");
 
-            // Define map configurations tracking ANSI colors to web hex tokens
+            // 2. Define color profiles mapping to web hex tokens
             const ansiMap = {
                 "1;31": "color: #FF5555; font-weight: bold;", // Bold Red (Errors)
                 "1;32": "color: #39FF14; font-weight: bold;", // Neon Green (Success)
                 "1;33": "color: #FFB86C; font-weight: bold;", // Amber Yellow (Steps)
                 "1;35": "color: #BD93F9; font-weight: bold;", // Magenta Pink (Git Hooks)
                 "1;36": "color: #8BE9FD; font-weight: bold;", // Bright Cyan (System initialization)
-                "90":   "color: #6272A4;"                     // Gray comment tokens (Timestamps)
+                "33":   "color: #F1FA8C;",                     // Playlist 3 (Yellow)
+                "35":   "color: #FF79C6;",                     // Playlist 2 (Magenta)
+                "36":   "color: #8BE9FD;",                     // Playlist 1 (Cyan)
+                "90":   "color: #6272A4;"                     // Gray tokens (Timestamps)
             };
 
-            // Regex loop replacing matching sequences into CSS elements
-            // Matches variations of \e[, \x1b[, or unparsed character markers
-            const regex = /(?:\x1B|\\e|)\[([0-9;]+)m(.*?)(?=(?:\x1B|\\e|)\[0m|$)/g;
+            // 3. First Pass: Strip or convert explicit escape codes/broken brackets like [1;33m or [1;33m
+            // This captures optional escape symbols followed by [ codes
+            const ansiRegex = /(?:\x1B|\\e|)?\[([0-9;]+)m/g;
             
-            let result = clean.replace(regex, (match, code, content) => {
-                if (ansiMap[code]) {
-                    return `<span style="${ansiMap[code]}">${content}</span>`;
+            // Track if we've opened a style span
+            let openSpan = false;
+            
+            let result = clean.replace(ansiRegex, (match, code) => {
+                if (code === "0") {
+                    if (openSpan) { openSpan = false; return "</span>"; }
+                    return "";
                 }
-                return content;
+                if (ansiMap[code]) {
+                    let prefix = openSpan ? "</span>" : "";
+                    openSpan = true;
+                    return `${prefix}<span style="${ansiMap[code]}">`;
+                }
+                return ""; // Strip unmapped code sequences cleanly
             });
+            
+            if (openSpan) { result += "</span>"; }
 
-            // Clean up any remaining reset tokens trailing inside the buffer strings
-            return result.replace(/(?:\x1B|\\e|)\[0m/g, "");
+            // 4. Second Pass: Fallback playlist identifier matching (Forces distinct row colors)
+            if (result.includes("[Playlist 1]")) {
+                return `<span style="color: #8BE9FD;">${result}</span>`;
+            } else if (result.includes("[Playlist 2]")) {
+                return `<span style="color: #FF79C6;">${result}</span>`;
+            } else if (result.includes("[Playlist 3]")) {
+                return `<span style="color: #F1FA8C;">${result}</span>`;
+            } else if (result.toLowerCase().includes("error") || result.toLowerCase().includes("failed")) {
+                return `<span style="color: #FF5555; font-weight: bold;">${result}</span>`;
+            }
+
+            return result;
         }
 
         // 5. TERMINAL LOG STREAMER (WITH AUTO-SCROLL MANIPULATION)
