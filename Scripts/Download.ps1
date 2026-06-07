@@ -49,7 +49,7 @@ Write-Output "[*] Updating yt-dlp to nightly"
 
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
 
-# FIX: Native syntax correction. Group the loop statement inside parenthesis so it compiles perfectly to the pipeline stream
+# FIX: Group the collection loop inside sub-expression parenthesis so it safely pipelines into the filter
 $SanitizedURLs = $(foreach ($URL in $PlaylistURLs) {
     if ($URL -match ',') {
         $URL -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
@@ -92,10 +92,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
     }
 
-    # ADVANCED DEBUG SYSTEM: Wrap the thread execution block in a diagnostic container
+    # ADVANCED DEBUG SYSTEM: Trap runspace errors natively
     try {
         if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { 
-            Invoke-LogMsg "Skipping blank or invalid configuration element row slot."
             return 
         }
 
@@ -129,11 +128,17 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $psi.UseShellExecute        = $false
         $psi.CreateNoWindow         = $true
         
+        # Stream Optimization: Enforce UTF8 byte transmission
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
+
         if ($IsWindows) {
             $psi.FileName = $using:LocalYTDLPPath
             foreach ($arg in $YTDLArgs) {
                 $psi.ArgumentList.Add($arg)
             }
+            # DEBUG FIX: Force Python context to discard its 4KB line flushing buffer blocks
+            $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
         } else {
             $psi.FileName = "sh"
             $EscapedArgs = @()
@@ -144,7 +149,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         $proc = [System.Diagnostics.Process]::Start($psi)
         
-        # ASYNC CHAR BUFFER ENGINE: Intercept both streams character-by-character
+        # ASYNC CHAR BUFFER ENGINE: Intercept streams live
         $StdoutReader = $proc.StandardOutput
         $StderrReader = $proc.StandardError
         $CharBuffer   = [char[]]::new(4096)
@@ -184,7 +189,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
             [System.Threading.Thread]::Sleep(50)
         }
 
-        # Flush trailing data remaining inside buffers post-execution
         & $ProcessStreamChunk $StdoutReader
         & $ProcessStreamChunk $StderrReader
 
@@ -205,7 +209,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
 
     } catch {
-        # Catch and broadcast internal script runtime errors instantly to the stream log
+        # Broadcast thread compilation alerts straight to the master console log file
         $InternalErrMsg = $_.Exception.Message
         $FailedLineNum  = $_.InvocationInfo.ScriptLineNumber
         Invoke-LogMsg "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
