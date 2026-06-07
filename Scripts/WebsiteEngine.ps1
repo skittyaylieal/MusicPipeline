@@ -345,6 +345,13 @@ function Invoke-HotReload {
 # -----------------------------------------------------------------
 # 3. ADAPTIVE NETWORK ENGINE ROUTER ROUTINE
 # -----------------------------------------------------------------
+# FAILSAFE: Forcefully tear down any residual Windows port proxy mappings from old crashed sessions
+Write-Host "🧼 Flushing old proxy tables..." -ForegroundColor Yellow
+netsh interface portproxy reset | Out-Null
+
+# Clear any zombie jobs that might be clinging to the pipeline name space
+Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
+
 # Find an open port dynamically starting from 49152 to host the script safely behind the scenes
 $TargetPort = 49152
 while ($true) {
@@ -353,23 +360,16 @@ while ($true) {
     $TargetPort++
 }
 
-# Reset and align the native Windows Port Forwarder mapping: Port 80 -> Free High Port
-# Note: You must launch your terminal window as Administrator for this manipulation to apply!
-Write-Host "🔗 Aligning Windows port proxy map: 80 ---> $TargetPort" -ForegroundColor Cyan
-netsh interface portproxy reset | Out-Null
+# Re-build the fresh native Windows Port Forwarder mapping: Port 80 -> Free High Port
+Write-Host "🔗 Aligning fresh Windows port proxy map: 80 ---> $TargetPort" -ForegroundColor Cyan
 netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1
 
 $Listener = New-Object System.Net.HttpListener
-# Bind explicitly to loopback on the validated safe target port
 $Listener.Prefixes.Add("http://127.0.0.1:$TargetPort/")
 
 try {
-    # Clean up old dead handle states from previous normal sessions safely
-    Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
-
     $Listener.Start()
     
-    # Grab local IPv4 addresses to present access links directly in the console output
     $LocalIPs = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Wi-Fi','Ethernet' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPAddress
     $PrimaryIP = if ($LocalIPs) { $LocalIPs[0] } else { "127.0.0.1" }
 
@@ -382,9 +382,12 @@ try {
     Start-AsyncLibraryScanner
     Start-AutomatedChronDaemon -RuntimePort $TargetPort
     
+    # SYSTEM INTERRUPT REGISTER: If the window is closed normally or Ctrl+C is pressed
     trap {
+        Write-Host "🛑 Shutting down server engine cleanly..." -ForegroundColor Red
         if ($null -ne $Listener -and $Listener.IsListening) { $Listener.Stop() }
         if ($null -ne $Listener) { $Listener.Close() }
+        netsh interface portproxy reset | Out-Null
         exit
     }
 
