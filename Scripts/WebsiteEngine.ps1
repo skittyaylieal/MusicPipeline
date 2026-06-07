@@ -211,6 +211,7 @@ function Invoke-PipelineExecution {
             $S2Watch = [System.Diagnostics.Stopwatch]::StartNew()
             $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1"
             $S2Params = @{
+                Index            = $EnvMap.Index
                 BackupDir        = $EnvMap.BackupDir
                 YTDLPPath        = $EnvMap.YTDLPExe
                 CookiePath       = $EnvMap.CookieFile
