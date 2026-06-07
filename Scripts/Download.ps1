@@ -106,15 +106,32 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName               = $using:LocalYTDLPPath
     $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError  = $true
+    $psi.RedirectStandardError  = $false # Set to false to allow stream merging or clean console tracking
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
     
-    foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
+    # CRITICAL DEADLOCK FIX: Combine stderr into stdout at the engine level
+    # This prevents the process from freezing when error logs write out warnings.
+    if ($IsWindows) {
+        $psi.FileName = "cmd.exe"
+        # Escaping arguments strings safely for cmd execution boundary
+        $EscapedArgs = @()
+        foreach ($arg in $YTDLArgs) {
+            if ($arg -match ' ') { $EscapedArgs += """$arg""" } else { $EscapedArgs += $arg }
+        }
+        $CombinedArgs = $EscapedArgs -join ' '
+        $psi.Arguments = "/c """"$using:LocalYTDLPPath"" $CombinedArgs 2>&1"""
+    } else {
+        $psi.FileName = "sh"
+        $EscapedArgs = @()
+        foreach ($arg in $YTDLArgs) { $EscapedArgs += "'$arg'" }
+        $CombinedArgs = $EscapedArgs -join ' '
+        $psi.Arguments = "-c ""'$using:LocalYTDLPPath' $CombinedArgs 2>&1"""
+    }
 
     $proc = [System.Diagnostics.Process]::Start($psi)
     
-    # Stream-reader loop: Catches live fragments instantly before buffers can lock them down
+    # Stream-reader loop: Catches live fragments instantly without lockups
     while (-not $proc.HasExited) {
         $line = $proc.StandardOutput.ReadLine()
         if ($null -ne $line) {
@@ -122,6 +139,11 @@ $SanitizedURLs | ForEach-Object -Parallel {
             if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
                 # Writes directly to the underlying host process tracking your console monitor
                 [Console]::WriteLine("[Playlist $Index] $CleanText")
+                
+                # Check if this combined line was an error line to mirror to disk archive
+                if ($CleanText -match 'ERROR:|WARNING:') {
+                    Add-Content -LiteralPath $ErrorLogPath -Value $CleanText -Force
+                }
             }
         }
     }
@@ -131,12 +153,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
     if (-not [string]::IsNullOrWhiteSpace($remaining)) {
         $CleanText = $remaining -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
         [Console]::WriteLine("[Playlist $Index] $CleanText")
-    }
-
-    # Dump streaming error stack to local disk logs seamlessly
-    $errs = $proc.StandardError.ReadToEnd()
-    if (-not [string]::IsNullOrWhiteSpace($errs)) {
-        Set-Content -LiteralPath $ErrorLogPath -Value $errs -Force
     }
 
     if ($proc.ExitCode -eq 0) {
