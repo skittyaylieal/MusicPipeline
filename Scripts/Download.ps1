@@ -19,7 +19,7 @@ $ActiveHistoryLog = if ($CleanSweep) {
     $HistoryPath
 }
 
-# THREADING SAFETIES: Local copies for thread extraction
+# THREADING SAFETIES
 $LocalYTDLPPath        = $YTDLPPath
 $LocalBackupDir        = $BackupDir
 $LocalCookiePath       = $CookiePath
@@ -36,20 +36,13 @@ Write-Output "============================================="
 Write-Output "    PowerShell Module: Media Downloader"
 Write-Output "============================================="
 
-if ($CleanSweep) {
-    Write-Output "[🔥 CLEAN SWEEP ACTIVE] Generating temporary execution archive log..."
-}
-
 if (-not (Test-Path -LiteralPath $BackupDir)) {
     New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
 }
 
-Write-Output "[*] Updating yt-dlp to nightly"
-& $YTDLPPath --update-to nightly
-
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
 
-# FIX: Group the collection loop inside sub-expression parenthesis so it safely pipelines into the filter
+# Safe parenthetical array compilation
 $SanitizedURLs = $(foreach ($URL in $PlaylistURLs) {
     if ($URL -match ',') {
         $URL -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
@@ -58,27 +51,20 @@ $SanitizedURLs = $(foreach ($URL in $PlaylistURLs) {
     }
 }) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
-# Strongly cast array directly into a Generic List to prevent thread constructor collapse
 [System.Collections.Generic.List[string]]$GlobalURLsCopy = $SanitizedURLs
-
-# WEB ENGINE WORKAROUND: Define a global log pointer if running inside a web job context
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
 # Optimization: Parallel Playlist Auditing
 $SanitizedURLs | ForEach-Object -Parallel {
     $PlaylistURL = $_
     
-    # Safety: Fetch loop index safely out of the shared memory frame
     $LocalList = $using:GlobalURLsCopy
     $LoopIndex = $LocalList.IndexOf($PlaylistURL) + 1
     
     $ErrorLogPath = Join-Path $env:TEMP "playlist${LoopIndex}_run_errors.txt"
+    if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
-    if (Test-Path -LiteralPath $ErrorLogPath) {
-        Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue
-    }
-
-    # Native local logging handler
+    # Thread-Safe Real-Time Logger
     function Invoke-LogMsg([string]$Text) {
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         $FormattedLine = "[$Timestamp] [Playlist $LoopIndex] $Text"
@@ -86,24 +72,22 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Write-Output $FormattedLine
         
         if (Test-Path -LiteralPath $using:GlobalLogFile) {
-            try {
-                [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
-            } catch {}
+            # Use Out-File with safe sharing policies to prevent multi-thread cross-locking deadlocks
+            $FormattedLine | Out-File -FilePath $using:GlobalLogFile -Append -Encoding utf8 -ErrorAction SilentlyContinue
         }
     }
 
-    # ADVANCED DEBUG SYSTEM: Trap runspace errors natively
     try {
-        if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { 
-            return 
-        }
+        if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
 
         Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
 
+        # Explicitly added --no-interactive to force immediate failures on headless blocks
         $YTDLArgs = @(
             "--no-buf",                      
             "--no-colors",
             "--no-progress",
+            "--no-interactive",
             "--sleep-interval", $using:LocalSleepInterval,
             "--max-sleep-interval", $using:LocalMaxSleepInterval,
             "--sleep-requests", $using:LocalSleepRequests,
@@ -123,97 +107,64 @@ $SanitizedURLs | ForEach-Object -Parallel {
         )
 
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName               = $using:LocalYTDLPPath
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError  = $true 
+        $psi.RedirectStandardInput  = $true # Force input redirection to prevent headless freezing
         $psi.UseShellExecute        = $false
         $psi.CreateNoWindow         = $true
         
-        # Stream Optimization: Enforce UTF8 byte transmission
         $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
         $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
+        $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
 
-        if ($IsWindows) {
-            $psi.FileName = $using:LocalYTDLPPath
-            foreach ($arg in $YTDLArgs) {
-                $psi.ArgumentList.Add($arg)
-            }
-            # DEBUG FIX: Force Python context to discard its 4KB line flushing buffer blocks
-            $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
-        } else {
-            $psi.FileName = "sh"
-            $EscapedArgs = @()
-            foreach ($arg in $YTDLArgs) { $EscapedArgs += "'$arg'" }
-            $CombinedArgs = $EscapedArgs -join ' '
-            $psi.Arguments = "-c ""'$using:LocalYTDLPPath' $CombinedArgs 2>&1"""
-        }
+        foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
         $proc = [System.Diagnostics.Process]::Start($psi)
         
-        # ASYNC CHAR BUFFER ENGINE: Intercept streams live
-        $StdoutReader = $proc.StandardOutput
-        $StderrReader = $proc.StandardError
-        $CharBuffer   = [char[]]::new(4096)
-        $CurrentLine  = [System.Text.StringBuilder]::new()
+        # Kill standard input instantly so the process knows no human is typing responses
+        $proc.StandardInput.Close()
 
-        $ProcessStreamChunk = {
-            param([System.IO.StreamReader]$Stream)
-            if ($Stream.Peek() -ge 0) {
-                $CharsRead = $Stream.Read($CharBuffer, 0, $CharBuffer.Length)
-                for ($i = 0; $i -lt $CharsRead; $i++) {
-                    $c = $CharBuffer[$i]
-
-                    if ($c -eq "`n" -or $c -eq "`r") {
-                        if ($CurrentLine.Length -gt 0) {
-                            $LineText = $CurrentLine.ToString()
-                            $CleanText = $LineText -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-                            
-                            if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
-                                Invoke-LogMsg $CleanText
-                                
-                                if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
-                                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
-                                }
-                            }
-                            $CurrentLine.Clear()
-                        }
-                    } else {
-                        $CurrentLine.Append($c) | Out-Null
-                    }
-                }
-            }
-        }
-
+        # NATIVE REAL-TIME LINE READER: Pushes to the log file the exact millisecond a line forms
         while (-not $proc.HasExited) {
-            & $ProcessStreamChunk $StdoutReader
-            & $ProcessStreamChunk $StderrReader
-            [System.Threading.Thread]::Sleep(50)
-        }
-
-        & $ProcessStreamChunk $StdoutReader
-        & $ProcessStreamChunk $StderrReader
-
-        if ($CurrentLine.Length -gt 0) {
-            $CleanText = $CurrentLine.ToString() -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-            if (-not [string]::IsNullOrWhiteSpace($CleanText)) { 
-                Invoke-LogMsg $CleanText 
-                if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+            if ($proc.StandardOutput.Peek() -ge 0) {
+                $Line = $proc.StandardOutput.ReadLine()
+                if ($Line) {
+                    $CleanLine = $Line -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+                    Invoke-LogMsg $CleanLine
                 }
             }
+            if ($proc.StandardError.Peek() -ge 0) {
+                $ErrLine = $proc.StandardError.ReadLine()
+                if ($ErrLine) {
+                    $CleanErr = $ErrLine -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+                    Invoke-LogMsg $CleanErr
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanErr + [System.Environment]::NewLine))
+                }
+            }
+            [System.Threading.Thread]::Sleep(30)
+        }
+
+        # Flush any trailing lines remaining post-execution
+        while ($proc.StandardOutput.Peek() -ge 0) {
+            $Line = $proc.StandardOutput.ReadLine()
+            if ($Line) { Invoke-LogMsg ($Line -replace '\x1b\[[0-9;]*[a-zA-Z]', '') }
+        }
+        while ($proc.StandardError.Peek() -ge 0) {
+            $ErrLine = $proc.StandardError.ReadLine()
+            if ($ErrLine) { Invoke-LogMsg ($ErrLine -replace '\x1b\[[0-9;]*[a-zA-Z]', '') }
         }
 
         if ($proc.ExitCode -eq 0) {
             Invoke-LogMsg "Sync completed successfully!"
         } else {
-            Invoke-LogMsg "Finished with warnings/errors."
+            Invoke-LogMsg "Finished with warnings/errors. Exit Code: $($proc.ExitCode)"
         }
 
     } catch {
-        # Broadcast thread compilation alerts straight to the master console log file
         $InternalErrMsg = $_.Exception.Message
         $FailedLineNum  = $_.InvocationInfo.ScriptLineNumber
         Invoke-LogMsg "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
-        Invoke-LogMsg "Finished with warnings/errors."
     }
 } -ThrottleLimit 3
 
