@@ -291,9 +291,11 @@
 
     </div>
 
-<script>
+    <script>
         let isPipelineActive = false;
-        let performanceChart = null;
+        let chartTotalInstance = null;
+        let chartStepsInstance = null;
+        let globalTracksCache = [];
 
         // 1. NAVIGATION ROUTING & SIDEBAR SYSTEM
         function toggleSidebar() {
@@ -343,7 +345,79 @@
                             alertsZone.appendChild(div);
                         });
                     }
+
+                    if (data.tracks && data.tracks.length > 0) {
+                        globalTracksCache = data.tracks;
+                        renderMetadataTable(globalTracksCache);
+                    }
                 }).catch(() => {});
+        }
+
+        // Deep Metadata Explorer Rendering Engine
+        function renderMetadataTable(tracks) {
+            const tbody = document.getElementById('metadata-rows');
+            if (!tbody) return;
+            
+            if (tracks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#71717A;">No tracks found matching current filter parameters.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = tracks.map(track => {
+                const lrcBadge = track.hasLrc 
+                    ? `<span class="badge badge-lrc">LRC Sync</span>` 
+                    : `<span class="badge badge-missing">Missing</span>`;
+                
+                return `
+                    <tr>
+                        <td style="font-weight:600; color:#FFF;">${track.title || 'Unknown Title'}</td>
+                        <td style="color:#CBD5E1;">${track.artist || 'Unknown Artist'}</td>
+                        
+                        <td class="col-audio" style="color:#00ADB5; font-family:monospace;">${track.bitrate ? track.bitrate + ' kbps' : '-'}</td>
+                        <td class="col-audio" style="color:#A1A1AA;">${track.sampleRate ? track.sampleRate + ' Hz' : '-'}</td>
+                        <td class="col-audio"><span class="badge" style="background:#27272A; color:#E2E8F0;">${(track.format || 'MP3').toUpperCase()}</span></td>
+                        
+                        <td class="col-release" style="color:#E2E8F0;">${track.album || '-'}</td>
+                        <td class="col-release" style="font-family:monospace;">${track.trackNumber || '-'}</td>
+                        <td class="col-release" style="color:#FFB86C; font-family:monospace;">${track.year || '-'}</td>
+                        <td class="col-release"><span class="badge" style="background:#1E1E24; color:#A1A1AA;">${track.genre || '-'}</span></td>
+                        
+                        <td class="col-ident" style="color:#A1A1AA;">${track.label || '-'}</td>
+                        <td class="col-ident" style="color:#A1A1AA;">${track.composer || '-'}</td>
+                        <td class="col-ident" style="font-family:monospace; font-size:0.85em; color:#6272A4;">${track.hash || track.pathCode || '-'}</td>
+                        
+                        <td style="text-align: center;">${lrcBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function switchExplorerView(viewClass, tabId) {
+            const table = document.getElementById('metadata-table');
+            table.className = viewClass;
+            
+            document.querySelectorAll('.exp-tab').forEach(t => t.classList.remove('tab-active'));
+            document.getElementById(tabId).classList.add('tab-active');
+        }
+
+        function filterDatabase() {
+            const searchVal = document.getElementById('search-input').value.toLowerCase();
+            const lrcFilter = document.getElementById('filter-lrc').value;
+
+            const filtered = globalTracksCache.filter(track => {
+                const matchesSearch = !searchVal || 
+                    (track.title && track.title.toLowerCase().includes(searchVal)) ||
+                    (track.artist && track.artist.toLowerCase().includes(searchVal)) ||
+                    (track.album && track.album.toLowerCase().includes(searchVal));
+                
+                const matchesLrc = lrcFilter === 'ALL' ||
+                    (lrcFilter === 'LRC' && track.hasLrc) ||
+                    (lrcFilter === 'MISSING' && !track.hasLrc);
+
+                return matchesSearch && matchesLrc;
+            });
+
+            renderMetadataTable(filtered);
         }
 
         // 3. PIPELINE DISPATCH CONTROLS
@@ -356,6 +430,19 @@
                         switchPage('pane-console', 'link-console');
                     }
                 });
+        }
+
+        function stopPipeline() {
+            fetch('/stop', { method: 'POST' }).then(() => {
+                const feed = document.getElementById('terminal-feed');
+                if (feed) feed.innerHTML += `\n<span style="color:#FF5555; font-weight:bold;">[System] Termination request broadcasted to engine pipeline execution instance...</span>`;
+            });
+        }
+
+        function triggerClearLogs() {
+            fetch('/clearlogs', { method: 'POST' }).then(() => {
+                document.getElementById('terminal-feed').innerHTML = "Logs cleared by console command. Awaiting execution state metrics stream...";
+            });
         }
 
         function triggerGitPull() {
@@ -385,16 +472,13 @@
                 "33":   "color: #F1FA8C;",                     // Playlist 3 (Yellow)
                 "35":   "color: #FF79C6;",                     // Playlist 2 (Magenta)
                 "36":   "color: #8BE9FD;",                     // Playlist 1 (Cyan)
-                "90":   "color: #6272A4;"                     // Gray tokens (Timestamps)
+                "90":   "color: #6272A4;"                      // Gray tokens (Timestamps)
             };
 
             // 3. First Pass: Strip or convert explicit escape codes/broken brackets like [1;33m or [1;33m
-            // This captures optional escape symbols followed by [ codes
             const ansiRegex = /(?:\x1B|\\e|)?\[([0-9;]+)m/g;
             
-            // Track if we've opened a style span
             let openSpan = false;
-            
             let result = clean.replace(ansiRegex, (match, code) => {
                 if (code === "0") {
                     if (openSpan) { openSpan = false; return "</span>"; }
@@ -405,7 +489,7 @@
                     openSpan = true;
                     return `${prefix}<span style="${ansiMap[code]}">`;
                 }
-                return ""; // Strip unmapped code sequences cleanly
+                return ""; 
             });
             
             if (openSpan) { result += "</span>"; }
@@ -455,7 +539,6 @@
 
                                 const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 50;
                                 
-                                // Set innerHTML instead of innerText so spans render visual colors
                                 consoleBox.innerHTML = convertedLines.join('\n');
                                 if (isScrolledToBottom) consoleBox.scrollTop = consoleBox.scrollHeight;
                             }
@@ -475,40 +558,118 @@
                     const labels = data.map(r => r.timestamp.split(' ')[1] || r.timestamp);
                     const totals = data.map(r => {
                         const parts = r.total.split(':');
-                        return (parseInt(parts[0]) * 60) + parseInt(parts[1]) + (parts[2] / 60);
+                        return (parseInt(parts[0]) * 60) + parseInt(parts[1]) + (parseFloat(parts[2]) / 60);
                     });
 
-                    const ctx = document.getElementById('perf-chart');
-                    if (!ctx) return;
+                    // Parse stacked steps allocations for step breakdown line chart tracking
+                    const step1Data = data.map(r => r.steps && r.steps[0] ? parseFloat(r.steps[0]) : 0);
+                    const step2Data = data.map(r => r.steps && r.steps[1] ? parseFloat(r.steps[1]) : 0);
+                    const step3Data = data.map(r => r.steps && r.steps[2] ? parseFloat(r.steps[2]) : 0);
+                    const step4Data = data.map(r => r.steps && r.steps[3] ? parseFloat(r.steps[3]) : 0);
 
-                    if (performanceChart) {
-                        performanceChart.data.labels = labels;
-                        performanceChart.data.datasets[0].data = totals;
-                        performanceChart.update();
-                    } else {
-                        performanceChart = new Chart(ctx, {
-                            type: 'line',
-                            data: {
-                                labels: labels,
-                                datasets: [{
-                                    label: 'Execution Duration (Minutes)',
-                                    data: totals,
-                                    borderColor: '#00ADB5',
-                                    backgroundColor: 'rgba(0, 173, 181, 0.1)',
-                                    borderWidth: 2,
-                                    tension: 0.3
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } },
-                                    x: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } }
-                                },
-                                plugins: { legend: { labels: { color: '#E2E8F0' } } }
+                    // Dynamic breakdown list rendering mapping below charts
+                    const historyBody = document.getElementById('timing-history-rows');
+                    if (historyBody) {
+                        historyBody.innerHTML = data.map(row => {
+                            const badgeClass = row.trigger === 'sweep' ? 'badge-sweep' : 'badge-auto';
+                            let barsHtml = `<div class="seg seg-fallback" style="width: 100%;"></div>`;
+                            
+                            if (row.steps && row.steps.length > 0) {
+                                const sum = row.steps.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
+                                barsHtml = row.steps.map((val, idx) => {
+                                    const pct = sum > 0 ? (parseFloat(val) / sum) * 100 : 0;
+                                    return `<div class="seg seg-s${idx + 1}" style="width: ${pct}%;" title="Step ${idx + 1}: ${val} mins"></div>`;
+                                }).join('');
                             }
-                        });
+
+                            return `
+                                <tr class="${row.trigger === 'sweep' ? 'row-clean-sweep' : ''}">
+                                    <td style="font-family: monospace; color:#A1A1AA;">${row.timestamp}</td>
+                                    <td><span class="badge ${badgeClass}">${row.trigger.toUpperCase()}</span></td>
+                                    <td style="font-weight: bold; color: #00ADB5; font-family: monospace;">${row.total}</td>
+                                    <td>
+                                        <div class="timeline-graph-wrapper">
+                                            <div class="timeline-bar">${barsHtml}</div>
+                                            <div class="graph-legend">
+                                                <span style="color:#3B82F6;">■ Scan</span>
+                                                <span style="color:#EF4444;">■ Compare</span>
+                                                <span style="color:#F59E0B;">■ Transfer</span>
+                                                <span style="color:#10B981;">■ Purge</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+
+                    // Render Total Runtime Track Trend Line Chart
+                    const ctxTotal = document.getElementById('chartTrendTotal');
+                    if (ctxTotal) {
+                        if (chartTotalInstance) {
+                            chartTotalInstance.data.labels = labels;
+                            chartTotalInstance.data.datasets[0].data = totals;
+                            chartTotalInstance.update();
+                        } else {
+                            chartTotalInstance = new Chart(ctxTotal, {
+                                type: 'line',
+                                data: {
+                                    labels: labels,
+                                    datasets: [{
+                                        label: 'Total Wall Time Duration (Minutes)',
+                                        data: totals,
+                                        borderColor: '#00ADB5',
+                                        backgroundColor: 'rgba(0, 173, 181, 0.1)',
+                                        borderWidth: 2,
+                                        tension: 0.3
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    scales: {
+                                        y: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } },
+                                        x: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } }
+                                    },
+                                    plugins: { legend: { labels: { color: '#E2E8F0' } } }
+                                }
+                            });
+                        }
+                    }
+
+                    // Render Component Matrix Bottlenecks Line Chart
+                    const ctxSteps = document.getElementById('chartTrendSteps');
+                    if (ctxSteps) {
+                        if (chartStepsInstance) {
+                            chartStepsInstance.data.labels = labels;
+                            chartStepsInstance.data.datasets[0].data = step1Data;
+                            chartStepsInstance.data.datasets[1].data = step2Data;
+                            chartStepsInstance.data.datasets[2].data = step3Data;
+                            chartStepsInstance.data.datasets[3].data = step4Data;
+                            chartStepsInstance.update();
+                        } else {
+                            chartStepsInstance = new Chart(ctxSteps, {
+                                type: 'line',
+                                data: {
+                                    labels: labels,
+                                    datasets: [
+                                        { label: 'Scanner', data: step1Data, borderColor: '#3B82F6', tension: 0.2, borderWidth: 1.5 },
+                                        { label: 'Diffing Engine', data: step2Data, borderColor: '#EF4444', tension: 0.2, borderWidth: 1.5 },
+                                        { label: 'I/O Sync', data: step3Data, borderColor: '#F59E0B', tension: 0.2, borderWidth: 1.5 },
+                                        { label: 'Housekeeping', data: step4Data, borderColor: '#10B981', tension: 0.2, borderWidth: 1.5 }
+                                    ],
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    scales: {
+                                        y: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } },
+                                        x: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } }
+                                    },
+                                    plugins: { legend: { labels: { color: '#E2E8F0' } } }
+                                }
+                            });
+                        }
                     }
                 });
         }
