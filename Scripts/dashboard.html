@@ -57,6 +57,18 @@
         .page-pane { display: none; }
         .page-pane.active-pane { display: block; }
 
+        /* Explorer-specific Inner Tabs Layout System */
+        .explorer-tabs { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 2px solid #222226; padding-bottom: 1px; }
+        .exp-tab { background: #141417; border: 1px solid #27272A; border-bottom: none; color: #A1A1AA; padding: 10px 20px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 0.9em; font-weight: 600; margin-bottom: -2px; transition: all 0.2s; }
+        .exp-tab:hover { background: #1C1C21; color: #FFF; }
+        .exp-tab.tab-active { background: #18181C; border-color: #27272A; color: #00ADB5; border-bottom: 2px solid #00ADB5; padding-bottom: 9px; }
+
+        /* Class rule controllers to hide columns depending on active inner view */
+        .col-audio, .col-release, .col-ident { display: none; }
+        .view-audio .col-audio { display: table-cell; }
+        .view-release .col-release { display: table-cell; }
+        .view-ident .col-ident { display: table-cell; }
+
         .alert-container { margin: -25px -25px 20px -25px; }
         .alert { padding: 18px 24px; border-radius: 0 0 4px 4px; margin-bottom: 4px; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         .alert-danger { background: #4C1D1D; color: #F87171; border: 1px solid #7F1D1D; }
@@ -90,8 +102,8 @@
         .filter-dropdown { cursor: pointer; color: #CBD5E1; }
         
         table { width: 100%; border-collapse: collapse; font-size: 0.9em; text-align: left; }
-        th { background: #222226; color: #A1A1AA; padding: 10px; font-weight: 600; position: sticky; top: 0; z-index: 10; }
-        td { padding: 10px; border-bottom: 1px solid #27272A; }
+        th { background: #222226; color: #A1A1AA; padding: 12px 10px; font-weight: 600; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #27272A; }
+        td { padding: 12px 10px; border-bottom: 1px solid #27272A; font-size: 0.92em; vertical-align: middle; }
         
         /* Visual Charts Layout Framework */
         .charts-matrix { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 20px; margin-bottom: 25px; }
@@ -109,7 +121,6 @@
         .seg-fallback { background: #3F3F46; } /* Flat Gray for single blocks with no step arrays */
         
         .graph-legend { display: flex; gap: 6px; font-size: 0.75em; color: #71717A; font-family: monospace; }
-        .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; }
 
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; display: inline-block; }
         .badge-lrc { background: #1C3D27; color: #4ADE80; }
@@ -142,6 +153,8 @@
             table { font-size: 0.8em; }
             th, td { padding: 8px 6px; }
             .timeline-graph-wrapper { display: none; }
+            .explorer-tabs { flex-wrap: wrap; }
+            .exp-tab { padding: 8px 12px; font-size: 0.8em; flex-grow: 1; text-align: center; }
         }
     </style>
 </head>
@@ -200,7 +213,7 @@
                 <h2>Universal Archive Field Explorer</h2>
                 
                 <div class="filter-row">
-                    <input type="text" class="search-box" id="search-input" placeholder="Search title, artist, album, genre, year, label, bitrate, or metadata tags..." onkeyup="filterDatabase()">
+                    <input type="text" class="search-box" id="search-input" placeholder="Search parameters across any active archive tag block..." onkeyup="filterDatabase()">
                     <select class="filter-dropdown" id="filter-lrc" onchange="filterDatabase()">
                         <option value="ALL">All Lyrics States</option>
                         <option value="LRC">Timed Lyrics Sync Only (LRC)</option>
@@ -208,18 +221,37 @@
                     </select>
                 </div>
 
+                <div class="explorer-tabs">
+                    <div id="tab-audio" class="exp-tab tab-active" onclick="switchExplorerView('view-audio', 'tab-audio')">🔊 Audio Properties</div>
+                    <div id="tab-release" class="exp-tab" onclick="switchExplorerView('view-release', 'tab-release')">📅 Release Metadata</div>
+                    <div id="tab-ident" class="exp-tab" onclick="switchExplorerView('view-ident', 'tab-ident')">🆔 System Archive IDs</div>
+                </div>
+
                 <div class="table-wrapper" style="border: 1px solid #27272A; border-radius: 6px; background: #0B0B0E;">
-                    <table>
+                    <table id="metadata-table" class="view-audio">
                         <thead>
                             <tr>
-                                <th style="padding: 12px 10px;">Track Info & Target Path</th>
-                                <th style="padding: 12px 10px;">Artist Info</th>
-                                <th style="padding: 12px 10px;">Album / Extended Metadata</th>
-                                <th style="padding: 12px 10px; text-align: center;">Status</th>
+                                <th>Track Title</th>
+                                <th>Artist</th>
+                                
+                                <th class="col-audio">Bitrate</th>
+                                <th class="col-audio">Sample Rate</th>
+                                <th class="col-audio">Format</th>
+                                
+                                <th class="col-release">Album</th>
+                                <th class="col-release">Track #</th>
+                                <th class="col-release">Year</th>
+                                <th class="col-release">Genre</th>
+                                
+                                <th class="col-ident">Record Label</th>
+                                <th class="col-ident">Composer</th>
+                                <th class="col-ident">System Hash / Path Code</th>
+
+                                <th style="text-align: center; width: 90px;">Lyrics State</th>
                             </tr>
                         </thead>
                         <tbody id="metadata-rows">
-                            <tr><td colspan="4" style="text-align:center; padding: 20px; color:#71717A;">Initializing directory layout stream...</td></tr>
+                            <tr><td colspan="8" style="text-align:center; padding: 20px; color:#71717A;">Initializing split column layout...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -282,6 +314,16 @@
             }
         }
 
+        // Sub-navigation view toggle logic inside the Metadata Explorer table
+        function switchExplorerView(viewClass, tabId) {
+            const table = document.getElementById('metadata-table');
+            table.className = ''; // Wipe current views
+            table.classList.add(viewClass);
+
+            document.querySelectorAll('.exp-tab').forEach(t => t.classList.remove('tab-active'));
+            document.getElementById(tabId).classList.add('tab-active');
+        }
+
         function loadMetrics() {
             fetch('/metrics').then(res => res.json()).then(data => {
                 document.getElementById('stat-master-count').innerText = `${data.masterCount} files`;
@@ -313,7 +355,6 @@
 
         function parseTimeToSeconds(tStr) {
             if (!tStr) return 0;
-            // Clean up possible whitespace or string noise
             const cleanStr = String(tStr).trim();
             if (!cleanStr || cleanStr === '-' || cleanStr === 'null') return 0;
 
@@ -426,7 +467,6 @@
                     let barHtml = '';
                     let legendHtml = '';
 
-                    // Fallback Render Protection logic
                     if (totalStepsWeight === 0) {
                         barHtml = `<div class="seg seg-fallback" style="width: 100%;" title="Total Duration Block"></div>`;
                         legendHtml = `<span>Total Block Value: ${run.total || '00:00'}</span>`;
@@ -473,22 +513,34 @@
         function buildTable(tracks) {
             const tbody = document.getElementById('metadata-rows');
             if(!tracks || tracks.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px; color:#71717A;">No matching tracks found in archive.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding: 20px; color:#71717A;">No matching tracks found in archive.</td></tr>`;
                 return;
             }
             tbody.innerHTML = tracks.map(t => `
                 <tr style="border-bottom: 1px solid #1F1F23;">
-                    <td style="padding: 10px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        <strong>${t.title || 'Unknown Title'}</strong>
+                    <td style="font-weight: 600; color: #FFF; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${t.title || 'Unknown Title'}
                     </td>
-                    <td style="padding: 10px; color: #CBD5E1;">${t.artist || 'Unknown Artist'}</td>
-                    <td style="padding: 10px; color: #94A3B8; font-size: 0.9em; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        <div>${t.album || 'Single / Unknown'}</div>
-                        <div style="color: #52525B; font-size: 0.85em; margin-top: 2px;">
-                            ${t.year ? t.year : ''} ${t.genre ? '• ' + t.genre : ''} ${t.bitrate ? '• ' + t.bitrate : ''}
-                        </div>
+                    <td style="color: #CBD5E1; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${t.artist || 'Unknown Artist'}
                     </td>
-                    <td style="padding: 10px; text-align: center;">
+                    
+                    <td class="col-audio" style="font-family: monospace; color: #00ADB5;">${t.bitrate || '-'}</td>
+                    <td class="col-audio" style="font-family: monospace; color: #A1A1AA;">${t.samplerate || '-'}</td>
+                    <td class="col-audio"><span style="color: #52525B; font-size: 0.85em; font-weight: bold;">${String(t.path || 'M4A').split('.').pop().toUpperCase()}</span></td>
+                    
+                    <td class="col-release" style="color: #94A3B8; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.album || 'Single'}</td>
+                    <td class="col-release" style="font-family: monospace; text-align: center; color: #71717A;">${t.tracknumber || '-'}</td>
+                    <td class="col-release" style="font-family: monospace; color: #F59E0B;">${t.year || '-'}</td>
+                    <td class="col-release" style="color: #A1A1AA;">${t.genre || '-'}</td>
+                    
+                    <td class="col-ident" style="color: #94A3B8;">${t.label || '-'}</td>
+                    <td class="col-ident" style="color: #CBD5E1;">${t.composer || '-'}</td>
+                    <td class="col-ident" style="font-family: monospace; font-size: 0.8em; color: #52525B; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${t.path || ''}">
+                        ${t.path || '-'}
+                    </td>
+
+                    <td style="text-align: center;">
                         ${t.hasLrc ? '<span class="badge badge-lrc">LRC</span>' : '<span class="badge badge-missing">MISSING</span>'}
                     </td>
                 </tr>
