@@ -68,7 +68,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $PlaylistURL = $_
     if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
     
-    # FIX 2: Pull the parent list copy through a safe local instance block to stop thread collapsing
     $LocalList = $using:GlobalURLsCopy
     $LoopIndex = $LocalList.IndexOf($PlaylistURL) + 1
     
@@ -78,24 +77,22 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue
     }
 
-    # Thread-safe logging function that bypasses console deadlocks
-    $LogMsg = {
-        param([string]$Text)
+    # FIX 2: Converted from a scriptblock to a native local function.
+    # This allows it to inherit $LoopIndex naturally without breaking scope boundaries!
+    function Invoke-LogMsg([string]$Text) {
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
-        # FIX 3: Use the dynamically isolated $LoopIndex inside the scriptblock closure
-        $FormattedLine = "[$Timestamp] [Playlist $using:LoopIndex] $Text"
+        $FormattedLine = "[$Timestamp] [Playlist $LoopIndex] $Text"
         
         Write-Output $FormattedLine
         
         if (Test-Path -LiteralPath $using:GlobalLogFile) {
             try {
-                # FIX 4: Use a safe [System.IO.File] write lock option to prevent overlapping streams from crashing out
                 [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
             } catch {}
         }
     }
 
-    &$LogMsg "Processing Playlist URL: $PlaylistURL"
+    Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
 
     $YTDLArgs = @(
         "--no-buf",                      
@@ -148,10 +145,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
         if ($null -ne $line) {
             $CleanText = $line -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
             if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
-                &$LogMsg $CleanText
+                Invoke-LogMsg $CleanText
                 
                 if ($CleanText -match 'ERROR:|WARNING:') {
-                    # FIX 5: Use safe append mode to prevent multiple playlists from locking each other out of error text records
                     [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
                 }
             }
@@ -161,13 +157,13 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $remaining = $proc.StandardOutput.ReadToEnd()
     if (-not [string]::IsNullOrWhiteSpace($remaining)) {
         $CleanText = $remaining -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-        &$LogMsg $CleanText
+        Invoke-LogMsg $CleanText
     }
 
     if ($proc.ExitCode -eq 0) {
-        &$LogMsg "Sync completed successfully!"
+        Invoke-LogMsg "Sync completed successfully!"
     } else {
-        &$LogMsg "Finished with warnings/errors."
+        Invoke-LogMsg "Finished with warnings/errors."
     }
 } -ThrottleLimit 3
 
