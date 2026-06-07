@@ -118,7 +118,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError  = $false 
+    $psi.RedirectStandardError  = $true
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
     
