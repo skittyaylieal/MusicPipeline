@@ -77,8 +77,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue
     }
 
-    # FIX 2: Converted from a scriptblock to a native local function.
-    # This allows it to inherit $LoopIndex naturally without breaking scope boundaries!
+    # FIX 2: Native local function inherits loop scope context naturally
     function Invoke-LogMsg([string]$Text) {
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         $FormattedLine = "[$Timestamp] [Playlist $LoopIndex] $Text"
@@ -122,14 +121,12 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
     
+    # FIX 3: Direct binary call routing using safe individual string token collections
     if ($IsWindows) {
-        $psi.FileName = "cmd.exe"
-        $EscapedArgs = @()
+        $psi.FileName = $using:LocalYTDLPPath
         foreach ($arg in $YTDLArgs) {
-            if ($arg -match ' ') { $EscapedArgs += """$arg""" } else { $EscapedArgs += $arg }
+            $psi.ArgumentList.Add($arg)
         }
-        $CombinedArgs = $EscapedArgs -join ' '
-        $psi.Arguments = "/c """"$using:LocalYTDLPPath"" $CombinedArgs 2>&1"""
     } else {
         $psi.FileName = "sh"
         $EscapedArgs = @()
@@ -154,6 +151,13 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
     }
     
+    # Catch any absolute system execution runtime failures
+    $RawErrors = $proc.StandardError.ReadToEnd()
+    if (-not [string]::IsNullOrWhiteSpace($RawErrors)) {
+        $CleanErr = $RawErrors -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+        Invoke-LogMsg "SYSTEM EXECUTABLE ERROR: $CleanErr"
+    }
+
     $remaining = $proc.StandardOutput.ReadToEnd()
     if (-not [string]::IsNullOrWhiteSpace($remaining)) {
         $CleanText = $remaining -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
