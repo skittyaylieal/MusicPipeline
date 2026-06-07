@@ -9,7 +9,7 @@ Param (
     [int]$MaxSleepInterval,
     [int]$SleepRequests,
     [switch]$CleanSweep,
-    [int]$Index # Added parameter to allow outer orchestration to match if needed
+    [int]$Index
 )
 
 # Dynamic Architecture Rule for Clean Sweep
@@ -57,7 +57,7 @@ $SanitizedURLs = foreach ($URL in $PlaylistURLs) {
     }
 }
 
-# FIX 1: Strongly cast array directly into a Generic List to prevent thread constructor collapse
+# Strongly cast array directly into a Generic List to prevent thread constructor collapse
 [System.Collections.Generic.List[string]]$GlobalURLsCopy = $SanitizedURLs
 
 # WEB ENGINE WORKAROUND: Define a global log pointer if running inside a web job context
@@ -77,7 +77,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue
     }
 
-    # FIX 2: Native local function inherits loop scope context naturally
+    # Native local function inherits loop scope context naturally
     function Invoke-LogMsg([string]$Text) {
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         $FormattedLine = "[$Timestamp] [Playlist $LoopIndex] $Text"
@@ -121,7 +121,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
     
-    # FIX 3: Direct binary call routing using safe individual string token collections
     if ($IsWindows) {
         $psi.FileName = $using:LocalYTDLPPath
         foreach ($arg in $YTDLArgs) {
@@ -137,10 +136,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $proc = [System.Diagnostics.Process]::Start($psi)
     
-    # FIX: Read the stream blocks using an optimized async buffer reader to prevent thread locks
+    # ASYNC STREAM READER LOOP: Prevents buffer deadlocks by constantly draining data
     $StreamReader = $proc.StandardOutput
     while (-not $proc.HasExited) {
-        # Check if there is text waiting in the stream buffer without blocking the execution thread
         if (-not $StreamReader.EndOfStream) {
             $line = $StreamReader.ReadLine()
             if ($null -ne $line) {
@@ -154,19 +152,18 @@ $SanitizedURLs | ForEach-Object -Parallel {
                 }
             }
         } else {
-            # Take a tiny micro-nap to prevent the CPU thread from spiking while waiting for data
             [System.Threading.Thread]::Sleep(50)
         }
     }
     
-    # Catch any absolute system execution runtime failures
+    # Catch absolute binary runtime failures
     $RawErrors = $proc.StandardError.ReadToEnd()
     if (-not [string]::IsNullOrWhiteSpace($RawErrors)) {
         $CleanErr = $RawErrors -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
         Invoke-LogMsg "SYSTEM EXECUTABLE ERROR: $CleanErr"
     }
 
-    # Flush out any leftover trailing data in the stream pipe
+    # Clear trailing tokens
     $remaining = $StreamReader.ReadToEnd()
     if (-not [string]::IsNullOrWhiteSpace($remaining)) {
         $CleanText = $remaining -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
