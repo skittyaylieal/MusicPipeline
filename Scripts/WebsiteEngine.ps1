@@ -176,6 +176,10 @@ function Invoke-PipelineExecution {
     $MasterPipelineJob = {
         param($EnvMap)
 
+        # SYSTEM LEVEL UNBUFFERED LOCKS (Enforced inside background runspace thread pool)
+        $env:PYTHONUNBUFFERED = "1"
+        $env:YTDLP_UNBUFFERED = "1"
+
         function Log-Progress([string]$Msg) {
             $Timestamp = (Get-Date).ToString("HH:mm:ss")
             # Wrap standard logs in an off-white/gray ANSI code for better terminal layout contrast

@@ -131,6 +131,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "-f", "ba[ext=m4a]/ba",
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
+            "--legacy-server-connect", # UNBUFFERED FIX: Forces immediate line writing over raw sockets
             $PlaylistURL
         )
 
@@ -144,7 +145,10 @@ $SanitizedURLs | ForEach-Object -Parallel {
         
         $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
         $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
+        
+        # Unbuffered variables bound inside ProcessStartInfo configuration space
         $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
+        $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
 
         foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
