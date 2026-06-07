@@ -291,345 +291,205 @@
 
     </div>
 
-    <script>
-        let fullTrackDb = [];
+<script>
         let isPipelineActive = false;
-        
-        // Chart.js Instance Keepers
-        let chartTotalInstance = null;
-        let chartStepsInstance = null;
+        let performanceChart = null;
 
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        // 1. NAVIGATION ROUTING & SIDEBAR SYSTEM
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
 
         function switchPage(paneId, linkId) {
-            document.querySelectorAll('.page-pane').forEach(p => p.classList.remove('active-pane'));
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.page-pane').forEach(pane => pane.classList.remove('active-pane'));
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+
             document.getElementById(paneId).classList.add('active-pane');
             document.getElementById(linkId).classList.add('active');
-            toggleSidebar();
-            
-            if (paneId === 'pane-analytics') {
-                if (chartTotalInstance) chartTotalInstance.resize();
-                if (chartStepsInstance) chartStepsInstance.resize();
-            }
+            document.getElementById('sidebar').classList.remove('open');
         }
 
-        // Sub-navigation view toggle logic inside the Metadata Explorer table
-        function switchExplorerView(viewClass, tabId) {
-            const table = document.getElementById('metadata-table');
-            table.className = ''; // Wipe current views
-            table.classList.add(viewClass);
-
-            document.querySelectorAll('.exp-tab').forEach(t => t.classList.remove('tab-active'));
-            document.getElementById(tabId).classList.add('tab-active');
-        }
-
+        // 2. LIVE METRICS & ALERT ENGINE
         function loadMetrics() {
-            fetch('/metrics').then(res => res.json()).then(data => {
-                document.getElementById('stat-master-count').innerText = `${data.masterCount} files`;
-                document.getElementById('stat-mobile-count').innerText = `${data.mobileCount} compressed`;
-                document.getElementById('stat-lrc-count').innerText = `${data.lrcCount} synced`;
-                document.getElementById('stat-sizes').innerText = `${data.mobileSize} GB / ${data.masterSize} GB`;
-                
-                const indicator = document.getElementById('scan-indicator');
-                if (data.loadingState === "scanning") {
-                    indicator.innerHTML = `(Indexing layout... <div class="spinner"></div>)`;
-                } else {
-                    indicator.innerHTML = `(<span style="color:#4ADE80;">✓ Indexed</span>)`;
-                }
+            fetch('/metrics')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('stat-master-count').innerText = data.masterCount || 0;
+                    document.getElementById('stat-mobile-count').innerText = data.mobileCount || 0;
+                    document.getElementById('stat-lrc-count').innerText = data.lrcCount || 0;
+                    document.getElementById('stat-sizes').innerText = `${data.masterSize || 0} GB / ${data.mobileSize || 0} GB`;
+                    
+                    const indicator = document.getElementById('scan-indicator');
+                    if (data.loadingState === 'scanning') {
+                        indicator.innerHTML = `Scanning Storage <span class="spinner"></span>`;
+                    } else {
+                        indicator.innerText = `● Engine Idle`;
+                    }
 
-                const alertZone = document.getElementById('alerts-zone');
-                if (data.alerts && data.alerts.length > 0) {
-                    alertZone.innerHTML = data.alerts.map(a => {
-                        if (a.fixAction === "gitpull") return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span><button class="btn btn-warn" onclick="triggerPull()">Pull & Hot-Reload Script</button></div>`;
-                        return `<div class="alert alert-${a.type}"><span>⚠️ ${a.message}</span></div>`;
-                    }).join('');
-                } else { alertZone.innerHTML = ''; }
-                
-                if(data.tracks && data.tracks.length > 0 && fullTrackDb.length !== data.tracks.length) {
-                    fullTrackDb = data.tracks;
-                    buildTable(fullTrackDb);
-                }
-            }).catch(() => {});
+                    const alertsZone = document.getElementById('alerts-zone');
+                    alertsZone.innerHTML = '';
+                    if (data.alerts && data.alerts.length > 0) {
+                        data.alerts.forEach(alert => {
+                            const div = document.createElement('div');
+                            div.className = `alert alert-${alert.type}`;
+                            let actionBtn = '';
+                            if (alert.fixAction === 'gitpull') {
+                                actionBtn = `<button class="btn btn-warn" onclick="triggerGitPull()">Pull Updates</button>`;
+                            } else if (alert.fixAction === 'sync') {
+                                actionBtn = `<button class="btn" onclick="triggerPipeline(false)">Sync Missing Tracks</button>`;
+                            }
+                            div.innerHTML = `<span>⚠️ ${alert.message}</span> ${actionBtn}`;
+                            alertsZone.appendChild(div);
+                        });
+                    }
+                }).catch(() => {});
         }
 
-        function parseTimeToSeconds(tStr) {
-            if (!tStr) return 0;
-            const cleanStr = String(tStr).trim();
-            if (!cleanStr || cleanStr === '-' || cleanStr === 'null') return 0;
-
-            const parts = cleanStr.split(':').map(Number);
-            if (parts.some(isNaN)) return 0;
-
-            if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
-            if (parts.length === 2) return (parts[0] * 60) + parts[1];
-            return parseFloat(cleanStr) || 0;
+        // 3. PIPELINE DISPATCH CONTROLS
+        function triggerPipeline(isSweep) {
+            const url = isSweep ? '/run?sweep=true' : '/run';
+            fetch(url, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.status === 'dispatched') {
+                        switchPage('pane-console', 'link-console');
+                    }
+                });
         }
 
-        function buildAnalyticsCharts(runsData) {
-            const historicalOrder = runsData.slice(); 
-            const labels = historicalOrder.map(r => r.timestamp ? r.timestamp.split(' ')[0] : 'Unknown');
-            
-            const totalDurations = historicalOrder.map(r => parseTimeToSeconds(r.total));
-            const s1Durations = historicalOrder.map(r => parseTimeToSeconds(r.step1));
-            const s2Durations = historicalOrder.map(r => parseTimeToSeconds(r.step2));
-            const s3Durations = historicalOrder.map(r => parseTimeToSeconds(r.step3));
-            const s4Durations = historicalOrder.map(r => parseTimeToSeconds(r.step4));
-            const s5Durations = historicalOrder.map(r => parseTimeToSeconds(r.step5));
+        function triggerGitPull() {
+            fetch('/pull', { method: 'POST' }).then(() => {
+                alert("Server structural hot-reload issued.");
+                setTimeout(() => location.reload(), 3000);
+            });
+        }
 
-            const chartConfigOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { grid: { color: '#1F1F23' }, ticks: { color: '#71717A' } },
-                    y: { grid: { color: '#1F1F23' }, ticks: { color: '#71717A' }, title: { display: true, text: 'Seconds', color: '#A1A1AA' } }
-                },
-                plugins: {
-                    legend: { labels: { color: '#E2E8F0', font: { family: 'Segoe UI' } } }
-                }
+        // 4. ANSI ESCAPE TO HTML TRANSLATOR
+        function parseAnsiToHtml(text) {
+            // Escape native raw HTML syntax characters to prevent terminal XSS breaks
+            let clean = text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            // Define map configurations tracking ANSI colors to web hex tokens
+            const ansiMap = {
+                "1;31": "color: #FF5555; font-weight: bold;", // Bold Red (Errors)
+                "1;32": "color: #39FF14; font-weight: bold;", // Neon Green (Success)
+                "1;33": "color: #FFB86C; font-weight: bold;", // Amber Yellow (Steps)
+                "1;35": "color: #BD93F9; font-weight: bold;", // Magenta Pink (Git Hooks)
+                "1;36": "color: #8BE9FD; font-weight: bold;", // Bright Cyan (System initialization)
+                "90":   "color: #6272A4;"                     // Gray comment tokens (Timestamps)
             };
 
-            if (chartTotalInstance) {
-                chartTotalInstance.data.labels = labels;
-                chartTotalInstance.data.datasets[0].data = totalDurations;
-                chartTotalInstance.update();
-            } else {
-                const ctx = document.getElementById('chartTrendTotal').getContext('2d');
-                chartTotalInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Total Sync Time (Seconds)',
-                            data: totalDurations,
-                            borderColor: '#00ADB5',
-                            backgroundColor: 'rgba(0, 173, 181, 0.1)',
-                            fill: true,
-                            tension: 0.25,
-                            borderWidth: 3
-                        }]
-                    },
-                    options: chartConfigOptions
-                });
-            }
-
-            if (chartStepsInstance) {
-                chartStepsInstance.data.labels = labels;
-                chartStepsInstance.data.datasets[0].data = s1Durations;
-                chartStepsInstance.data.datasets[1].data = s2Durations;
-                chartStepsInstance.data.datasets[2].data = s3Durations;
-                chartStepsInstance.data.datasets[3].data = s4Durations;
-                chartStepsInstance.data.datasets[4].data = s5Durations;
-                chartStepsInstance.update();
-            } else {
-                const ctx = document.getElementById('chartTrendSteps').getContext('2d');
-                chartStepsInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            { label: 'S1: Init', data: s1Durations, borderColor: '#3B82F6', tension: 0.2, borderWidth: 2, pointRadius: 2 },
-                            { label: 'S2: Fetch', data: s2Durations, borderColor: '#EF4444', tension: 0.2, borderWidth: 2, pointRadius: 2 },
-                            { label: 'S3: Audit', data: s3Durations, borderColor: '#F59E0B', tension: 0.2, borderWidth: 2, pointRadius: 2 },
-                            { label: 'S4: Encode', data: s4Durations, borderColor: '#10B981', tension: 0.2, borderWidth: 2, pointRadius: 2 },
-                            { label: 'S5: Sync', data: s5Durations, borderColor: '#8B5CF6', tension: 0.2, borderWidth: 2, pointRadius: 2 }
-                        ]
-                    },
-                    options: chartConfigOptions
-                });
-            }
-        }
-
-        function loadAnalytics() {
-            fetch('/analytics').then(res => res.json()).then(data => {
-                const tbody = document.getElementById('timing-history-rows');
-                if (!data || data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#71717A;">No historical metrics found.</td></tr>`;
-                    return;
-                }
-                
-                buildAnalyticsCharts(data);
-
-                tbody.innerHTML = data.slice().reverse().map(run => {
-                    let typeClass = 'badge-manual';
-                    let rowClass = '';
-                    if (run.type === 'Automated') typeClass = 'badge-auto';
-                    if (run.type === 'Clean Sweep') { typeClass = 'badge-sweep'; rowClass = 'row-clean-sweep'; }
-                    if (run.type === 'System Base' || !run.type) typeClass = 'badge-manual';
-
-                    const s1 = parseTimeToSeconds(run.step1);
-                    const s2 = parseTimeToSeconds(run.step2);
-                    const s3 = parseTimeToSeconds(run.step3);
-                    const s4 = parseTimeToSeconds(run.step4);
-                    const s5 = parseTimeToSeconds(run.step5);
-                    const totalStepsWeight = s1 + s2 + s3 + s4 + s5;
-
-                    let barHtml = '';
-                    let legendHtml = '';
-
-                    if (totalStepsWeight === 0) {
-                        barHtml = `<div class="seg seg-fallback" style="width: 100%;" title="Total Duration Block"></div>`;
-                        legendHtml = `<span>Total Block Value: ${run.total || '00:00'}</span>`;
-                    } else {
-                        const p1 = (s1 / totalStepsWeight) * 100;
-                        const p2 = (s2 / totalStepsWeight) * 100;
-                        const p3 = (s3 / totalStepsWeight) * 100;
-                        const p4 = (s4 / totalStepsWeight) * 100;
-                        const p5 = (s5 / totalStepsWeight) * 100;
-
-                        barHtml = `
-                            <div class="seg seg-s1" style="width: ${p1}%;" title="Step 1: ${run.step1 || '0s'}"></div>
-                            <div class="seg seg-s2" style="width: ${p2}%;" title="Step 2: ${run.step2 || '0s'}"></div>
-                            <div class="seg seg-s3" style="width: ${p3}%;" title="Step 3: ${run.step3 || '0s'}"></div>
-                            <div class="seg seg-s4" style="width: ${p4}%;" title="Step 4: ${run.step4 || '0s'}"></div>
-                            <div class="seg seg-s5" style="width: ${p5}%;" title="Step 5: ${run.step5 || '0s'}"></div>
-                        `;
-                        legendHtml = `
-                            <span>S1: ${run.step1 || '0s'}</span> | <span>S2: ${run.step2 || '0s'}</span> | <span>S3: ${run.step3 || '0s'}</span> | <span>S4: ${run.step4 || '0s'}</span> | <span>S5: ${run.step5 || '0s'}</span>
-                        `;
-                    }
-
-                    return `
-                        <tr class="${rowClass}">
-                            <td style="font-size:0.95em; font-family:monospace;">${run.timestamp || 'N/A'}</td>
-                            <td><span class="badge ${typeClass}">${run.type || 'System Base'}</span></td>
-                            <td style="color:#00ADB5; font-weight:bold; font-family:monospace;">${run.total || '00:00'}</td>
-                            <td>
-                                <div class="timeline-graph-wrapper">
-                                    <div class="timeline-bar">
-                                        ${barHtml}
-                                    </div>
-                                    <div class="graph-legend">
-                                        ${legendHtml}
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-            }).catch(() => {});
-        }
-
-        function buildTable(tracks) {
-            const tbody = document.getElementById('metadata-rows');
-            if(!tracks || tracks.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding: 20px; color:#71717A;">No matching tracks found in archive.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = tracks.map(t => `
-                <tr style="border-bottom: 1px solid #1F1F23;">
-                    <td style="font-weight: 600; color: #FFF; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${t.title || 'Unknown Title'}
-                    </td>
-                    <td style="color: #CBD5E1; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${t.artist || 'Unknown Artist'}
-                    </td>
-                    
-                    <td class="col-audio" style="font-family: monospace; color: #00ADB5;">${t.bitrate || '-'}</td>
-                    <td class="col-audio" style="font-family: monospace; color: #A1A1AA;">${t.samplerate || '-'}</td>
-                    <td class="col-audio"><span style="color: #52525B; font-size: 0.85em; font-weight: bold;">${String(t.path || 'M4A').split('.').pop().toUpperCase()}</span></td>
-                    
-                    <td class="col-release" style="color: #94A3B8; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.album || 'Single'}</td>
-                    <td class="col-release" style="font-family: monospace; text-align: center; color: #71717A;">${t.tracknumber || '-'}</td>
-                    <td class="col-release" style="font-family: monospace; color: #F59E0B;">${t.year || '-'}</td>
-                    <td class="col-release" style="color: #A1A1AA;">${t.genre || '-'}</td>
-                    
-                    <td class="col-ident" style="color: #94A3B8;">${t.label || '-'}</td>
-                    <td class="col-ident" style="color: #CBD5E1;">${t.composer || '-'}</td>
-                    <td class="col-ident" style="font-family: monospace; font-size: 0.8em; color: #52525B; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${t.path || ''}">
-                        ${t.path || '-'}
-                    </td>
-
-                    <td style="text-align: center;">
-                        ${t.hasLrc ? '<span class="badge badge-lrc">LRC</span>' : '<span class="badge badge-missing">MISSING</span>'}
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function filterDatabase() {
-            const query = document.getElementById('search-input').value.toLowerCase().trim();
-            const lrcFilter = document.getElementById('filter-lrc').value;
+            // Regex loop replacing matching sequences into CSS elements
+            // Matches variations of \e[, \x1b[, or unparsed character markers
+            const regex = /(?:\x1B|\\e|)\[([0-9;]+)m(.*?)(?=(?:\x1B|\\e|)\[0m|$)/g;
             
-            const filtered = fullTrackDb.filter(t => {
-                const matchFields = [
-                    t.title, t.artist, t.album, t.genre, t.year, 
-                    t.label, t.composer, t.bitrate, t.samplerate, t.tracknumber
-                ].map(f => String(f || '').toLowerCase());
-
-                const matchesText = !query || matchFields.some(f => f.includes(query));
-                
-                let matchesLrc = true;
-                if (lrcFilter === 'LRC') matchesLrc = t.hasLrc === true;
-                if (lrcFilter === 'MISSING') matchesLrc = t.hasLrc === false;
-
-                return matchesText && matchesLrc;
+            let result = clean.replace(regex, (match, code, content) => {
+                if (ansiMap[code]) {
+                    return `<span style="${ansiMap[code]}">${content}</span>`;
+                }
+                return content;
             });
-            
-            buildTable(filtered);
+
+            // Clean up any remaining reset tokens trailing inside the buffer strings
+            return result.replace(/(?:\x1B|\\e|)\[0m/g, "");
         }
 
-        function triggerPipeline(isSweep) { 
-            document.getElementById('run-btn').disabled = true; 
-            document.getElementById('sweep-btn').disabled = true; 
-            isPipelineActive = true;
-            const targetUrl = isSweep ? '/run?sweep=true' : '/run';
-            fetch(targetUrl, { method: 'POST' });
-            switchPage('pane-console', 'link-console');
-        }
-
-        function stopPipeline() {
-            if (!confirm("Forcefully terminate the current download pipeline run?")) return;
-            document.getElementById('stop-btn').disabled = true;
-            fetch('/stop', { method: 'POST' }).catch(() => {});
-        }
-        
-        function triggerPull() { fetch('/pull', { method: 'POST' }); }
-
-        function triggerClearLogs() {
-            const consoleBox = document.getElementById('terminal-feed');
-            fetch('/clear-logs', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => { if (data.status === "cleared") consoleBox.innerText = "[SYSTEM] Logs cleared."; })
-                .catch(() => {});
-        }
-
+        // 5. TERMINAL LOG STREAMER (WITH AUTO-SCROLL MANIPULATION)
         function runLogStreamer() {
-            fetch('/stream').then(res => res.json()).then(data => {
-                isPipelineActive = data.running;
-                document.getElementById('run-btn').disabled = data.running;
-                document.getElementById('sweep-btn').disabled = data.running;
-                               
-                if (data.running) {
-                    document.getElementById('stop-btn').disabled = false;
-                    document.getElementById('stop-btn').innerText = "🛑 Stop Run";
-                } else {
-                    document.getElementById('stop-btn').disabled = true;
-                    document.getElementById('stop-btn').innerText = "🛑 Stop Run";
-                }
-                
-                if(data.logs && data.logs.length > 0) {
-                    const consoleBox = document.getElementById('terminal-feed');
-                    const userSelection = window.getSelection().toString();
+            fetch('/stream')
+                .then(res => res.json())
+                .then(data => {
+                    isPipelineActive = data.running;
                     
-                    if (!userSelection) { 
-                        const cleanLines = data.logs.map(line => {
-                            if (line === null || line === undefined) return '';
-                            if (typeof line === 'object') return line.value || line.message || line.text || JSON.stringify(line);
-                            return String(line);
-                        });
-
-                        const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 50;
-                        consoleBox.innerText = cleanLines.join('\n');
-                        if (isScrolledToBottom) consoleBox.scrollTop = consoleBox.scrollHeight;
+                    if (document.getElementById('run-btn')) {
+                        document.getElementById('run-btn').disabled = isPipelineActive;
+                        document.getElementById('sweep-btn').disabled = isPipelineActive;
                     }
-                }
-                setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000);
-            }).catch(() => { setTimeout(runLogStreamer, 4000); });
+                    
+                    const stopBtn = document.getElementById('stop-btn');
+                    if (stopBtn) {
+                        stopBtn.disabled = !isPipelineActive;
+                        stopBtn.innerText = isPipelineActive ? "🛑 Terminate Pipeline" : "Pipeline Inactive";
+                    }
+                    
+                    if(data.logs && data.logs.length > 0) {
+                        const consoleBox = document.getElementById('terminal-feed');
+                        if (consoleBox) {
+                            const userSelection = window.getSelection().toString();
+                            if (!userSelection) { 
+                                const convertedLines = data.logs.map(line => {
+                                    if (line === null || line === undefined) return '';
+                                    if (typeof line === 'object') return JSON.stringify(line);
+                                    return parseAnsiToHtml(String(line));
+                                });
+
+                                const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 50;
+                                
+                                // Set innerHTML instead of innerText so spans render visual colors
+                                consoleBox.innerHTML = convertedLines.join('\n');
+                                if (isScrolledToBottom) consoleBox.scrollTop = consoleBox.scrollHeight;
+                            }
+                        }
+                    }
+                    setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000);
+                }).catch(() => { setTimeout(runLogStreamer, 4000); });
         }
-        
+
+        // 6. PERFORMANCE ANALYTICS CHARTING
+        function loadAnalytics() {
+            fetch('/analytics')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data || data.length === 0) return;
+                    
+                    const labels = data.map(r => r.timestamp.split(' ')[1] || r.timestamp);
+                    const totals = data.map(r => {
+                        const parts = r.total.split(':');
+                        return (parseInt(parts[0]) * 60) + parseInt(parts[1]) + (parts[2] / 60);
+                    });
+
+                    const ctx = document.getElementById('perf-chart');
+                    if (!ctx) return;
+
+                    if (performanceChart) {
+                        performanceChart.data.labels = labels;
+                        performanceChart.data.datasets[0].data = totals;
+                        performanceChart.update();
+                    } else {
+                        performanceChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Execution Duration (Minutes)',
+                                    data: totals,
+                                    borderColor: '#00ADB5',
+                                    backgroundColor: 'rgba(0, 173, 181, 0.1)',
+                                    borderWidth: 2,
+                                    tension: 0.3
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } },
+                                    x: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } }
+                                },
+                                plugins: { legend: { labels: { color: '#E2E8F0' } } }
+                            }
+                        });
+                    }
+                });
+        }
+
+        // Core Loops & Initialization
         setInterval(loadMetrics, 3000); 
-        setInterval(loadAnalytics, 5000);
+        setInterval(loadAnalytics, 10000);
         setTimeout(runLogStreamer, 1000);
         
         loadMetrics();

@@ -64,10 +64,28 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $ErrorLogPath = Join-Path $env:TEMP "playlist${LoopIndex}_run_errors.txt"
     if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
-    # FIX: Thread-Safe Real-Time Logger with Dynamic Retry Back-off
+    # Thread-Safe Real-Time Logger with Dynamic Retry Back-off and ANSI Color Matrix
     function Invoke-LogMsg([string]$Text) {
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
-        $FormattedLine = "[$Timestamp] [Playlist $LoopIndex] $Text"
+        
+        $ESC = [char]27
+        $Reset = "$ESC[0m"
+        
+        # Color profile routing by playlist slot index
+        $ColorCode = switch ($LoopIndex) {
+            1 { "36" }  # Cyan
+            2 { "35" }  # Magenta
+            3 { "33" }  # Yellow
+            default { "32" } # Green fallback
+        }
+        
+        # Override styling to bold red if an engine failure or thread panic is hit
+        if ($Text -match '🛑|THREAD DEBUG ALERT|error:|ERROR:|Usage:') {
+            $ColorCode = "1;31"
+        }
+
+        $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Playlist $LoopIndex]$Reset"
+        $FormattedLine = "$ColorPrefix $Text"
         
         Write-Output $FormattedLine
         
@@ -81,11 +99,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
                     [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
                     $Success = $true
                 } catch [System.IO.IOException] {
-                    # File locked by a sibling thread; back off momentarily (50ms)
                     $RetryCount++
                     [System.Threading.Thread]::Sleep(50)
                 } catch {
-                    # Fail gracefully on unrecoverable physical disk or structural access path errors
                     break
                 }
             }
@@ -97,7 +113,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
 
-        # FIX: Removed "--no-buf" to fix execution crash. PYTHONUNBUFFERED handles this at the system layer.
         $YTDLArgs = @(
             "--no-colors",
             "--verbose",
@@ -135,37 +150,34 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         $proc = [System.Diagnostics.Process]::Start($psi)
         
-        # Close standard input to signal an absolute headless execution state
         $proc.StandardInput.Close()
 
-        # NATIVE REAL-TIME LINE READER
+        # NATIVE REAL-TIME LINE READER (Natively preservation tracking)
         while (-not $proc.HasExited) {
             if ($proc.StandardOutput.Peek() -ge 0) {
                 $Line = $proc.StandardOutput.ReadLine()
                 if ($Line) {
-                    $CleanLine = $Line -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-                    Invoke-LogMsg $CleanLine
+                    Invoke-LogMsg $Line
                 }
             }
             if ($proc.StandardError.Peek() -ge 0) {
                 $ErrLine = $proc.StandardError.ReadLine()
                 if ($ErrLine) {
-                    $CleanErr = $ErrLine -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-                    Invoke-LogMsg $CleanErr
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanErr + [System.Environment]::NewLine))
+                    Invoke-LogMsg $ErrLine
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
                 }
             }
             [System.Threading.Thread]::Sleep(30)
         }
 
-        # Flush trailing data blocks
+        # Final queue purge block post-execution exit
         while ($proc.StandardOutput.Peek() -ge 0) {
             $Line = $proc.StandardOutput.ReadLine()
-            if ($Line) { Invoke-LogMsg ($Line -replace '\x1b\[[0-9;]*[a-zA-Z]', '') }
+            if ($Line) { Invoke-LogMsg $Line }
         }
         while ($proc.StandardError.Peek() -ge 0) {
             $ErrLine = $proc.StandardError.ReadLine()
-            if ($ErrLine) { Invoke-LogMsg ($ErrLine -replace '\x1b\[[0-9;]*[a-zA-Z]', '') }
+            if ($ErrLine) { Invoke-LogMsg $ErrLine }
         }
 
         if ($proc.ExitCode -eq 0) {
