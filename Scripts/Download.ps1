@@ -64,7 +64,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $ErrorLogPath = Join-Path $env:TEMP "playlist${LoopIndex}_run_errors.txt"
     if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
-    # Thread-Safe Real-Time Logger
+    # FIX: Thread-Safe Real-Time Logger with Dynamic Retry Back-off
     function Invoke-LogMsg([string]$Text) {
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         $FormattedLine = "[$Timestamp] [Playlist $LoopIndex] $Text"
@@ -72,8 +72,23 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Write-Output $FormattedLine
         
         if (Test-Path -LiteralPath $using:GlobalLogFile) {
-            # Use Out-File with safe sharing policies to prevent multi-thread cross-locking deadlocks
-            $FormattedLine | Out-File -FilePath $using:GlobalLogFile -Append -Encoding utf8 -ErrorAction SilentlyContinue
+            $RetryCount = 0
+            $MaxRetries = 15
+            $Success    = $false
+            
+            while (-not $Success -and $RetryCount -lt $MaxRetries) {
+                try {
+                    [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
+                    $Success = $true
+                } catch [System.IO.IOException] {
+                    # File locked by a sibling thread; back off momentarily (50ms)
+                    $RetryCount++
+                    [System.Threading.Thread]::Sleep(50)
+                } catch {
+                    # Fail gracefully on unrecoverable physical disk or structural access path errors
+                    break
+                }
+            }
         }
     }
 
@@ -82,9 +97,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
 
-        # Explicitly added --no-interactive to force immediate failures on headless blocks
+        # FIX: Removed "--no-buf" to fix execution crash. PYTHONUNBUFFERED handles this at the system layer.
         $YTDLArgs = @(
-            "--no-buf",                      
             "--no-colors",
             "--no-progress",
             "--no-interactive",
@@ -110,7 +124,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $psi.FileName               = $using:LocalYTDLPPath
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError  = $true 
-        $psi.RedirectStandardInput  = $true # Force input redirection to prevent headless freezing
+        $psi.RedirectStandardInput  = $true 
         $psi.UseShellExecute        = $false
         $psi.CreateNoWindow         = $true
         
@@ -122,10 +136,10 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         $proc = [System.Diagnostics.Process]::Start($psi)
         
-        # Kill standard input instantly so the process knows no human is typing responses
+        # Close standard input to signal an absolute headless execution state
         $proc.StandardInput.Close()
 
-        # NATIVE REAL-TIME LINE READER: Pushes to the log file the exact millisecond a line forms
+        # NATIVE REAL-TIME LINE READER
         while (-not $proc.HasExited) {
             if ($proc.StandardOutput.Peek() -ge 0) {
                 $Line = $proc.StandardOutput.ReadLine()
@@ -145,7 +159,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             [System.Threading.Thread]::Sleep(30)
         }
 
-        # Flush any trailing lines remaining post-execution
+        # Flush trailing data blocks
         while ($proc.StandardOutput.Peek() -ge 0) {
             $Line = $proc.StandardOutput.ReadLine()
             if ($Line) { Invoke-LogMsg ($Line -replace '\x1b\[[0-9;]*[a-zA-Z]', '') }
