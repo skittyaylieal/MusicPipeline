@@ -137,17 +137,25 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $proc = [System.Diagnostics.Process]::Start($psi)
     
+    # FIX: Read the stream blocks using an optimized async buffer reader to prevent thread locks
+    $StreamReader = $proc.StandardOutput
     while (-not $proc.HasExited) {
-        $line = $proc.StandardOutput.ReadLine()
-        if ($null -ne $line) {
-            $CleanText = $line -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-            if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
-                Invoke-LogMsg $CleanText
-                
-                if ($CleanText -match 'ERROR:|WARNING:') {
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+        # Check if there is text waiting in the stream buffer without blocking the execution thread
+        if (-not $StreamReader.EndOfStream) {
+            $line = $StreamReader.ReadLine()
+            if ($null -ne $line) {
+                $CleanText = $line -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+                if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
+                    Invoke-LogMsg $CleanText
+                    
+                    if ($CleanText -match 'ERROR:|WARNING:') {
+                        [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+                    }
                 }
             }
+        } else {
+            # Take a tiny micro-nap to prevent the CPU thread from spiking while waiting for data
+            [System.Threading.Thread]::Sleep(50)
         }
     }
     
@@ -158,7 +166,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Invoke-LogMsg "SYSTEM EXECUTABLE ERROR: $CleanErr"
     }
 
-    $remaining = $proc.StandardOutput.ReadToEnd()
+    # Flush out any leftover trailing data in the stream pipe
+    $remaining = $StreamReader.ReadToEnd()
     if (-not [string]::IsNullOrWhiteSpace($remaining)) {
         $CleanText = $remaining -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
         Invoke-LogMsg $CleanText
