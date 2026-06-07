@@ -123,22 +123,25 @@ function Start-AsyncLibraryScanner {
         }
     }
 
-    Start-Job -Name "MusicFolderScanner" -ScriptBlock $JobScript -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir, $Global:CacheFile
+    $Job = Start-Job -Name "MusicFolderScanner" -ScriptBlock $JobScript -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir, $Global:CacheFile
 }
 
-# Automated Chron Trigger (Runs every 30 minutes natively)
+# Automated Chron Trigger (Dynamically tracks the assigned internal proxy port)
 function Start-AutomatedChronDaemon {
+    param($RuntimePort)
+
     Get-Job -Name "ChronDaemon" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
     
     $ChronScript = {
+        param($TargetPort)
         while ($true) {
             Start-Sleep -Seconds 1800
             try {
-                Invoke-RestMethod -Uri "http://localhost:49152/run?type=Automated" -Method Post
+                Invoke-RestMethod -Uri "http://127.0.0.1:$TargetPort/run?type=Automated" -Method Post
             } catch {}
         }
     }
-    Start-Job -Name "ChronDaemon" -ScriptBlock $ChronScript
+    $Job = Start-Job -Name "ChronDaemon" -ScriptBlock $ChronScript -ArgumentList $RuntimePort
 }
 
 # -----------------------------------------------------------------
@@ -318,7 +321,7 @@ function Invoke-HotReload {
 
         # 5. Conditional Process Respawn
         if ($EngineChanged) {
-            "   ↳ WebsiteEngine.ps1 modification detected. Respawning core process..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+            "    ↳ WebsiteEngine.ps1 modification detected. Respawning core process..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
             
             $ArgsList = @(
                 "-NoProfile",
@@ -330,47 +333,54 @@ function Invoke-HotReload {
             Pop-Location
             Stop-Process -Id $PID -Force
         } else {
-            "   ↳ Asset update only (HTML/CSS). Engine restart skipped. Core server remains live." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+            "    ↳ Asset update only (HTML/CSS). Engine restart skipped. Core server remains live." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
         }
 
     } catch {
-        "   ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+        "    ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
     }
     Pop-Location
 }
 
 # -----------------------------------------------------------------
-# 3. NETWORK ENGINE ROUTER ROUTINE
+# 3. ADAPTIVE NETWORK ENGINE ROUTER ROUTINE
 # -----------------------------------------------------------------
-$Port = 49152
-$Listener = New-Object System.Net.HttpListener
+# Find an open port dynamically starting from 49152 to host the script safely behind the scenes
+$TargetPort = 49152
+while ($true) {
+    $Conflict = Get-NetTCPConnection -LocalPort $TargetPort -ErrorAction SilentlyContinue
+    if (-not $Conflict) { break }
+    $TargetPort++
+}
 
-# FIX 1: Bind explicitly to localhost to allow non-admin terminal execution
-$Listener.Prefixes.Add("http://localhost:$Port/")
+# Reset and align the native Windows Port Forwarder mapping: Port 80 -> Free High Port
+# Note: You must launch your terminal window as Administrator for this manipulation to apply!
+Write-Host "🔗 Aligning Windows port proxy map: 80 ---> $TargetPort" -ForegroundColor Cyan
+netsh interface portproxy reset | Out-Null
+netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1
+
+$Listener = New-Object System.Net.HttpListener
+# Bind explicitly to loopback on the validated safe target port
+$Listener.Prefixes.Add("http://127.0.0.1:$TargetPort/")
 
 try {
-    # FIX 2: Check for a conflict on Port 49152 before starting to prevent silent engine crashes
-    $PortConflict = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
-    if ($PortConflict) {
-        $ExistingPID = $PortConflict.OwningProcess
-        Write-Warning "=========================================================="
-        Write-Warning " ENGINE CONFLICT: The pipeline server is already running!"
-        Write-Warning " Active Process ID: $ExistingPID"
-        Write-Warning " Access the UI at: http://localhost:$Port/"
-        Write-Warning "=========================================================="
-        return
-    }
-
     # Clean up old dead handle states from previous normal sessions safely
     Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
 
     $Listener.Start()
+    
+    # Grab local IPv4 addresses to present access links directly in the console output
+    $LocalIPs = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Wi-Fi','Ethernet' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPAddress
+    $PrimaryIP = if ($LocalIPs) { $LocalIPs[0] } else { "127.0.0.1" }
+
     Write-Output "--------------------------------------------------"
-    Write-Output " SERVER LIVE: http://localhost:$Port/"
+    Write-Output " SERVER LIVE AND ADAPTIVELY MAPPED!"
+    Write-Output " Internal Endpoint : http://127.0.0.1:$TargetPort/"
+    Write-Output " Clean Browser URL : http://$PrimaryIP/"
     Write-Output "--------------------------------------------------"
     
     Start-AsyncLibraryScanner
-    Start-AutomatedChronDaemon
+    Start-AutomatedChronDaemon -RuntimePort $TargetPort
     
     trap {
         if ($null -ne $Listener -and $Listener.IsListening) { $Listener.Stop() }
@@ -491,7 +501,6 @@ try {
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
-        # ... your existing endpoint if/elseif blocks ...
         elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") {
             Invoke-HotReload
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}')
@@ -502,7 +511,6 @@ try {
             
             Stop-Process -Id $PID -Force
         }
-        # FIX: Catch background browser requests (like icons) so they don't break the listener stream
         elseif ($UrlPath -eq "/favicon.ico") {
             $Response.StatusCode = 404
         }
@@ -510,14 +518,12 @@ try {
             $Response.StatusCode = 404 
         }
         
-        # SAFETY FLUSH: Ensure the stream closes cleanly no matter what
         try {
             $Response.OutputStream.Close()
         } catch {}
     }
 }  
 catch { 
-    # Log the exact error to the terminal window instead of hiding it!
     Write-Host "⚠️ Router Stream Exception: $_" -ForegroundColor Yellow
 }
 finally {
