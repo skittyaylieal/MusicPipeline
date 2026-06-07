@@ -106,6 +106,8 @@
         .seg-s3 { background: #F59E0B; } /* Amber */
         .seg-s4 { background: #10B981; } /* Emerald */
         .seg-s5 { background: #8B5CF6; } /* Purple */
+        .seg-fallback { background: #3F3F46; } /* Flat Gray for single blocks with no step arrays */
+        
         .graph-legend { display: flex; gap: 6px; font-size: 0.75em; color: #71717A; font-family: monospace; }
         .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; }
 
@@ -274,7 +276,6 @@
             document.getElementById(linkId).classList.add('active');
             toggleSidebar();
             
-            // Force Redraw of chart engine canvas on tab focus changes to prevent positioning locks
             if (paneId === 'pane-analytics') {
                 if (chartTotalInstance) chartTotalInstance.resize();
                 if (chartStepsInstance) chartStepsInstance.resize();
@@ -311,17 +312,22 @@
         }
 
         function parseTimeToSeconds(tStr) {
-            if (!tStr || typeof tStr !== 'string') return 0;
-            const parts = tStr.split(':').map(Number);
+            if (!tStr) return 0;
+            // Clean up possible whitespace or string noise
+            const cleanStr = String(tStr).trim();
+            if (!cleanStr || cleanStr === '-' || cleanStr === 'null') return 0;
+
+            const parts = cleanStr.split(':').map(Number);
+            if (parts.some(isNaN)) return 0;
+
             if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
             if (parts.length === 2) return (parts[0] * 60) + parts[1];
-            return parseFloat(tStr) || 0;
+            return parseFloat(cleanStr) || 0;
         }
 
         function buildAnalyticsCharts(runsData) {
-            // "I want alllll the data" -> process chronological historical order (left-to-right)
             const historicalOrder = runsData.slice(); 
-            const labels = historicalOrder.map(r => r.timestamp.split(' ')[0]); // Pull date fragment safely
+            const labels = historicalOrder.map(r => r.timestamp ? r.timestamp.split(' ')[0] : 'Unknown');
             
             const totalDurations = historicalOrder.map(r => parseTimeToSeconds(r.total));
             const s1Durations = historicalOrder.map(r => parseTimeToSeconds(r.step1));
@@ -342,7 +348,6 @@
                 }
             };
 
-            // Chart 1: Master Total Latency Line Trend
             if (chartTotalInstance) {
                 chartTotalInstance.data.labels = labels;
                 chartTotalInstance.data.datasets[0].data = totalDurations;
@@ -367,7 +372,6 @@
                 });
             }
 
-            // Chart 2: Structural Pipeline Multi-Series Step Breakdown Lines
             if (chartStepsInstance) {
                 chartStepsInstance.data.labels = labels;
                 chartStepsInstance.data.datasets[0].data = s1Durations;
@@ -403,7 +407,6 @@
                     return;
                 }
                 
-                // Inject full dataset into graphing framework arrays
                 buildAnalyticsCharts(data);
 
                 tbody.innerHTML = data.slice().reverse().map(run => {
@@ -411,36 +414,53 @@
                     let rowClass = '';
                     if (run.type === 'Automated') typeClass = 'badge-auto';
                     if (run.type === 'Clean Sweep') { typeClass = 'badge-sweep'; rowClass = 'row-clean-sweep'; }
+                    if (run.type === 'System Base' || !run.type) typeClass = 'badge-manual';
 
                     const s1 = parseTimeToSeconds(run.step1);
                     const s2 = parseTimeToSeconds(run.step2);
                     const s3 = parseTimeToSeconds(run.step3);
                     const s4 = parseTimeToSeconds(run.step4);
                     const s5 = parseTimeToSeconds(run.step5);
-                    const total = s1 + s2 + s3 + s4 + s5 || 1;
+                    const totalStepsWeight = s1 + s2 + s3 + s4 + s5;
 
-                    const p1 = (s1 / total) * 100;
-                    const p2 = (s2 / total) * 100;
-                    const p3 = (s3 / total) * 100;
-                    const p4 = (s4 / total) * 100;
-                    const p5 = (s5 / total) * 100;
+                    let barHtml = '';
+                    let legendHtml = '';
+
+                    // Fallback Render Protection logic
+                    if (totalStepsWeight === 0) {
+                        barHtml = `<div class="seg seg-fallback" style="width: 100%;" title="Total Duration Block"></div>`;
+                        legendHtml = `<span>Total Block Value: ${run.total || '00:00'}</span>`;
+                    } else {
+                        const p1 = (s1 / totalStepsWeight) * 100;
+                        const p2 = (s2 / totalStepsWeight) * 100;
+                        const p3 = (s3 / totalStepsWeight) * 100;
+                        const p4 = (s4 / totalStepsWeight) * 100;
+                        const p5 = (s5 / totalStepsWeight) * 100;
+
+                        barHtml = `
+                            <div class="seg seg-s1" style="width: ${p1}%;" title="Step 1: ${run.step1 || '0s'}"></div>
+                            <div class="seg seg-s2" style="width: ${p2}%;" title="Step 2: ${run.step2 || '0s'}"></div>
+                            <div class="seg seg-s3" style="width: ${p3}%;" title="Step 3: ${run.step3 || '0s'}"></div>
+                            <div class="seg seg-s4" style="width: ${p4}%;" title="Step 4: ${run.step4 || '0s'}"></div>
+                            <div class="seg seg-s5" style="width: ${p5}%;" title="Step 5: ${run.step5 || '0s'}"></div>
+                        `;
+                        legendHtml = `
+                            <span>S1: ${run.step1 || '0s'}</span> | <span>S2: ${run.step2 || '0s'}</span> | <span>S3: ${run.step3 || '0s'}</span> | <span>S4: ${run.step4 || '0s'}</span> | <span>S5: ${run.step5 || '0s'}</span>
+                        `;
+                    }
 
                     return `
                         <tr class="${rowClass}">
-                            <td style="font-size:0.95em; font-family:monospace;">${run.timestamp}</td>
-                            <td><span class="badge ${typeClass}">${run.type}</span></td>
-                            <td style="color:#00ADB5; font-weight:bold; font-family:monospace;">${run.total}</td>
+                            <td style="font-size:0.95em; font-family:monospace;">${run.timestamp || 'N/A'}</td>
+                            <td><span class="badge ${typeClass}">${run.type || 'System Base'}</span></td>
+                            <td style="color:#00ADB5; font-weight:bold; font-family:monospace;">${run.total || '00:00'}</td>
                             <td>
                                 <div class="timeline-graph-wrapper">
                                     <div class="timeline-bar">
-                                        <div class="seg seg-s1" style="width: ${p1}%;" title="Step 1: ${run.step1}"></div>
-                                        <div class="seg seg-s2" style="width: ${p2}%;" title="Step 2: ${run.step2}"></div>
-                                        <div class="seg seg-s3" style="width: ${p3}%;" title="Step 3: ${run.step3}"></div>
-                                        <div class="seg seg-s4" style="width: ${p4}%;" title="Step 4: ${run.step4}"></div>
-                                        <div class="seg seg-s5" style="width: ${p5}%;" title="Step 5: ${run.step5}"></div>
+                                        ${barHtml}
                                     </div>
                                     <div class="graph-legend">
-                                        <span>S1: ${run.step1}</span> | <span>S2: ${run.step2}</span> | <span>S3: ${run.step3}</span> | <span>S4: ${run.step4}</span> | <span>S5: ${run.step5}</span>
+                                        ${legendHtml}
                                     </div>
                                 </div>
                             </td>
