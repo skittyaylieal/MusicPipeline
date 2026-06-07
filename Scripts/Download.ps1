@@ -11,16 +11,14 @@ Param (
     [switch]$CleanSweep
 )
 
-# Dynamic Architecture Rule for Clean Sweep (Defined early for script scope safety)
+# Dynamic Architecture Rule for Clean Sweep
 $ActiveHistoryLog = if ($CleanSweep) {
-    # Generate a temporary, isolated text file path in the system TEMP directory
     Join-Path $env:TEMP "pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
 } else {
     $HistoryPath
 }
 
-# THREADING SAFETIES: Copy everything to explicit script-scope variables 
-# so the ForEach-Object -Parallel threads can grab them reliably
+# THREADING SAFETIES: Local copies for thread extraction
 $LocalYTDLPPath        = $YTDLPPath
 $LocalBackupDir        = $BackupDir
 $LocalCookiePath       = $CookiePath
@@ -28,7 +26,7 @@ $LocalConfigDir        = $ConfigDir
 $LocalSleepInterval    = $SleepInterval
 $LocalMaxSleepInterval = $MaxSleepInterval
 $LocalSleepRequests    = $SleepRequests
-$LocalActiveHistoryLog = $ActiveHistoryLog # Safe thread assignment
+$LocalActiveHistoryLog = $ActiveHistoryLog
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
@@ -50,7 +48,6 @@ Write-Output "[*] Updating yt-dlp to nightly"
 
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
 
-# Always sanitize quotes out of all incoming URLs regardless of array size
 $SanitizedURLs = foreach ($URL in $PlaylistURLs) {
     if ($URL -match ',') {
         $URL -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
@@ -59,29 +56,44 @@ $SanitizedURLs = foreach ($URL in $PlaylistURLs) {
     }
 }
 
-# Store a strict array copy for tracking the loop positions inside threads
 $GlobalURLsCopy = $SanitizedURLs
 
-# Optimization: Parallel Playlist Auditing Capability via PS7 thread pooling
+# WEB ENGINE WORKAROUND: Define a global log pointer if running inside a web job context
+$GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
+
+# Optimization: Parallel Playlist Auditing
 $SanitizedURLs | ForEach-Object -Parallel {
     $PlaylistURL = $_
     if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
     
-    # Calculate index safely by referencing our clean array copy
     $Index = [array]::IndexOf($using:GlobalURLsCopy, $PlaylistURL) + 1
-    $ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${Index}_errors.txt"
+    $ErrorLogPath = Join-Path $env:TEMP "playlist${Index}_run_errors.txt"
 
     if (Test-Path -LiteralPath $ErrorLogPath) {
-        Remove-Item -LiteralPath $ErrorLogPath -Force
+        Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue
     }
 
-    # Inter-thread safe terminal string injection
-    [Console]::WriteLine("[*] Processing Playlist $Index...")
-    [Console]::WriteLine("URL: $PlaylistURL")
+    # Thread-safe logging function that bypasses console deadlocks
+    $LogMsg = {
+        param([string]$Text)
+        $Timestamp = (Get-Date).ToString("HH:mm:ss")
+        $FormattedLine = "[$Timestamp] [Playlist $using:Index] $Text"
+        
+        # Write to standard output for local terminal testing
+        Write-Output $FormattedLine
+        
+        # If running inside the web pipeline, write directly to the stream log instantly
+        if (Test-Path -LiteralPath $using:GlobalLogFile) {
+            try {
+                [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
+            } catch {}
+        }
+    }
 
-    # Arguments array tailored for real-time unbuffered stream printing
+    &$LogMsg "Processing Playlist URL: $PlaylistURL"
+
     $YTDLArgs = @(
-        "--no-buf",                     # Force unbuffered stdout/stderr delivery across streams
+        "--no-buf",                     
         "--no-colors",
         "--no-progress",
         "--sleep-interval", $using:LocalSleepInterval,
@@ -102,19 +114,14 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $PlaylistURL
     )
 
-    # Process start architecture to force thread-independent line capturing
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName               = $using:LocalYTDLPPath
     $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError  = $false # Set to false to allow stream merging or clean console tracking
+    $psi.RedirectStandardError  = $false 
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
     
-    # CRITICAL DEADLOCK FIX: Combine stderr into stdout at the engine level
-    # This prevents the process from freezing when error logs write out warnings.
     if ($IsWindows) {
         $psi.FileName = "cmd.exe"
-        # Escaping arguments strings safely for cmd execution boundary
         $EscapedArgs = @()
         foreach ($arg in $YTDLArgs) {
             if ($arg -match ' ') { $EscapedArgs += """$arg""" } else { $EscapedArgs += $arg }
@@ -131,38 +138,33 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $proc = [System.Diagnostics.Process]::Start($psi)
     
-    # Stream-reader loop: Catches live fragments instantly without lockups
     while (-not $proc.HasExited) {
         $line = $proc.StandardOutput.ReadLine()
         if ($null -ne $line) {
             $CleanText = $line -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
             if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
-                # Writes directly to the underlying host process tracking your console monitor
-                [Console]::WriteLine("[Playlist $Index] $CleanText")
+                &$LogMsg $CleanText
                 
-                # Check if this combined line was an error line to mirror to disk archive
                 if ($CleanText -match 'ERROR:|WARNING:') {
-                    Add-Content -LiteralPath $ErrorLogPath -Value $CleanText -Force
+                    Add-Content -LiteralPath $ErrorLogPath -Value $CleanText -Force -ErrorAction SilentlyContinue
                 }
             }
         }
     }
     
-    # Empty trailing lines out of buffer cache post-completion
     $remaining = $proc.StandardOutput.ReadToEnd()
     if (-not [string]::IsNullOrWhiteSpace($remaining)) {
         $CleanText = $remaining -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-        [Console]::WriteLine("[Playlist $Index] $CleanText")
+        &$LogMsg $CleanText
     }
 
     if ($proc.ExitCode -eq 0) {
-        [Console]::WriteLine("[+] Playlist Music $Index sync completed successfully!")
+        &$LogMsg "Sync completed successfully!"
     } else {
-        [Console]::WriteLine("[!] Playlist Music $Index finished with warnings/errors.")
+        &$LogMsg "Finished with warnings/errors."
     }
 } -ThrottleLimit 3
 
-# Post-run cleanup: Clear out temporary history file if a Clean Sweep was active
 if ($CleanSweep -and (Test-Path -LiteralPath $ActiveHistoryLog)) {
     Remove-Item -LiteralPath $ActiveHistoryLog -Force -ErrorAction SilentlyContinue
 }
