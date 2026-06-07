@@ -132,10 +132,7 @@ function Start-AutomatedChronDaemon {
     
     $ChronScript = {
         while ($true) {
-            # 1800 seconds = 30 minutes
             Start-Sleep -Seconds 1800
-            
-            # Hit our own native local endpoint wrapper to dispatch an automated cycle securely
             try {
                 Invoke-RestMethod -Uri "http://localhost:49152/run?type=Automated" -Method Post
             } catch {}
@@ -297,27 +294,29 @@ function Invoke-HotReload {
         $Env:GIT_TERMINAL_PROMPT = "0"
         $Env:GIT_SSH_COMMAND = ""
         
-        # 1. Grab the current commit hash BEFORE pulling changes
+        # 1. Grab current commit hash
         $BeforeHash = (& "git" rev-parse HEAD).Trim()
 
-        # 2. Pull the incoming changes down from GitHub
+        # 2. Pull down updates
         $PullOutput = & "git" pull origin main 2>&1 | Out-String
         $PullOutput | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
         
-        # 3. Grab the new commit hash AFTER pulling
+        # 3. Grab hash post-pull
         $AfterHash = (& "git" rev-parse HEAD).Trim()
 
-        # 4. Check if WebsiteEngine.ps1 actually changed between these two commits
+        # 4. FIXED SANITY CHECK: Explicitly parse file ends to stop false positives
         $EngineChanged = $false
         if ($BeforeHash -ne $AfterHash) {
-            # Inspect the file names modified in this commit window
             $ChangedFiles = & "git" diff --name-only $BeforeHash $AfterHash
-            if ($ChangedFiles -contains "Scripts/WebsiteEngine.ps1" -or $ChangedFiles -contains "WebsiteEngine.ps1") {
-                $EngineChanged = $true
+            foreach ($File in $ChangedFiles) {
+                if ($File -replace '\\','/' -match "scripts/websiteengine.ps1$|^websiteengine.ps1$") {
+                    $EngineChanged = $true
+                    break
+                }
             }
         }
 
-        # 5. Conditional Restart Logic
+        # 5. Conditional Process Respawn
         if ($EngineChanged) {
             "  ↳ WebsiteEngine.ps1 modification detected. Respawning core process..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
             
@@ -371,7 +370,6 @@ try {
 
         $Response.KeepAlive = $false
         
-        # Anti-Caching Headers safely applied on every network lifecycle request loop
         $Response.Headers.Add("Connection", "close")
         $Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate")
         $Response.Headers.Add("Pragma", "no-cache")
