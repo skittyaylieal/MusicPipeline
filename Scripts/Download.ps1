@@ -49,13 +49,14 @@ Write-Output "[*] Updating yt-dlp to nightly"
 
 $OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
 
+# FIX: Scrub the input collection of empty strings or trailing comma gaps
 $SanitizedURLs = foreach ($URL in $PlaylistURLs) {
     if ($URL -match ',') {
         $URL -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
     } else {
         $URL.Trim().Trim('"').Trim("'")
     }
-}
+} | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
 # Strongly cast array directly into a Generic List to prevent thread constructor collapse
 [System.Collections.Generic.List[string]]$GlobalURLsCopy = $SanitizedURLs
@@ -118,22 +119,16 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.RedirectStandardOutput = $true
     
-    # FIX: Crucial change. We merge Standard Error directly into Standard Output 
-    # at the OS layer so our stream reader captures warnings instantly.
-    $psi.RedirectStandardError  = $false 
-    
+    # FIX: Native binary hook. Intercept both stdout and stderr independently at the process layer
+    $psi.RedirectStandardError  = $true 
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
     
     if ($IsWindows) {
-        # On Windows, we use cmd.exe to launch the executable to allow the 2>&1 stream merge operator
-        $psi.FileName = "cmd.exe"
-        $EscapedArgs = @()
+        $psi.FileName = $using:LocalYTDLPPath
         foreach ($arg in $YTDLArgs) {
-            if ($arg -match ' ') { $EscapedArgs += """$arg""" } else { $EscapedArgs += $arg }
+            $psi.ArgumentList.Add($arg)
         }
-        $CombinedArgs = $EscapedArgs -join ' '
-        $psi.Arguments = "/c """"$using:LocalYTDLPPath"" $CombinedArgs 2>&1"""
     } else {
         $psi.FileName = "sh"
         $EscapedArgs = @()
@@ -144,14 +139,17 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $proc = [System.Diagnostics.Process]::Start($psi)
     
-    # ASYNC CHAR BUFFER ENGINE: Intercepts combined streams character-by-character
-    $StreamReader = $proc.StandardOutput
-    $CharBuffer = [char[]]::new(4096)
-    $CurrentLine = [System.Text.StringBuilder]::new()
+    # ASYNC CHAR BUFFER ENGINE: Intercept both streams character-by-character
+    $StdoutReader = $proc.StandardOutput
+    $StderrReader = $proc.StandardError
+    $CharBuffer   = [char[]]::new(4096)
+    $CurrentLine  = [System.Text.StringBuilder]::new()
 
-    while (-not $proc.HasExited) {
-        if ($StreamReader.Peek() -ge 0) {
-            $CharsRead = $StreamReader.Read($CharBuffer, 0, $CharBuffer.Length)
+    # Re-usable dynamic processing helper to keep execution dry
+    $ProcessStreamChunk = {
+        param([System.IO.StreamReader]$Stream)
+        if ($Stream.Peek() -ge 0) {
+            $CharsRead = $Stream.Read($CharBuffer, 0, $CharBuffer.Length)
             for ($i = 0; $i -lt $CharsRead; $i++) {
                 $c = $CharBuffer[$i]
 
@@ -163,7 +161,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
                         if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
                             Invoke-LogMsg $CleanText
                             
-                            # Keep an eye out for errors/warnings and save them to the log file space
                             if ($CleanText -match 'ERROR:|WARNING:|Executable|not found|Failed') {
                                 [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
                             }
@@ -174,12 +171,19 @@ $SanitizedURLs | ForEach-Object -Parallel {
                     $CurrentLine.Append($c) | Out-Null
                 }
             }
-        } else {
-            [System.Threading.Thread]::Sleep(50)
         }
     }
 
-    # Flush out any leftover trailing tokens
+    while (-not $proc.HasExited) {
+        & $ProcessStreamChunk $StdoutReader
+        & $ProcessStreamChunk $StderrReader
+        [System.Threading.Thread]::Sleep(50)
+    }
+
+    # Flush any trailing bytes remaining inside buffers post-execution
+    & $ProcessStreamChunk $StdoutReader
+    & $ProcessStreamChunk $StderrReader
+
     if ($CurrentLine.Length -gt 0) {
         $CleanText = $CurrentLine.ToString() -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
         if (-not [string]::IsNullOrWhiteSpace($CleanText)) { 
