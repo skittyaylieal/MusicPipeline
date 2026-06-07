@@ -136,19 +136,33 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     $proc = [System.Diagnostics.Process]::Start($psi)
     
-    # ASYNC STREAM READER LOOP: Prevents buffer deadlocks by constantly draining data
+    # ASYNC CHAR BUFFER ENGINE: Continuously drains stdout without blocking on newlines
     $StreamReader = $proc.StandardOutput
+    $CharBuffer = [char[]]::new(4096)
+    $CurrentLine = [System.Text.StringBuilder]::new()
+
     while (-not $proc.HasExited) {
-        if (-not $StreamReader.EndOfStream) {
-            $line = $StreamReader.ReadLine()
-            if ($null -ne $line) {
-                $CleanText = $line -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-                if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
-                    Invoke-LogMsg $CleanText
-                    
-                    if ($CleanText -match 'ERROR:|WARNING:') {
-                        [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+        if ($StreamReader.Peek() -ge 0) {
+            $CharsRead = $StreamReader.Read($CharBuffer, 0, $CharBuffer.Length)
+            for ($i = 0; $i -lt $CharsRead; $i++) {
+                $c = $CharBuffer[$i]
+
+                # Flush line whenever a newline or carriage return hits
+                if ($c -eq "`n" -or $c -eq "`r") {
+                    if ($CurrentLine.Length -gt 0) {
+                        $LineText = $CurrentLine.ToString()
+                        $CleanText = $LineText -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+                        
+                        if (-not [string]::IsNullOrWhiteSpace($CleanText)) {
+                            Invoke-LogMsg $CleanText
+                            if ($CleanText -match 'ERROR:|WARNING:') {
+                                [System.IO.File]::AppendAllText($ErrorLogPath, ($CleanText + [System.Environment]::NewLine))
+                            }
+                        }
+                        $CurrentLine.Clear()
                     }
+                } else {
+                    $CurrentLine.Append($c) | Out-Null
                 }
             }
         } else {
@@ -163,11 +177,12 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Invoke-LogMsg "SYSTEM EXECUTABLE ERROR: $CleanErr"
     }
 
-    # Clear trailing tokens
-    $remaining = $StreamReader.ReadToEnd()
-    if (-not [string]::IsNullOrWhiteSpace($remaining)) {
-        $CleanText = $remaining -replace '\r', '' -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
-        Invoke-LogMsg $CleanText
+    # Flush out any leftover trailing data in the string cache
+    if ($CurrentLine.Length -gt 0) {
+        $CleanText = $CurrentLine.ToString() -replace '\x1b\[[0-9;]*[a-zA-Z]', ''
+        if (-not [string]::IsNullOrWhiteSpace($CleanText)) { 
+            Invoke-LogMsg $CleanText 
+        }
     }
 
     if ($proc.ExitCode -eq 0) {
