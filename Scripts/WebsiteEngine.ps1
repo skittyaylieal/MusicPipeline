@@ -318,7 +318,7 @@ function Invoke-HotReload {
 
         # 5. Conditional Process Respawn
         if ($EngineChanged) {
-            "  ↳ WebsiteEngine.ps1 modification detected. Respawning core process..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+            "   ↳ WebsiteEngine.ps1 modification detected. Respawning core process..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
             
             $ArgsList = @(
                 "-NoProfile",
@@ -330,7 +330,7 @@ function Invoke-HotReload {
             Pop-Location
             Stop-Process -Id $PID -Force
         } else {
-            "  ↳ Asset update only (HTML/CSS). Engine restart skipped. Core server remains live." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+            "   ↳ Asset update only (HTML/CSS). Engine restart skipped. Core server remains live." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
         }
 
     } catch {
@@ -344,9 +344,26 @@ function Invoke-HotReload {
 # -----------------------------------------------------------------
 $Port = 49152
 $Listener = New-Object System.Net.HttpListener
-$Listener.Prefixes.Add("http://+:$Port/")
+
+# FIX 1: Bind explicitly to localhost to allow non-admin terminal execution
+$Listener.Prefixes.Add("http://localhost:$Port/")
 
 try {
+    # FIX 2: Check for a conflict on Port 49152 before starting to prevent silent engine crashes
+    $PortConflict = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+    if ($PortConflict) {
+        $ExistingPID = $PortConflict.OwningProcess
+        Write-Warning "=========================================================="
+        Write-Warning " ENGINE CONFLICT: The pipeline server is already running!"
+        Write-Warning " Active Process ID: $ExistingPID"
+        Write-Warning " Access the UI at: http://localhost:$Port/"
+        Write-Warning "=========================================================="
+        return
+    }
+
+    # Clean up old dead handle states from previous normal sessions safely
+    Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
+
     $Listener.Start()
     Write-Output "--------------------------------------------------"
     Write-Output " SERVER LIVE: http://localhost:$Port/"
