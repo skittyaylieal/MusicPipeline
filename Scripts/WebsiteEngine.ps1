@@ -160,6 +160,7 @@ function Invoke-PipelineExecution {
     "[SYSTEM] ($TriggerType Run) Initializing Master Pipeline..." | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
 
     $ContextBundle = @{
+        Index           = 1
         ScriptDir       = "C:\MusicTools\MusicPipeline\Scripts"
         ConfigDir       = "C:\MusicTools\MusicPipeline\Config"
         BackupDir       = $BackupDir
