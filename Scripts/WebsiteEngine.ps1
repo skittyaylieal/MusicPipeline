@@ -473,25 +473,33 @@ try {
             $Response.ContentLength64 = $Buffer.Length 
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
         }
-        elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") { 
+        elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") {
             try {
-                $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue 
-                if ($DownloadJob) { 
-                    Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue 
-                    Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue 
+                # 1. Kill the outer orchestrator jobs safely
+                $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue
+                if ($DownloadJob) {
+                    Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue
+                    Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue
                 }
-                $Global:IsPipelineRunning = $false 
-                $Timestamp = (Get-Date).ToString("HH:mm:ss") 
-                "`e[1;31m[$Timestamp] [SYSTEM] Pipeline manually terminated by user.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}') 
-                $Response.StatusCode = 200 
+
+                # 2. Hard-terminate any orphaned native binaries spawned by the pipeline
+                Stop-Process -Name "yt-dlp" -Force -ErrorAction SilentlyContinue
+                Stop-Process -Name "ffmpeg" -Force -ErrorAction SilentlyContinue
+
+                $Global:IsPipelineRunning = $false
+                $Timestamp = (Get-Date).ToString("HH:mm:ss")
+                "`e[1;31m[$Timestamp] [SYSTEM] Pipeline and all child processes manually terminated.`e[0m" | 
+                    Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}')
+                $Response.StatusCode = 200
             } catch {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to terminate job"}') 
-                $Response.StatusCode = 500 
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to terminate job"}')
+                $Response.StatusCode = 500
             }
-            $Response.ContentType = "application/json" 
-            $Response.ContentLength64 = $Buffer.Length 
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+            $Response.ContentType = "application/json"
+            $Response.ContentLength64 = $Buffer.Length
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
         }
         elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") { 
             Invoke-HotReload 
