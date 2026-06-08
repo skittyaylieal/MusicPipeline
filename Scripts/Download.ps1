@@ -116,6 +116,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $YTDLArgs = @(
             "--no-colors",
             "--verbose",
+            "--newline",
             "--sleep-interval", $using:LocalSleepInterval,
             "--max-sleep-interval", $using:LocalMaxSleepInterval,
             "--sleep-requests", $using:LocalSleepRequests,
