@@ -14,8 +14,8 @@ $ScriptRepoDir = "C:\MusicTools\MusicPipeline"
 $ScriptDir = "$ScriptRepoDir\Scripts" 
 $ConfigDir = "$ScriptRepoDir\Config" 
 
-if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force } 
-if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile } 
+if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force | Out-Null } 
+if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile -Encoding utf8 } 
 
 # Shared Default Memory Container
 $Global:CachedMetrics = @{
@@ -41,8 +41,10 @@ function Start-AsyncLibraryScanner {
             $MobileFiles = Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" } 
             $LrcFiles    = Get-ChildItem -LiteralPath $BDir -Recurse -Filter "*.lrc" -File 
 
-            $MasterSize = ($MasterFiles | Measure-Object -Property Length -Sum).Sum / 1GB 
-            $MobileSize = ($MobileFiles | Measure-Object -Property Length -Sum).Sum / 1GB 
+            $MasterSize = 0
+            if ($MasterFiles) { $MasterSize = ($MasterFiles | Measure-Object -Property Length -Sum).Sum / 1GB }
+            $MobileSize = 0
+            if ($MobileFiles) { $MobileSize = ($MobileFiles | Measure-Object -Property Length -Sum).Sum / 1GB }
 
             $TrackDatabase = @() 
 
@@ -50,9 +52,17 @@ function Start-AsyncLibraryScanner {
                 if ($null -eq $File.FullName) { continue } 
                 $RelativePath = $File.FullName.Substring($BDir.Length).TrimStart('\') 
                 $PathParts = $RelativePath -split '\\' 
-                $Artist = if ($PathParts.Count -ge 3) { $PathParts[0] } else { "Unknown Artist" } 
-                $Album  = if ($PathParts.Count -ge 3) { $PathParts[1] } else { "Single / Unknown" } 
                 
+                $Artist = "Unknown Artist"
+                $Album  = "Single / Unknown"
+                
+                if ($PathParts.Count -ge 3) {
+                    $Artist = $PathParts[0]
+                    $Album  = $PathParts[1]
+                } elseif ($PathParts.Count -eq 2) {
+                    $Artist = $PathParts[0]
+                }
+
                 $TrackDatabase += @{ 
                     title  = [string]$File.BaseName 
                     artist = [string]$Artist 
@@ -95,7 +105,7 @@ function Start-AsyncLibraryScanner {
                     }
                     Pop-Location 
                 } catch {
-                    if ($null -ne $RDir) { Pop-Location } 
+                    Pop-Location
                 }
             }
 
@@ -191,57 +201,67 @@ function Invoke-PipelineExecution {
             Log-Progress "`e[1;33m[STEP 1/5]`e[0m Running Cookie Validation..." 
             $S1Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1" 
-            $S1Params = @{ CookiePath = $EnvMap.CookieFile; YTDLPPath = $EnvMap.YTDLPExe; TestURL = $EnvMap.CheckURL } 
-            $Step1Result = & $S1ScriptPath @S1Params 2>&1 
-            $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            if (Test-Path $S1ScriptPath) {
+                $S1Params = @{ CookiePath = $EnvMap.CookieFile; YTDLPPath = $EnvMap.YTDLPExe; TestURL = $EnvMap.CheckURL } 
+                $Step1Result = & $S1ScriptPath @S1Params 2>&1 
+                $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            } else { Log-Progress "⚠️ CookieCheck.ps1 missing. Skipping." }
             $S1Watch.Stop(); $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
 
             # STEP 2: Downloader Script
             Log-Progress "`e[1;33m[STEP 2/5]`e[0m Running Native Pipeline Downloader..." 
             $S2Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1" 
-            $S2Params = @{
-                BackupDir        = $EnvMap.BackupDir 
-                YTDLPPath        = $EnvMap.YTDLPExe 
-                CookiePath       = $EnvMap.CookieFile 
-                HistoryPath      = $EnvMap.HistoryFile 
-                PlaylistURLs     = $EnvMap.Playlists 
-                ConfigDir        = $EnvMap.ConfigDir 
-                CacheDir         = $EnvMap.CacheDir
-                SleepInterval    = 4 
-                MaxSleepInterval = 12 
-                SleepRequests    = 3 
-                CleanSweep       = $EnvMap.CleanSweep 
-            }
-            $Step2Result = & $S2ScriptPath @S2Params 2>&1 
-            $Step2Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            if (Test-Path $S2ScriptPath) {
+                $S2Params = @{
+                    BackupDir        = $EnvMap.BackupDir 
+                    YTDLPPath        = $EnvMap.YTDLPExe 
+                    CookiePath       = $EnvMap.CookieFile 
+                    HistoryPath      = $EnvMap.HistoryFile 
+                    PlaylistURLs     = $EnvMap.Playlists 
+                    ConfigDir        = $EnvMap.ConfigDir 
+                    CacheDir         = $EnvMap.CacheDir
+                    SleepInterval    = 4 
+                    MaxSleepInterval = 12 
+                    SleepRequests    = 3 
+                    CleanSweep       = $EnvMap.CleanSweep 
+                }
+                $Step2Result = & $S2ScriptPath @S2Params 2>&1 
+                $Step2Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
             $S2Watch.Stop(); $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
 
             # STEP 3: Error Analysis
             Log-Progress "`e[1;33m[STEP 3/5]`e[0m Running Error Log Analysis..." 
             $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
-            $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe } 
-            $Step3Result = & $S3ScriptPath @S3Params 2>&1 
-            $Step3Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            if (Test-Path $S3ScriptPath) {
+                $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe } 
+                $Step3Result = & $S3ScriptPath @S3Params 2>&1 
+                $Step3Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            } else { Log-Progress "⚠️ Fix.ps1 missing. Skipping." }
             $S3Watch.Stop(); $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
 
             # STEP 4: Lyrics Database Sync
             Log-Progress "`e[1;33m[STEP 4/5]`e[0m Syncing Local Lyrics Databases..." 
             $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
-            $S4Params = @{ BackupDir = $EnvMap.BackupDir } 
-            $Step4Result = & $S4ScriptPath @S4Params 2>&1 
-            $Step4Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            if (Test-Path $S4ScriptPath) {
+                $S4Params = @{ BackupDir = $EnvMap.BackupDir } 
+                $Step4Result = & $S4ScriptPath @S4Params 2>&1 
+                $Step4Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
             $S4Watch.Stop(); $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
 
             # STEP 5: Transcoding Engine
             Log-Progress "`e[1;33m[STEP 5/5]`e[0m Executing Lossy Mobile Deployment Transcoding..." 
             $S5Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
-            $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = 3 } 
-            $Step5Result = & $S5ScriptPath @S5Params 2>&1 
-            $Step5Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            if (Test-Path $S5ScriptPath) {
+                $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = 3 } 
+                $Step5Result = & $S5ScriptPath @S5Params 2>&1 
+                $Step5Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            } else { Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping." }
             $S5Watch.Stop(); $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
 
             $OverallStopwatch.Stop() 
@@ -249,7 +269,10 @@ function Invoke-PipelineExecution {
 
             Log-Progress "`e[1;32m[SUCCESS] Master Execution Pipeline Completed Successfully!`e[0m" 
             
-            $HistoryDB = Get-Content -LiteralPath $EnvMap.TimingFile -Raw | ConvertFrom-Json 
+            $HistoryDB = @()
+            if (Test-Path $EnvMap.TimingFile) {
+                try { $HistoryDB = Get-Content -LiteralPath $EnvMap.TimingFile -Raw | ConvertFrom-Json } catch { $HistoryDB = @() }
+            }
             if ($null -eq $HistoryDB) { $HistoryDB = @() } 
             
             $NewMetricRecord = @{
@@ -322,7 +345,7 @@ while ($true) {
 }
 
 Write-Host "🔗 Aligning fresh Windows port proxy map: 80 ---> $TargetPort" -ForegroundColor Cyan 
-netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1 
+netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1 | Out-Null
 
 $Listener = New-Object System.Net.HttpListener 
 $Listener.Prefixes.Add("http://127.0.0.1:$TargetPort/") 
@@ -363,14 +386,16 @@ try {
         $Response.Headers.Add("Expires", "0") 
 
         if ($UrlPath -eq "/" -and $Method -eq "GET") {
-            $HtmlContent = Get-Content -LiteralPath $HtmlFile -Raw -Encoding utf8 
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlContent) 
-            $Response.ContentType = "text/html; charset=utf-8" 
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+            if (Test-Path $HtmlFile) {
+                $HtmlContent = Get-Content -LiteralPath $HtmlFile -Raw -Encoding utf8 
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlContent) 
+                $Response.ContentType = "text/html; charset=utf-8" 
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            } else {
+                $Response.StatusCode = 404
+            }
+            $Response.OutputStream.Close()
         }
-        # -----------------------------------------------------------------
-        # ENDPOINT 1: READ BROKEN TRACKS PAYLOAD FROM THE JSON DATABASE
-        # -----------------------------------------------------------------
         elseif ($UrlPath -eq "/broken-songs" -and $Method -eq "GET") {
             $BrokenDbFile = "C:\MusicTools\MusicPipeline\Config\broken_songs.json"
             $RawData = "[]"
@@ -378,25 +403,21 @@ try {
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
             $Response.ContentType = "application/json"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            $Response.OutputStream.Close()
         }
-        # -----------------------------------------------------------------
-        # ENDPOINT 2: PROCESS THE THREE-WAY TRIAGE RULE ACTION
-        # -----------------------------------------------------------------
         elseif ($UrlPath -eq "/resolve-song" -and $Method -eq "POST") {
             $BrokenDbFile = "C:\MusicTools\MusicPipeline\Config\broken_songs.json"
             $HistoryFile  = "C:\MusicTools\MusicPipeline\Config\downloaded_history.txt"
             
             $SongId   = $Request.QueryString["id"]
-            $Action   = $Request.QueryString["action"] # "write_history" or "purge_only"
+            $Action   = $Request.QueryString["action"]
             $VideoID  = $Request.QueryString["videoId"]
 
             if ($SongId -and (Test-Path $BrokenDbFile)) {
-                # Clean entry from active layout data arrays
                 $CurrentList = Get-Content -LiteralPath $BrokenDbFile -Raw | ConvertFrom-Json
                 $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
                 $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $BrokenDbFile -Encoding utf8 -Force
 
-                # Route data handling criteria based on requested interaction buttons
                 if ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
                     $ArchiveLine = "youtube $VideoID"
                     [System.IO.File]::AppendAllText($HistoryFile, ($ArchiveLine + [System.Environment]::NewLine))
@@ -409,66 +430,47 @@ try {
             }
             $Response.ContentType = "application/json"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            $Response.OutputStream.Close()
         }
-        # -----------------------------------------------------------------
         elseif ($UrlPath -eq "/analytics" -and $Method -eq "GET") { 
             $RawData = "[]" 
             if (Test-Path $Global:TimingFile) { $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw } 
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData) 
             $Response.ContentType = "application/json" 
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+            $Response.OutputStream.Close()
         }
         elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
+            $Buffer = [System.Text.Encoding]::UTF8.GetBytes(($Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress))
             if (Test-Path $Global:CacheFile) { 
                 try {
                     $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue 
                     if ($RawJson) { $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawJson) } 
-                } catch {
-                    $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress 
-                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
-                }
-            } else {
-                $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress 
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
+                } catch {}
             }
             $Response.ContentType = "application/json" 
             $Response.ContentLength64 = $Buffer.Length 
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+            $Response.OutputStream.Close()
         }
         elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
             $CurrentLogs = @()
             $AllLines = @()
             
-            # Extract the client's current line offset from the query string (?skip=1500)
             $SkipCount = 0
-            if ($Request.Url.Query -match "skip=(\d+)") {
-                $SkipCount = [int]$Matches[1]
-            }
+            if ($Request.Url.Query -match "skip=(\d+)") { $SkipCount = [int]$Matches[1] }
 
             if (Test-Path $Global:DiagLogFile) { 
                 try {
-                    # Use .NET to bypass Windows read caching and open files with shared access locks
                     $FileStream = [System.IO.File]::Open($Global:DiagLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
                     $StreamReader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
-                    
-                    while ($null -ne ($Line = $StreamReader.ReadLine())) {
-                        $AllLines += $Line
-                    }
-                    
-                    $StreamReader.Close()
-                    $FileStream.Close()
-                } catch {
-                    # Fallback gracefully if disk access timings collide briefly
-                    $AllLines = @()
-                }
+                    while ($null -ne ($Line = $StreamReader.ReadLine())) { $AllLines += $Line }
+                    $StreamReader.Close(); $FileStream.Close()
+                } catch { $AllLines = @() }
 
                 if ($AllLines.Count -gt 0) {
                     if ($SkipCount -lt $AllLines.Count) {
-                        # Slice the array safely to send only the fresh records
                         $CurrentLogs = $AllLines[$SkipCount..($AllLines.Count - 1)]
-                    } else {
-                        # Client is fully caught up, return an empty array
-                        $CurrentLogs = @()
                     }
                 }
             } 
@@ -478,7 +480,6 @@ try {
                 if ($DownloadJob.State -ne "Running") { $Global:IsPipelineRunning = $false; Remove-Job -Job $DownloadJob -Force } 
             } else { $Global:IsPipelineRunning = $false } 
 
-            # Package the log payload along with the overall total size
             $JsonPayload = @{ 
                 running = $Global:IsPipelineRunning; 
                 logs    = $CurrentLogs;
@@ -489,6 +490,7 @@ try {
             $Response.ContentType = "application/json" 
             $Response.ContentLength64 = $Buffer.Length 
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+            $Response.OutputStream.Close()
         }
         elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") { 
             try {
@@ -503,6 +505,7 @@ try {
             $Response.ContentType = "application/json" 
             $Response.ContentLength64 = $Buffer.Length 
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+            $Response.OutputStream.Close()
         }
         elseif ($UrlPath -eq "/run" -and $Method -eq "POST") { 
             $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true") 
@@ -514,17 +517,15 @@ try {
             $Response.ContentType = "application/json" 
             $Response.ContentLength64 = $Buffer.Length 
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+            $Response.OutputStream.Close()
         }
         elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") {
             try {
-                # 1. Kill the outer orchestrator jobs safely
                 $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue
                 if ($DownloadJob) {
                     Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue
                     Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue
                 }
-
-                # 2. Hard-terminate any orphaned native binaries spawned by the pipeline
                 Stop-Process -Name "yt-dlp" -Force -ErrorAction SilentlyContinue
                 Stop-Process -Name "ffmpeg" -Force -ErrorAction SilentlyContinue
 
@@ -542,6 +543,7 @@ try {
             $Response.ContentType = "application/json"
             $Response.ContentLength64 = $Buffer.Length
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            $Response.OutputStream.Close()
         }
         elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") { 
             Invoke-HotReload 
@@ -552,9 +554,10 @@ try {
             $Response.OutputStream.Close() 
             Stop-Process -Id $PID -Force 
         }
-        elseif ($UrlPath -eq "/favicon.ico") { $Response.StatusCode = 404 } 
-        else { $Response.StatusCode = 404 } 
-        try { $Response.OutputStream.Close() } catch {} 
+        else { 
+            $Response.StatusCode = 404 
+            try { $Response.OutputStream.Close() } catch {}
+        }
     }
 }  
 catch { Write-Host "⚠️ Router Stream Exception: $_" -ForegroundColor Yellow } 
