@@ -153,7 +153,7 @@ function Invoke-PipelineExecution {
     $ContextBundle = @{
         ScriptDir       = "C:\MusicTools\MusicPipeline\Scripts" 
         ConfigDir       = "C:\MusicTools\MusicPipeline\Config" 
-        CacheDir       = "C:\MusicTools\MusicPipeline\Config\.cache"
+        CacheDir        = "C:\MusicTools\MusicPipeline\Config\.cache"
         BackupDir       = $BackupDir 
         MobileDir       = $MobileDir 
         CookieFile      = "C:\MusicTools\MusicPipeline\Config\cookies.txt" 
@@ -165,7 +165,7 @@ function Invoke-PipelineExecution {
         Playlists       = @(
             "https://www.youtube.com/playlist?list=PLqcuYaDDgyacWpBG6ib-2EKOuQa6aGjZJ", 
             "https://www.youtube.com/playlist?list=PLqcuYaDDgyaeHKssVjz_Nw3qUDwfrwL09", 
-            "https://www.youtube.com/playlist?list=PLqcuYaDDgyad_i19iLheoQJLLKJUtwlAr" 
+            "https://www.youtube.com/playlist?list=PLqcuYaDDgyad_i19iLheoQJLLKJUtwlAr"
         )
         CleanSweep      = $CleanSweep 
         LogFile         = $Global:DiagLogFile 
@@ -437,14 +437,39 @@ try {
         }
         elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
             $CurrentLogs = @() 
-            if (Test-Path $Global:DiagLogFile) { $CurrentLogs = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue } 
+            
+            # Extract the client's current line offset from the query string (?skip=1500)
+            $SkipCount = 0
+            if ($Request.Url.Query -match "skip=(\d+)") {
+                $SkipCount = [int]$Matches[1]
+            }
+
+            if (Test-Path $Global:DiagLogFile) { 
+                # Read the file efficiently as an array of lines
+                $AllLines = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue 
+                if ($AllLines) {
+                    if ($SkipCount -lt $AllLines.Count) {
+                        # Slice the array to send only the fresh records
+                        $CurrentLogs = $AllLines[$SkipCount..($AllLines.Count - 1)]
+                    } else {
+                        # Client is fully caught up, return an empty array
+                        $CurrentLogs = @()
+                    }
+                }
+            } 
             
             $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue 
             if ($DownloadJob) {
                 if ($DownloadJob.State -ne "Running") { $Global:IsPipelineRunning = $false; Remove-Job -Job $DownloadJob -Force } 
             } else { $Global:IsPipelineRunning = $false } 
 
-            $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs } | ConvertTo-Json -Compress 
+            # Package the log payload along with the overall total size
+            $JsonPayload = @{ 
+                running = $Global:IsPipelineRunning; 
+                logs    = $CurrentLogs;
+                totalLines = if ($AllLines) { $AllLines.Count } else { 0 }
+            } | ConvertTo-Json -Compress 
+
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
             $Response.ContentType = "application/json" 
             $Response.ContentLength64 = $Buffer.Length 
@@ -518,4 +543,4 @@ try {
     }
 }  
 catch { Write-Host "⚠️ Router Stream Exception: $_" -ForegroundColor Yellow } 
-finally { if ($null -ne $Listener) { if ($Listener.IsListening) { $Listener.Stop() }; $Listener.Close() } } 
+finally { if ($null -ne $Listener) { if ($Listener.IsListening) { $Listener.Stop() }; $Listener.Close() } }
