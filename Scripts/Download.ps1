@@ -123,6 +123,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--max-sleep-interval", $using:LocalMaxSleepInterval,
             "--sleep-requests", $using:LocalSleepRequests,
             "--embed-thumbnail",
+            "--convert-thumbnails", "jpg",
+            "--ppa", "EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih",
             "--embed-metadata",
             "--no-keep-video",
             "--force-overwrites",
@@ -135,7 +137,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "-f", "ba[ext=m4a]/ba",
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
-            "--legacy-server-connect", # UNBUFFERED FIX: Forces immediate line writing over raw sockets
+            "--legacy-server-connect",
             $PlaylistURL
         )
 
@@ -157,36 +159,38 @@ $SanitizedURLs | ForEach-Object -Parallel {
         foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
         $proc = [System.Diagnostics.Process]::Start($psi)
-        
         $proc.StandardInput.Close()
 
-        # NATIVE REAL-TIME LINE READER (Natively preservation tracking)
-        while (-not $proc.HasExited) {
-            if ($proc.StandardOutput.Peek() -ge 0) {
-                $Line = $proc.StandardOutput.ReadLine()
-                if ($Line) {
-                    Invoke-LogMsg $Line
-                }
-            }
-            if ($proc.StandardError.Peek() -ge 0) {
-                $ErrLine = $proc.StandardError.ReadLine()
-                if ($ErrLine) {
-                    Invoke-LogMsg $ErrLine
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
-                }
-            }
-            [System.Threading.Thread]::Sleep(30)
+        # --- NON-BLOCKING ASYNC EVENT DRIVEN MONITOR ENGINE ---
+        
+        # Register immediate script block actions for incoming streams
+        $OutEvent = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -Action {
+            $Line = $EventArgs.Data
+            if ($Line) { $using:Invoke-LogMsg.Invoke($Line) }
         }
 
-        # Final queue purge block post-execution exit
-        while ($proc.StandardOutput.Peek() -ge 0) {
-            $Line = $proc.StandardOutput.ReadLine()
-            if ($Line) { Invoke-LogMsg $Line }
+        $ErrEvent = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -Action {
+            $ErrLine = $EventArgs.Data
+            if ($ErrLine) {
+                $using:Invoke-LogMsg.Invoke($ErrLine)
+                [System.IO.File]::AppendAllText($using:ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
+            }
         }
-        while ($proc.StandardError.Peek() -ge 0) {
-            $ErrLine = $proc.StandardError.ReadLine()
-            if ($ErrLine) { Invoke-LogMsg $ErrLine }
+
+        # Initialize asynchronous reading frames natively
+        $proc.BeginOutputReadLine()
+        $proc.BeginErrorReadLine()
+
+        # Yield thread cycles safely while waiting for process execution drop
+        while (-not $proc.WaitForExit(500)) {
+            [System.Threading.Thread]::Sleep(100)
         }
+
+        # Unregister I/O listeners from system memory map post-run
+        Unregister-Event -SourceIdentifier $OutEvent.Name -ErrorAction SilentlyContinue
+        Unregister-Event -SourceIdentifier $ErrEvent.Name -ErrorAction SilentlyContinue
+
+        # --- END OF ASYNC LOG ENGINE ---
 
         if ($proc.ExitCode -eq 0) {
             Invoke-LogMsg "Sync completed successfully!"
