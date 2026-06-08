@@ -15,11 +15,11 @@ $ScriptDir = "$ScriptRepoDir\Scripts"
 $ConfigDir = "$ScriptRepoDir\Config" 
 
 if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force } 
-if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile } [cite: 284, 285]
+if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile } 
 
 # Shared Default Memory Container
 $Global:CachedMetrics = @{
-    masterCount  = 0; mobileCount = 0; lrcCount = 0 [cite: 285, 286]
+    masterCount  = 0; mobileCount = 0; lrcCount = 0 
     masterSize   = 0; mobileSize  = 0; alerts = @() 
     loadingState = "scanning"; tracks = @() 
 }
@@ -28,17 +28,17 @@ $Global:CachedMetrics = @{
 # 1. ROBUST BACKGROUND SCANNER & AUTOMATION ENGINE
 # -----------------------------------------------------------------
 function Start-AsyncLibraryScanner {
-    Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue [cite: 287, 288]
+    Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
 
     $JobScript = {
         param($BDir, $MDir, $RDir, $CFile)
         
         Start-Sleep -Seconds 2 
         while ($true) { 
-            if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 5; continue } [cite: 288, 289]
+            if (-not (Test-Path -LiteralPath $BDir)) { Start-Sleep -Seconds 5; continue } 
 
-            $MasterFiles = Get-ChildItem -LiteralPath $BDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" } [cite: 289, 290]
-            $MobileFiles = Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" } [cite: 290, 291]
+            $MasterFiles = Get-ChildItem -LiteralPath $BDir -Recurse -File | Where-Object { $_.Extension -match "flac|mp3|m4a" } 
+            $MobileFiles = Get-ChildItem -LiteralPath $MDir -Recurse -File | Where-Object { $_.Extension -match "m4a" } 
             $LrcFiles    = Get-ChildItem -LiteralPath $BDir -Recurse -Filter "*.lrc" -File 
 
             $MasterSize = ($MasterFiles | Measure-Object -Property Length -Sum).Sum / 1GB 
@@ -57,7 +57,7 @@ function Start-AsyncLibraryScanner {
                     title  = [string]$File.BaseName 
                     artist = [string]$Artist 
                     album  = [string]$Album 
-                    sizeMb = [Math]::Round(($File.Length / 1MB), 2) [cite: 291, 292]
+                    sizeMb = [Math]::Round(($File.Length / 1MB), 2) 
                     hasLrc = [bool](Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc" -ErrorAction SilentlyContinue) 
                     type   = [string]$File.Extension.ToUpper().Replace('.','') 
                 }
@@ -72,7 +72,7 @@ function Start-AsyncLibraryScanner {
                         alerts       = @() 
                         loadingState = "scanning" 
                         tracks       = $TrackDatabase 
-                    } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force [cite: 292, 293]
+                    } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force 
                 }
             }
 
@@ -100,7 +100,7 @@ function Start-AsyncLibraryScanner {
             }
 
             if ($MasterFiles.Count -gt $MobileFiles.Count) { 
-                $Alerts += @{ type = "danger"; message = "Synchronization Gap: Master backup has $(($MasterFiles.Count - $MobileFiles.Count)) more track(s) than Mobile."; fixAction = "sync" } [cite: 294, 295, 296]
+                $Alerts += @{ type = "danger"; message = "Synchronization Gap: Master backup has $(($MasterFiles.Count - $MobileFiles.Count)) more track(s) than Mobile."; fixAction = "sync" } 
             }
 
             @{
@@ -112,7 +112,7 @@ function Start-AsyncLibraryScanner {
                 alerts       = $Alerts 
                 loadingState = "idle" 
                 tracks       = $TrackDatabase 
-            } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force [cite: 296, 297]
+            } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force 
 
             Start-Sleep -Seconds 60 
         }
@@ -123,7 +123,7 @@ function Start-AsyncLibraryScanner {
 
 function Start-AutomatedChronDaemon {
     param($RuntimePort)
-    Get-Job -Name "ChronDaemon" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue [cite: 297, 298]
+    Get-Job -Name "ChronDaemon" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
     
     $ChronScript = {
         param($TargetPort)
@@ -148,7 +148,7 @@ function Invoke-PipelineExecution {
     $Global:IsPipelineRunning = $true 
     
     if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force } 
-    "`e[1;36m[SYSTEM] ($TriggerType Run) Initializing Master Pipeline...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 [cite: 298, 299]
+    "`e[1;36m[SYSTEM] ($TriggerType Run) Initializing Master Pipeline...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
 
     $ContextBundle = @{
         ScriptDir       = "C:\MusicTools\MusicPipeline\Scripts" 
@@ -190,9 +190,9 @@ function Invoke-PipelineExecution {
             Log-Progress "`e[1;33m[STEP 1/5]`e[0m Running Cookie Validation..." 
             $S1Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1" 
-            $S1Params = @{ CookiePath = $EnvMap.CookieFile; YTDLPPath = $EnvMap.YTDLPExe; TestURL = $EnvMap.CheckURL } [cite: 300, 301]
+            $S1Params = @{ CookiePath = $EnvMap.CookieFile; YTDLPPath = $EnvMap.YTDLPExe; TestURL = $EnvMap.CheckURL } 
             $Step1Result = & $S1ScriptPath @S1Params 2>&1 
-            $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 [cite: 301, 302]
+            $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             $S1Watch.Stop(); $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
 
             # STEP 2: Downloader Script
@@ -212,16 +212,16 @@ function Invoke-PipelineExecution {
                 CleanSweep       = $EnvMap.CleanSweep 
             }
             $Step2Result = & $S2ScriptPath @S2Params 2>&1 
-            $Step2Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 [cite: 302, 303]
+            $Step2Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             $S2Watch.Stop(); $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
 
             # STEP 3: Error Analysis
             Log-Progress "`e[1;33m[STEP 3/5]`e[0m Running Error Log Analysis..." 
             $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
-            $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe } [cite: 303, 304]
+            $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe } 
             $Step3Result = & $S3ScriptPath @S3Params 2>&1 
-            $Step3Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 [cite: 304, 305]
+            $Step3Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             $S3Watch.Stop(); $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
 
             # STEP 4: Lyrics Database Sync
@@ -229,7 +229,7 @@ function Invoke-PipelineExecution {
             $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
             $S4Params = @{ BackupDir = $EnvMap.BackupDir } 
-            $Step4Result = & $S4ScriptPath @S4Params 2>&1 [cite: 305, 306]
+            $Step4Result = & $S4ScriptPath @S4Params 2>&1 
             $Step4Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             $S4Watch.Stop(); $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
 
@@ -237,9 +237,9 @@ function Invoke-PipelineExecution {
             Log-Progress "`e[1;33m[STEP 5/5]`e[0m Executing Lossy Mobile Deployment Transcoding..." 
             $S5Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
-            $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = 3 } [cite: 306, 307]
+            $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = 3 } 
             $Step5Result = & $S5ScriptPath @S5Params 2>&1 
-            $Step5Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 [cite: 307, 308]
+            $Step5Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             $S5Watch.Stop(); $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
 
             $OverallStopwatch.Stop() 
@@ -247,17 +247,17 @@ function Invoke-PipelineExecution {
 
             Log-Progress "`e[1;32m[SUCCESS] Master Execution Pipeline Completed Successfully!`e[0m" 
             
-            $HistoryDB = Get-Content -LiteralPath $EnvMap.TimingFile -Raw | ConvertFrom-Json [cite: 308, 309]
+            $HistoryDB = Get-Content -LiteralPath $EnvMap.TimingFile -Raw | ConvertFrom-Json 
             if ($null -eq $HistoryDB) { $HistoryDB = @() } 
             
             $NewMetricRecord = @{
                 timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") 
                 type      = $EnvMap.RunType 
-                step1     = $S1Time; step2 = $S2Time; step3 = $S3Time; step4 = $S4Time; step5 = $S5Time [cite: 309, 310]
+                step1     = $S1Time; step2 = $S2Time; step3 = $S3Time; step4 = $S4Time; step5 = $S5Time 
                 total     = $TotalTime 
             }
             $HistoryDB += $NewMetricRecord 
-            $HistoryDB | ConvertTo-Json -Depth 4 | Out-File -FilePath $EnvMap.TimingFile -Encoding utf8 -Force [cite: 310, 311]
+            $HistoryDB | ConvertTo-Json -Depth 4 | Out-File -FilePath $EnvMap.TimingFile -Encoding utf8 -Force 
         }
         catch {
             Log-Progress "`e[1;31m[CRITICAL ERROR] Pipeline execution collapsed: $_`e[0m" 
@@ -269,13 +269,13 @@ function Invoke-PipelineExecution {
 
 function Invoke-HotReload {
     if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force } 
-    "`e[1;35m[SYSTEM] Hot-reload triggered. Checking for remote updates...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 [cite: 311, 312]
+    "`e[1;35m[SYSTEM] Hot-reload triggered. Checking for remote updates...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
     Push-Location $ScriptRepoDir 
     try {
         $Env:GIT_TERMINAL_PROMPT = "0" 
         $Env:GIT_SSH_COMMAND = "" 
         $BeforeHash = (& "git" rev-parse HEAD).Trim() 
-        $PullOutput = & "git" pull origin main 2>&1 | Out-String [cite: 312, 313]
+        $PullOutput = & "git" pull origin main 2>&1 | Out-String 
         $PullOutput | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
         $AfterHash = (& "git" rev-parse HEAD).Trim() 
 
@@ -291,16 +291,16 @@ function Invoke-HotReload {
         }
 
         if ($EngineChanged) { 
-            " ↳ WebsiteEngine.ps1 modification detected. Respawning core process..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 [cite: 313, 314]
+            " ↳ WebsiteEngine.ps1 modification detected. Respawning core process..." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
             $ArgsList = @("-NoProfile", "-WindowStyle", "Hidden", "-File", "$PSCommandPath") 
             Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList $ArgsList 
             Pop-Location 
             Stop-Process -Id $PID -Force 
         } else {
-            " ↳ Asset update only (HTML/CSS). Engine restart skipped. Core server remains live." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 [cite: 314, 315]
+            " ↳ Asset update only (HTML/CSS). Engine restart skipped. Core server remains live." | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
         }
     } catch {
-        " ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 [cite: 315, 316]
+        " ↳ Hot-Reload Exception: $_" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
     }
     Pop-Location 
 }
@@ -309,7 +309,7 @@ function Invoke-HotReload {
 # 3. ADAPTIVE NETWORK ENGINE ROUTER ROUTINE
 # -----------------------------------------------------------------
 Write-Host "🧼 Flushing old proxy tables and cleaning session jobs..." -ForegroundColor Yellow 
-netsh interface portproxy reset | Out-Null [cite: 316, 317]
+netsh interface portproxy reset | Out-Null 
 Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
 
 $TargetPort = 49152 
@@ -327,12 +327,12 @@ $Listener.Prefixes.Add("http://127.0.0.1:$TargetPort/")
 
 try {
     $Listener.Start() 
-    $LocalIPs = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Wi-Fi','Ethernet' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPAddress [cite: 317, 318]
+    $LocalIPs = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Wi-Fi','Ethernet' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPAddress 
     $PrimaryIP = if ($LocalIPs) { $LocalIPs[0] } else { "127.0.0.1" } 
 
     Write-Output "--------------------------------------------------" 
     Write-Output " SERVER LIVE AND ADAPTIVELY MAPPED!" 
-    Write-Output " Internal Endpoint : http://127.0.0.1:$TargetPort/" [cite: 318, 319]
+    Write-Output " Internal Endpoint : http://127.0.0.1:$TargetPort/" 
     Write-Output " Clean Browser URL : http://$PrimaryIP/" 
     Write-Output "--------------------------------------------------" 
     
@@ -343,7 +343,7 @@ try {
         Write-Host "🛑 Shutting down server engine cleanly..." -ForegroundColor Red 
         if ($null -ne $Listener -and $Listener.IsListening) { $Listener.Stop() } 
         if ($null -ne $Listener) { $Listener.Close() } 
-        netsh interface portproxy reset | Out-Null [cite: 319, 320]
+        netsh interface portproxy reset | Out-Null 
         exit 
     }
 
@@ -416,17 +416,17 @@ try {
             $Response.ContentType = "application/json" 
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
         }
-        elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { [cite: 320, 321]
+        elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
             if (Test-Path $Global:CacheFile) { 
                 try {
                     $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue 
                     if ($RawJson) { $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawJson) } 
                 } catch {
-                    $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress [cite: 321, 322]
+                    $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress 
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
                 }
             } else {
-                $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress [cite: 322, 323]
+                $JsonPayload = $Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress 
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
             }
             $Response.ContentType = "application/json" 
@@ -439,10 +439,10 @@ try {
             
             $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue 
             if ($DownloadJob) {
-                if ($DownloadJob.State -ne "Running") { $Global:IsPipelineRunning = $false; Remove-Job -Job $DownloadJob -Force } [cite: 323, 324]
+                if ($DownloadJob.State -ne "Running") { $Global:IsPipelineRunning = $false; Remove-Job -Job $DownloadJob -Force } 
             } else { $Global:IsPipelineRunning = $false } 
 
-            $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs } | ConvertTo-Json -Compress [cite: 324, 325]
+            $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs } | ConvertTo-Json -Compress 
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
             $Response.ContentType = "application/json" 
             $Response.ContentLength64 = $Buffer.Length 
@@ -451,7 +451,7 @@ try {
         elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") { 
             try {
                 Clear-Content -LiteralPath $Global:DiagLogFile -ErrorAction Stop 
-                "`e[1;36m[SYSTEM] Console logs manually cleared.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 [cite: 325, 326]
+                "`e[1;36m[SYSTEM] Console logs manually cleared.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"cleared"}') 
                 $Response.StatusCode = 200 
             } catch {
@@ -475,14 +475,14 @@ try {
         }
         elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") { 
             try {
-                $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue [cite: 326, 327]
+                $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue 
                 if ($DownloadJob) { 
                     Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue 
                     Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue 
                 }
                 $Global:IsPipelineRunning = $false 
                 $Timestamp = (Get-Date).ToString("HH:mm:ss") 
-                "`e[1;31m[$Timestamp] [SYSTEM] Pipeline manually terminated by user.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 [cite: 327, 328]
+                "`e[1;31m[$Timestamp] [SYSTEM] Pipeline manually terminated by user.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}') 
                 $Response.StatusCode = 200 
             } catch {
@@ -507,5 +507,5 @@ try {
         try { $Response.OutputStream.Close() } catch {} 
     }
 }  
-catch { Write-Host "⚠️ Router Stream Exception: $_" -ForegroundColor Yellow } [cite: 328, 329]
+catch { Write-Host "⚠️ Router Stream Exception: $_" -ForegroundColor Yellow } 
 finally { if ($null -ne $Listener) { if ($Listener.IsListening) { $Listener.Stop() }; $Listener.Close() } } 
