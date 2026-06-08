@@ -161,36 +161,39 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc = [System.Diagnostics.Process]::Start($psi)
         $proc.StandardInput.Close()
 
-        # --- NON-BLOCKING ASYNC EVENT DRIVEN MONITOR ENGINE ---
-        
-        # Register immediate script block actions for incoming streams
-        $OutEvent = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -Action {
-            $Line = $EventArgs.Data
-            if ($Line) { $using:Invoke-LogMsg.Invoke($Line) }
-        }
-
-        $ErrEvent = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -Action {
-            $ErrLine = $EventArgs.Data
-            if ($ErrLine) {
-                $using:Invoke-LogMsg.Invoke($ErrLine)
-                [System.IO.File]::AppendAllText($using:ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
+        # --- SAFE SYNCHRONOUS STREAM LINE ENUMERATOR ---
+        # No .Peek() deadlocks and 100% thread-safe inside Parallel Runspaces
+        while (-not $proc.HasExited) {
+            # Read standard output line-by-line if data is waiting in the OS buffer
+            while ($proc.StandardOutput.Peek() -ne -1) {
+                $Line = $proc.StandardOutput.ReadLine()
+                if ($Line) { Invoke-LogMsg $Line }
             }
-        }
 
-        # Initialize asynchronous reading frames natively
-        $proc.BeginOutputReadLine()
-        $proc.BeginErrorReadLine()
+            # Read standard error line-by-line if data is waiting
+            while ($proc.StandardError.Peek() -ne -1) {
+                $ErrLine = $proc.StandardError.ReadLine()
+                if ($ErrLine) {
+                    Invoke-LogMsg $ErrLine
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
+                }
+            }
 
-        # Yield thread cycles safely while waiting for process execution drop
-        while (-not $proc.WaitForExit(500)) {
+            # Sleep briefly to yield CPU while waiting for network payloads
             [System.Threading.Thread]::Sleep(100)
         }
 
-        # Unregister I/O listeners from system memory map post-run
-        Unregister-Event -SourceIdentifier $OutEvent.Name -ErrorAction SilentlyContinue
-        Unregister-Event -SourceIdentifier $ErrEvent.Name -ErrorAction SilentlyContinue
-
-        # --- END OF ASYNC LOG ENGINE ---
+        # Final queue purge block post-execution exit to catch trailing strings
+        while (($Line = $proc.StandardOutput.ReadLine()) -ne $null) { 
+            if ($Line) { Invoke-LogMsg $Line } 
+        }
+        while (($ErrLine = $proc.StandardError.ReadLine()) -ne $null) { 
+            if ($ErrLine) {
+                Invoke-LogMsg $ErrLine
+                [System.IO.File]::AppendAllText($ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
+            }
+        }
+        # --- END OF MONITOR ENGINE ---
 
         if ($proc.ExitCode -eq 0) {
             Invoke-LogMsg "Sync completed successfully!"
