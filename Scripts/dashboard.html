@@ -653,6 +653,11 @@
                 self.onmessage = function(e) {
                     if (e.data.type === 'RESET_OFFSET') {
                         currentOffset = 0;
+                        // Cancel any pending loops to force an immediate clean poll from line 0
+                        if (activePollTimer) {
+                            clearTimeout(activePollTimer);
+                        }
+                        executeNetworkFetchLoop();
                     }
                 };
 
@@ -661,10 +666,13 @@
                         .then(res => res.json())
                         .then(data => {
                             activePipelineMode = data.running;
+                            
+                            // Send the data block out to the UI thread before shifting the offset tracker
+                            self.postMessage({ type: 'LOG_DATA', payload: data });
+                            
                             if (data.totalLines !== undefined) {
                                 currentOffset = data.totalLines;
                             }
-                            self.postMessage({ type: 'LOG_DATA', payload: data });
                             
                             let nextTimeout = activePipelineMode ? 1000 : 4000;
                             activePollTimer = setTimeout(executeNetworkFetchLoop, nextTimeout);
@@ -697,6 +705,7 @@
                     
                     const consoleBox = document.getElementById('terminal-feed');
                     if (consoleBox) {
+                        // If logs dropped or reset, empty out container frames cleanly
                         if (data.totalLines === 0 || data.totalLines < currentLineOffset) {
                             consoleBox.innerHTML = "Logs cleared by server pipeline instance. Awaiting updates...";
                             currentLineOffset = 0;
@@ -713,6 +722,7 @@
                                 
                                 const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 50;
                                 
+                                // Clean out initialization placeholders if true fresh data stream lines are landing
                                 if (currentLineOffset === 0) {
                                     consoleBox.innerHTML = '';
                                 }
