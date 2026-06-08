@@ -427,6 +427,7 @@
         
         // Client-side stream line offset tracker variable
         let currentLineOffset = 0;
+        let streamWorker = null;
 
         // 1. NAVIGATION ROUTING & SIDEBAR SYSTEM
         function toggleSidebar() {
@@ -434,7 +435,7 @@
             sidebar.classList.toggle('open');
         }
 
-         function switchPage(paneId, linkId) {
+        function switchPage(paneId, linkId) {
             document.querySelectorAll('.page-pane').forEach(pane => pane.classList.remove('active-pane'));
             document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
 
@@ -449,7 +450,6 @@
                 .then(res => res.json())
                 .then(data => {
                     document.getElementById('stat-master-count').innerText = data.masterCount || 0;
-    
                     document.getElementById('stat-mobile-count').innerText = data.mobileCount || 0;
                     document.getElementById('stat-lrc-count').innerText = data.lrcCount || 0;
                     document.getElementById('stat-sizes').innerText = `${data.masterSize || 0} GB / ${data.mobileSize || 0} GB`;
@@ -458,7 +458,6 @@
                     if (data.loadingState === 'scanning') {
                         indicator.innerHTML = `Scanning Storage <span class="spinner"></span>`;
                     } else {
-        
                         indicator.innerText = `● Engine Idle`;
                     }
 
@@ -472,7 +471,6 @@
                             let actionBtn = '';
                             if (alert.fixAction === 'gitpull') {
                                 actionBtn = `<button class="btn btn-warn" onclick="triggerGitPull()">Pull Updates</button>`;
-  
                             } else if (alert.fixAction === 'sync') {
                                 actionBtn = `<button class="btn" onclick="triggerPipeline(false)">Sync Missing Tracks</button>`;
                             }
@@ -508,10 +506,8 @@
                     <tr>
                         <td style="font-weight:600; color:#FFF;">${track.title || 'Unknown Title'}</td>
                         <td style="color:#CBD5E1;">${track.artist || 'Unknown Artist'}</td>
-     
                         <td class="col-audio" style="color:#00ADB5; font-family:monospace;">${track.bitrate ? track.bitrate + ' kbps' : '-'}</td>
                         <td class="col-audio" style="color:#A1A1AA;">${track.sampleRate ? track.sampleRate + ' Hz' : '-'}</td>
-              
                         <td class="col-audio"><span class="badge" style="background:#27272A; color:#E2E8F0;">${(track.format || 'MP3').toUpperCase()}</span></td>
                         
                         <td class="col-release" style="color:#E2E8F0;">${track.album || '-'}</td>
@@ -579,8 +575,10 @@
         function triggerClearLogs() {
             fetch('/clearlogs', { method: 'POST' }).then(() => {
                 document.getElementById('terminal-feed').innerHTML = "Logs cleared by console command. Awaiting execution state metrics stream...";
-                // Reset tracker variables since logs have been flushed on the server
                 currentLineOffset = 0;
+                if (streamWorker) {
+                    streamWorker.postMessage({ type: 'RESET_OFFSET' });
+                }
             });
         }
 
@@ -594,26 +592,18 @@
         // 4. ANSI ESCAPE TO HTML TRANSLATOR (Hardened for standalone brackets and playlist tags)
         function parseAnsiToHtml(text) {
             if (!text) return '';
-            // 1. Escape native raw HTML syntax characters to prevent layout breaks
-            let clean = text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;");
-            // 2. Define color profiles mapping to web hex tokens
+            let clean = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const ansiMap = {
-                "1;31": "color: #FF5555; font-weight: bold;", // Bold Red (Errors)
-                "1;32": "color: #39FF14; font-weight: bold;", // Neon Green (Success)
-                "1;33": "color: #FFB86C; font-weight: bold;", // Amber Yellow (Steps)
-    
-                "1;35": "color: #BD93F9; font-weight: bold;", // Magenta Pink (Git Hooks)
-                "1;36": "color: #8BE9FD; font-weight: bold;", // Bright Cyan (System initialization)
-                "33":   "color: #F1FA8C;",                     // Playlist 3 (Yellow)
-          
-                "35":   "color: #FF79C6;",                     // Playlist 2 (Magenta)
-                "36":   "color: #8BE9FD;",                     // Playlist 1 (Cyan)
-                "90":   "color: #6272A4;"                      // Gray tokens (Timestamps)
+                "1;31": "color: #FF5555; font-weight: bold;",
+                "1;32": "color: #39FF14; font-weight: bold;",
+                "1;33": "color: #FFB86C; font-weight: bold;",
+                "1;35": "color: #BD93F9; font-weight: bold;",
+                "1;36": "color: #8BE9FD; font-weight: bold;",
+                "33":   "color: #F1FA8C;",
+                "35":   "color: #FF79C6;",
+                "36":   "color: #8BE9FD;",
+                "90":   "color: #6272A4;"
             };
-            // 3. First Pass: Strip or convert explicit escape codes/broken brackets like  [1;33m or [1;33m
             const ansiRegex = /(?:\x1B|\\e| )?\[([0-9;]+)m/g;
             let openSpan = false;
             let result = clean.replace(ansiRegex, (match, code) => {
@@ -621,7 +611,6 @@
                     if (openSpan) { openSpan = false; return "</span>"; }
                     return "";
                 }
-    
                 if (ansiMap[code]) {
                     let prefix = openSpan ? "</span>" : "";
                     openSpan = true;
@@ -631,28 +620,56 @@
             });
             if (openSpan) { result += "</span>"; }
 
-            // 4. Second Pass: Fallback playlist identifier matching (Forces distinct row colors)
-            if (result.includes("[Playlist 1]")) {
-                return `<span style="color: #8BE9FD;">${result}</span>`;
-            } else if (result.includes("[Playlist 2]")) {
-                return `<span style="color: #FF79C6;">${result}</span>`;
-            } else if (result.includes("[Playlist 3]")) {
-                return `<span style="color: #F1FA8C;">${result}</span>`;
-            } else if (result.toLowerCase().includes("error") || result.toLowerCase().includes("failed")) {
+            if (result.includes("[Playlist 1]")) return `<span style="color: #8BE9FD;">${result}</span>`;
+            if (result.includes("[Playlist 2]")) return `<span style="color: #FF79C6;">${result}</span>`;
+            if (result.includes("[Playlist 3]")) return `<span style="color: #F1FA8C;">${result}</span>`;
+            if (result.toLowerCase().includes("error") || result.toLowerCase().includes("failed")) {
                 return `<span style="color: #FF5555; font-weight: bold;">${result}</span>`;
             }
-
             return result;
         }
 
-        // 5. TERMINAL LOG STREAMER (WITH OPTIMIZED INCREMENTAL APPENDING)
-        function runLogStreamer() {
-            // Include our skip counter inside the API query parameter request
-            fetch(`/stream?skip=${currentLineOffset}`)
-                .then(res => res.json())
-                .then(data => {
+        // 5. UNTHROTTLED WEB WORKER INITIALIZATION ENGINE
+        function initBackgroundStreamWorker() {
+            const workerCode = `
+                let currentOffset = 0;
+                let activePollTimer = null;
+                let activePipelineMode = false;
+
+                self.onmessage = function(e) {
+                    if (e.data.type === 'RESET_OFFSET') {
+                        currentOffset = 0;
+                    }
+                };
+
+                function executeNetworkFetchLoop() {
+                    fetch('/stream?skip=' + currentOffset)
+                        .then(res => res.json())
+                        .then(data => {
+                            activePipelineMode = data.running;
+                            if (data.totalLines !== undefined) {
+                                currentOffset = data.totalLines;
+                            }
+                            self.postMessage({ type: 'LOG_DATA', payload: data });
+                            
+                            let nextTimeout = activePipelineMode ? 1000 : 4000;
+                            activePollTimer = setTimeout(executeNetworkFetchLoop, nextTimeout);
+                        })
+                        .catch(err => {
+                            activePollTimer = setTimeout(executeNetworkFetchLoop, 4000);
+                        });
+                }
+                executeNetworkFetchLoop();
+            `;
+
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            streamWorker = new Worker(URL.createObjectURL(blob));
+
+            streamWorker.onmessage = function(e) {
+                if (e.data.type === 'LOG_DATA') {
+                    const data = e.data.payload;
                     isPipelineActive = data.running;
-     
+
                     if (document.getElementById('run-btn')) {
                         document.getElementById('run-btn').disabled = isPipelineActive;
                         document.getElementById('sweep-btn').disabled = isPipelineActive;
@@ -666,7 +683,6 @@
                     
                     const consoleBox = document.getElementById('terminal-feed');
                     if (consoleBox) {
-                        // Reset browser text view if the server file gets purged or cleared down entirely
                         if (data.totalLines === 0 || data.totalLines < currentLineOffset) {
                             consoleBox.innerHTML = "Logs cleared by server pipeline instance. Awaiting updates...";
                             currentLineOffset = 0;
@@ -674,7 +690,6 @@
 
                         if (data.logs && data.logs.length > 0) {
                             const userSelection = window.getSelection().toString();
-                            // Don't modify DOM layouts while actively highlighting console lines
                             if (!userSelection) { 
                                 const convertedLines = data.logs.map(line => {
                                     if (line === null || line === undefined) return '';
@@ -682,15 +697,12 @@
                                     return parseAnsiToHtml(String(line));
                                 });
                                 
-                                // Determine if the window is currently focused at the scroll bottom margin
                                 const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 50;
                                 
-                                // Clear initial text placeholders on the very first incoming chunk execution
                                 if (currentLineOffset === 0) {
                                     consoleBox.innerHTML = '';
                                 }
 
-                                // Append the new log elements inline instead of overwriting historical blocks
                                 consoleBox.innerHTML += convertedLines.join('\n') + '\n';
                                 
                                 if (isScrolledToBottom) {
@@ -699,14 +711,12 @@
                             }
                         }
                     }
-
-                    // Sync up the cursor offset marker to match the server's processed array index length
+                    
                     if (data.totalLines !== undefined) {
                         currentLineOffset = data.totalLines;
                     }
-
-                    setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000);
-                }).catch(() => { setTimeout(runLogStreamer, 4000); });
+                }
+            };
         }
 
         // 6. PERFORMANCE ANALYTICS CHARTING
@@ -722,13 +732,11 @@
                         return (parseInt(parts[0]) * 60) + parseInt(parts[1]) + (parseFloat(parts[2]) / 60);
                     });
 
-                    // Parse stacked steps allocations for step breakdown line chart tracking
                     const step1Data = data.map(r => r.steps && r.steps[0] ? parseFloat(r.steps[0]) : 0);
                     const step2Data = data.map(r => r.steps && r.steps[1] ? parseFloat(r.steps[1]) : 0);
                     const step3Data = data.map(r => r.steps && r.steps[2] ? parseFloat(r.steps[2]) : 0);
                     const step4Data = data.map(r => r.steps && r.steps[3] ? parseFloat(r.steps[3]) : 0);
 
-                    // Dynamic breakdown list rendering mapping below charts
                     const historyBody = document.getElementById('timing-history-rows');
                     if (historyBody) {
                         historyBody.innerHTML = data.map(row => {
@@ -764,7 +772,6 @@
                         }).join('');
                     }
 
-                    // Render Total Runtime Track Trend Line Chart
                     const ctxTotal = document.getElementById('chartTrendTotal');
                     if (ctxTotal) {
                         if (chartTotalInstance) {
@@ -798,7 +805,6 @@
                         }
                     }
 
-                    // Render Component Matrix Bottlenecks Line Chart
                     const ctxSteps = document.getElementById('chartTrendSteps');
                     if (ctxSteps) {
                         if (chartStepsInstance) {
@@ -838,10 +844,12 @@
         // Core Loops & Initialization
         setInterval(loadMetrics, 3000);
         setInterval(loadAnalytics, 10000);
-        setTimeout(runLogStreamer, 1000);
         
         loadMetrics();
         loadAnalytics();
+        
+        // Spin up the background tracking engine thread
+        initBackgroundStreamWorker();
     </script>
 </body>
 </html>
