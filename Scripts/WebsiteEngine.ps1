@@ -436,7 +436,8 @@ try {
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
         }
         elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
-            $CurrentLogs = @() 
+            $CurrentLogs = @()
+            $AllLines = @()
             
             # Extract the client's current line offset from the query string (?skip=1500)
             $SkipCount = 0
@@ -445,11 +446,25 @@ try {
             }
 
             if (Test-Path $Global:DiagLogFile) { 
-                # Read the file efficiently as an array of lines
-                $AllLines = Get-Content -LiteralPath $Global:DiagLogFile -ErrorAction SilentlyContinue 
-                if ($AllLines) {
+                try {
+                    # Use .NET to bypass Windows read caching and open files with shared access locks
+                    $FileStream = [System.IO.File]::Open($Global:DiagLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                    $StreamReader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
+                    
+                    while ($null -ne ($Line = $StreamReader.ReadLine())) {
+                        $AllLines += $Line
+                    }
+                    
+                    $StreamReader.Close()
+                    $FileStream.Close()
+                } catch {
+                    # Fallback gracefully if disk access timings collide briefly
+                    $AllLines = @()
+                }
+
+                if ($AllLines.Count -gt 0) {
                     if ($SkipCount -lt $AllLines.Count) {
-                        # Slice the array to send only the fresh records
+                        # Slice the array safely to send only the fresh records
                         $CurrentLogs = $AllLines[$SkipCount..($AllLines.Count - 1)]
                     } else {
                         # Client is fully caught up, return an empty array
@@ -467,7 +482,7 @@ try {
             $JsonPayload = @{ 
                 running = $Global:IsPipelineRunning; 
                 logs    = $CurrentLogs;
-                totalLines = if ($AllLines) { $AllLines.Count } else { 0 }
+                totalLines = $AllLines.Count
             } | ConvertTo-Json -Compress 
 
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
