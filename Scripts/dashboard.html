@@ -555,12 +555,26 @@
 
         // 3. PIPELINE DISPATCH CONTROLS
         function triggerPipeline(isSweep) {
+            const consoleBox = document.getElementById('terminal-feed');
+            if (consoleBox) {
+                consoleBox.innerHTML = `<span style="color:#8BE9FD; font-weight:bold;">[System] Initializing master synchronization sub-process execution pipeline...</span>\n`;
+            }
+
             const url = isSweep ? '/run?sweep=true' : '/run';
             fetch(url, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     if(data.status === 'dispatched') {
                         switchPage('pane-console', 'link-console');
+                        currentLineOffset = 0;
+                        if (streamWorker) {
+                            streamWorker.postMessage({ type: 'RESET_OFFSET' });
+                        }
+                    }
+                })
+                .catch(err => {
+                    if (consoleBox) {
+                        consoleBox.innerHTML += `\n<span style="color:#FF5555;">[Error] Dispatch failed: Unable to connect to backend control route.</span>`;
                     }
                 });
         }
@@ -719,15 +733,16 @@
             };
         }
 
-        // 6. PERFORMANCE ANALYTICS CHARTING
+        // 6. PERFORMANCE ANALYTICS CHARTING (With Missing Properties Protection)
         function loadAnalytics() {
             fetch('/analytics')
                 .then(res => res.json())
                 .then(data => {
                     if (!data || data.length === 0) return;
                     
-                    const labels = data.map(r => r.timestamp.split(' ')[1] || r.timestamp);
+                    const labels = data.map(r => r.timestamp ? (r.timestamp.split(' ')[1] || r.timestamp) : 'Unknown');
                     const totals = data.map(r => {
+                        if (!r.total) return 0;
                         const parts = r.total.split(':');
                         return (parseInt(parts[0]) * 60) + parseInt(parts[1]) + (parseFloat(parts[2]) / 60);
                     });
@@ -740,7 +755,9 @@
                     const historyBody = document.getElementById('timing-history-rows');
                     if (historyBody) {
                         historyBody.innerHTML = data.map(row => {
-                            const badgeClass = row.trigger === 'sweep' ? 'badge-sweep' : 'badge-auto';
+                            // Hardened trigger fallback to safely capture null/undefined types
+                            const triggerType = row.trigger || 'auto';
+                            const badgeClass = triggerType === 'sweep' ? 'badge-sweep' : 'badge-auto';
                             let barsHtml = `<div class="seg seg-fallback" style="width: 100%;"></div>`;
                             
                             if (row.steps && row.steps.length > 0) {
@@ -752,10 +769,10 @@
                             }
 
                             return `
-                                <tr class="${row.trigger === 'sweep' ? 'row-clean-sweep' : ''}">
-                                    <td style="font-family: monospace; color:#A1A1AA;">${row.timestamp}</td>
-                                    <td><span class="badge ${badgeClass}">${row.trigger.toUpperCase()}</span></td>
-                                    <td style="font-weight: bold; color: #00ADB5; font-family: monospace;">${row.total}</td>
+                                <tr class="${triggerType === 'sweep' ? 'row-clean-sweep' : ''}">
+                                    <td style="font-family: monospace; color:#A1A1AA;">${row.timestamp || '-'}</td>
+                                    <td><span class="badge ${badgeClass}">${triggerType.toUpperCase()}</span></td>
+                                    <td style="font-weight: bold; color: #00ADB5; font-family: monospace;">${row.total || '0:00:00'}</td>
                                     <td>
                                         <div class="timeline-graph-wrapper">
                                             <div class="timeline-bar">${barsHtml}</div>
@@ -838,7 +855,7 @@
                             });
                         }
                     }
-                });
+                }).catch(() => {});
         }
 
         // Core Loops & Initialization
