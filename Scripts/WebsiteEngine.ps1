@@ -153,6 +153,7 @@ function Invoke-PipelineExecution {
     $ContextBundle = @{
         ScriptDir       = "C:\MusicTools\MusicPipeline\Scripts" 
         ConfigDir       = "C:\MusicTools\MusicPipeline\Config" 
+        CacheDir       = "C:\MusicTools\MusicPipeline\Config\.cache"
         BackupDir       = $BackupDir 
         MobileDir       = $MobileDir 
         CookieFile      = "C:\MusicTools\MusicPipeline\Config\cookies.txt" 
@@ -206,6 +207,7 @@ function Invoke-PipelineExecution {
                 HistoryPath      = $EnvMap.HistoryFile 
                 PlaylistURLs     = $EnvMap.Playlists 
                 ConfigDir        = $EnvMap.ConfigDir 
+                CacheDir         = $EnvMap.CacheDir
                 SleepInterval    = 4 
                 MaxSleepInterval = 12 
                 SleepRequests    = 3 

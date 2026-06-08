@@ -5,6 +5,7 @@ Param (
     [string]$HistoryPath,
     [string[]]$PlaylistURLs,
     [string]$ConfigDir,
+    [string]$CacheDir,
     [int]$SleepInterval,
     [int]$MaxSleepInterval,
     [int]$SleepRequests,
@@ -24,6 +25,7 @@ $LocalYTDLPPath        = $YTDLPPath
 $LocalBackupDir        = $BackupDir
 $LocalCookiePath       = $CookiePath
 $LocalConfigDir        = $ConfigDir
+$LocalCacheDir         = $CacheDir
 $LocalSleepInterval    = $SleepInterval
 $LocalMaxSleepInterval = $MaxSleepInterval
 $LocalSleepRequests    = $SleepRequests
@@ -127,6 +129,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--cookies", $using:LocalCookiePath,
             "-P", $using:LocalBackupDir,
             "-o", $using:OutputTemplate,
+            "--cache-dir", $using:LocalCacheDir,
             "--js-runtime", "deno",
             "--extractor-args", "youtube:player_client=ios,android",
             "-f", "ba[ext=m4a]/ba",
