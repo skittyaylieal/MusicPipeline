@@ -162,51 +162,52 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc = [System.Diagnostics.Process]::Start($psi)
         $proc.StandardInput.Close()
 
-        # --- SAFE SYNCHRONOUS STREAM LINE ENUMERATOR WITH STUCK SAFETY ---
-        $LastActivityWatch = [System.Diagnostics.Stopwatch]::StartNew()
-        $MaxSilenceSeconds = 45 # Time allowed with zero console updates before dropping thread loop
+        # --- DYNAMIC HEARTBEAT MONITOR ENGINE ---
+        $LastActivityTime = [System.Diagnostics.Stopwatch]::StartNew()
+        $MaxStallSeconds  = 30  # Force a restart if a network socket freezes for 30s
 
         while (-not $proc.HasExited) {
-            $ActivityDetected = $false
+            $GotNewLines = $false
 
-            # Read standard output line-by-line if data is waiting in the OS buffer
+            # Pump Standard Output
             while ($proc.StandardOutput.Peek() -ne -1) {
                 $Line = $proc.StandardOutput.ReadLine()
                 if ($Line) { 
                     Invoke-LogMsg $Line 
-                    $ActivityDetected = $true
+                    $GotNewLines = $true
                 }
             }
 
-            # Read standard error line-by-line if data is waiting
+            # Pump Standard Error
             while ($proc.StandardError.Peek() -ne -1) {
                 $ErrLine = $proc.StandardError.ReadLine()
                 if ($ErrLine) {
                     Invoke-LogMsg $ErrLine
                     [System.IO.File]::AppendAllText($ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
-                    $ActivityDetected = $true
+                    $GotNewLines = $true
                 }
             }
 
-            # Activity Heartbeat Routing Check
-            if ($ActivityDetected) {
-                $LastActivityWatch.Restart()
-            } elseif ($LastActivityWatch.Elapsed.TotalSeconds -gt $MaxSilenceSeconds) {
-                Invoke-LogMsg "⚠️ [Pipeline Guard] Thread $LoopIndex has been completely silent for $MaxSilenceSeconds seconds. Force-terminating stuck yt-dlp instance."
-                try {
-                    $proc | Stop-Process -Force -ErrorAction SilentlyContinue
-                } catch {}
-                break
+            # Heartbeat evaluation
+            if ($GotNewLines) {
+                $LastActivityTime.Restart()
+            } else {
+                if ($LastActivityTime.Elapsed.TotalSeconds -gt $MaxStallSeconds) {
+                    Invoke-LogMsg "🛑 [Pipeline Guard] Track stalled for $MaxStallSeconds seconds. Force-cycling process..."
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ("WARN: Connection stalled out at " + (Get-Date).ToString() + [System.Environment]::NewLine))
+                    
+                    try {
+                        $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+                    } catch {}
+                    break
+                }
             }
 
-            # Sleep briefly to yield CPU while waiting for network payloads
-            [System.Threading.Thread]::Sleep(100)
+            [System.Threading.Thread]::Sleep(150)
         }
 
-        # Final queue purge block post-execution exit to catch trailing strings
-        while (($Line = $proc.StandardOutput.ReadLine()) -ne $null) { 
-            if ($Line) { Invoke-LogMsg $Line } 
-        }
+        # Clear remaining buffer trailing bits
+        while (($Line = $proc.StandardOutput.ReadLine()) -ne $null) { if ($Line) { Invoke-LogMsg $Line } }
         while (($ErrLine = $proc.StandardError.ReadLine()) -ne $null) { 
             if ($ErrLine) {
                 Invoke-LogMsg $ErrLine
