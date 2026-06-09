@@ -196,8 +196,15 @@ $SanitizedURLs | ForEach-Object -Parallel {
                     Invoke-LogMsg "🛑 [Pipeline Guard] Track stalled for $MaxStallSeconds seconds. Force-cycling process..."
                     [System.IO.File]::AppendAllText($ErrorLogPath, ("WARN: Connection stalled out at " + (Get-Date).ToString() + [System.Environment]::NewLine))
                     
+                    # Replace the simple "$proc | Stop-Process" lines with this:
                     try {
+                        # 1. Forcefully kill the primary yt-dlp instance
                         $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+                        
+                        # 2. Aggressively clean out any orphaned sidecar engine ghosts holding the pipes open
+                        Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | 
+                            Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | 
+                            Stop-Process -Force -ErrorAction SilentlyContinue
                     } catch {}
                     break
                 }
