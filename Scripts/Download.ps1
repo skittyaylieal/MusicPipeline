@@ -138,6 +138,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
             "--legacy-server-connect",
+            "--socket-timeout", "60",
             $PlaylistURL
         )
 
