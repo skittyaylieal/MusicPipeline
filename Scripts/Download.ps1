@@ -162,13 +162,20 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc = [System.Diagnostics.Process]::Start($psi)
         $proc.StandardInput.Close()
 
-        # --- SAFE SYNCHRONOUS STREAM LINE ENUMERATOR ---
-        # No .Peek() deadlocks and 100% thread-safe inside Parallel Runspaces
+        # --- SAFE SYNCHRONOUS STREAM LINE ENUMERATOR WITH STUCK SAFETY ---
+        $LastActivityWatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $MaxSilenceSeconds = 45 # Time allowed with zero console updates before dropping thread loop
+
         while (-not $proc.HasExited) {
+            $ActivityDetected = $false
+
             # Read standard output line-by-line if data is waiting in the OS buffer
             while ($proc.StandardOutput.Peek() -ne -1) {
                 $Line = $proc.StandardOutput.ReadLine()
-                if ($Line) { Invoke-LogMsg $Line }
+                if ($Line) { 
+                    Invoke-LogMsg $Line 
+                    $ActivityDetected = $true
+                }
             }
 
             # Read standard error line-by-line if data is waiting
@@ -177,7 +184,19 @@ $SanitizedURLs | ForEach-Object -Parallel {
                 if ($ErrLine) {
                     Invoke-LogMsg $ErrLine
                     [System.IO.File]::AppendAllText($ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
+                    $ActivityDetected = $true
                 }
+            }
+
+            # Activity Heartbeat Routing Check
+            if ($ActivityDetected) {
+                $LastActivityWatch.Restart()
+            } elseif ($LastActivityWatch.Elapsed.TotalSeconds -gt $MaxSilenceSeconds) {
+                Invoke-LogMsg "⚠️ [Pipeline Guard] Thread $LoopIndex has been completely silent for $MaxSilenceSeconds seconds. Force-terminating stuck yt-dlp instance."
+                try {
+                    $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+                } catch {}
+                break
             }
 
             # Sleep briefly to yield CPU while waiting for network payloads
