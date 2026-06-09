@@ -226,7 +226,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $FailedLineNum  = $_.InvocationInfo.ScriptLineNumber
         Invoke-LogMsg "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
     }
-} -ThrottleLimit 3
+} -ThrottleLimit 1
 
 if ($CleanSweep -and (Test-Path -LiteralPath $ActiveHistoryLog)) {
     Remove-Item -LiteralPath $ActiveHistoryLog -Force -ErrorAction SilentlyContinue
