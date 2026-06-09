@@ -63,7 +63,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $LocalList = $using:GlobalURLsCopy
     $LoopIndex = $LocalList.IndexOf($PlaylistURL) + 1
     
-    $ErrorLogPath = Join-Path $LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
+    $ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
     if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
     # Thread-Safe Real-Time Logger with Dynamic Retry Back-off and ANSI Color Matrix
