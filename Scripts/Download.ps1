@@ -56,7 +56,7 @@ $SanitizedURLs = $(foreach ($URL in $PlaylistURLs) {
 [System.Collections.Generic.List[string]]$GlobalURLsCopy = $SanitizedURLs
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
-# Optimization: Parallel Playlist Auditing
+# Optimization: Parallel Playlist Auditing (Sequenced cleanly via ThrottleLimit 1)
 $SanitizedURLs | ForEach-Object -Parallel {
     $PlaylistURL = $_
     
@@ -162,23 +162,49 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc = [System.Diagnostics.Process]::Start($psi)
         $proc.StandardInput.Close()
 
-        # --- DYNAMIC HEARTBEAT MONITOR ENGINE ---
+        # --- COMPLETE POST-FLUSH MONITOR ENGINE ---
         $LastActivityTime = [System.Diagnostics.Stopwatch]::StartNew()
-        $MaxStallSeconds  = 30  # Force a restart if a network socket freezes for 30s
+        $MaxStallSeconds  = 30  # Safety fallback for true network socket lockups
+        
+        $LastSeenLine     = ""
+        $DuplicateCount   = 0
+        $MaxDuplicates    = 3   # Crash buffer trigger limit
+        
+        # State toggle switch flag for error routing
+        $CaptureEverything = $false
 
         while (-not $proc.HasExited) {
             $GotNewLines = $false
 
-            # Pump Standard Output
+            # Pump Standard Output Channel
             while ($proc.StandardOutput.Peek() -ne -1) {
                 $Line = $proc.StandardOutput.ReadLine()
                 if ($Line) { 
+                    $CleanedLine = $Line.Trim()
                     Invoke-LogMsg $Line 
                     $GotNewLines = $true
+
+                    # Check for milestone boundary string
+                    if ($CleanedLine -match "Finished downloading playlist:") {
+                        $CaptureEverything = $true
+                    }
+
+                    # Route post-flush output straight to the log file
+                    if ($CaptureEverything) {
+                        [System.IO.File]::AppendAllText($ErrorLogPath, ($Line + [System.Environment]::NewLine))
+                    }
+
+                    # Monitor repetitive lines to stop console crash spams
+                    if ($CleanedLine -eq $LastSeenLine -and -not [string]::IsNullOrWhiteSpace($CleanedLine)) {
+                        $DuplicateCount++
+                    } else {
+                        $LastSeenLine   = $CleanedLine
+                        $DuplicateCount = 0
+                    }
                 }
             }
 
-            # Pump Standard Error
+            # Pump Standard Error Channel (Always write stderr to log)
             while ($proc.StandardError.Peek() -ne -1) {
                 $ErrLine = $proc.StandardError.ReadLine()
                 if ($ErrLine) {
@@ -188,23 +214,27 @@ $SanitizedURLs | ForEach-Object -Parallel {
                 }
             }
 
-            # Heartbeat evaluation
+            # Evaluation Loop Crash Guard
+            if ($DuplicateCount -ge $MaxDuplicates) {
+                Invoke-LogMsg "🛑 [Pipeline Guard] Infinite log repetition loop detected. Forcing process crash cycle..."
+                [System.IO.File]::AppendAllText($ErrorLogPath, ("WARN: Infinite console loop caught on track at " + (Get-Date).ToString() + [System.Environment]::NewLine))
+                try {
+                    $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+                    Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | Stop-Process -Force -ErrorAction SilentlyContinue
+                } catch {}
+                break
+            }
+
+            # Evaluation Network Stall Guard
             if ($GotNewLines) {
                 $LastActivityTime.Restart()
             } else {
                 if ($LastActivityTime.Elapsed.TotalSeconds -gt $MaxStallSeconds) {
-                    Invoke-LogMsg "🛑 [Pipeline Guard] Track stalled for $MaxStallSeconds seconds. Force-cycling process..."
+                    Invoke-LogMsg "🛑 [Pipeline Guard] Track stalled for $MaxStallSeconds seconds of pure silence. Force-cycling process..."
                     [System.IO.File]::AppendAllText($ErrorLogPath, ("WARN: Connection stalled out at " + (Get-Date).ToString() + [System.Environment]::NewLine))
-                    
-                    # Replace the simple "$proc | Stop-Process" lines with this:
                     try {
-                        # 1. Forcefully kill the primary yt-dlp instance
                         $proc | Stop-Process -Force -ErrorAction SilentlyContinue
-                        
-                        # 2. Aggressively clean out any orphaned sidecar engine ghosts holding the pipes open
-                        Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | 
-                            Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | 
-                            Stop-Process -Force -ErrorAction SilentlyContinue
+                        Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | Stop-Process -Force -ErrorAction SilentlyContinue
                     } catch {}
                     break
                 }
@@ -213,8 +243,18 @@ $SanitizedURLs | ForEach-Object -Parallel {
             [System.Threading.Thread]::Sleep(150)
         }
 
-        # Clear remaining buffer trailing bits
-        while (($Line = $proc.StandardOutput.ReadLine()) -ne $null) { if ($Line) { Invoke-LogMsg $Line } }
+        # Clear remaining trailing standard output buffer blocks safely
+        while (($Line = $proc.StandardOutput.ReadLine()) -ne $null) { 
+            if ($Line) { 
+                Invoke-LogMsg $Line 
+                if ($Line -match "Finished downloading playlist:") { $CaptureEverything = $true }
+                if ($CaptureEverything) {
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ($Line + [System.Environment]::NewLine))
+                }
+            } 
+        }
+        
+        # Clear remaining trailing standard error buffer blocks safely
         while (($ErrLine = $proc.StandardError.ReadLine()) -ne $null) { 
             if ($ErrLine) {
                 Invoke-LogMsg $ErrLine
