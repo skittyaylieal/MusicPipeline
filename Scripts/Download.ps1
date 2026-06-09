@@ -133,7 +133,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "-o", $using:OutputTemplate,
             "--cache-dir", $using:LocalCacheDir,
             "--js-runtime", "deno",
-            "--extractor-args", "youtube:player_client=web_music,web,ios,android,mweb,android_vr",
+            "--extractor-args", "youtube:player_client=default",
             "-f", "ba[ext=m4a]/ba",
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
