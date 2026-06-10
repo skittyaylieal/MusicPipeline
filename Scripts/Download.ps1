@@ -116,7 +116,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
 
-        # Note: We keep the stable TV client arguments you just successfully tested manually!
         $YTDLArgs = @(
             "--no-colors",
             "--verbose",
@@ -165,7 +164,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc.StartInfo = $psi
         $proc.EnableRaisingEvents = $true
 
-        # Dynamic Script Block Event Triggers for Clean Async Streaming
+        # FIXED: Pass $ErrorLogPath securely using local block scope binding
+        $TargetLogPath = $ErrorLogPath
+
         $OutScript = {
             $Line = $Event.SourceEventArgs.Data
             if ($Line) {
@@ -174,7 +175,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
                     $script:Capture = $true
                 }
                 if ($script:Capture) {
-                    [System.IO.File]::AppendAllText($using:ErrorLogPath, ($Line + [System.Environment]::NewLine))
+                    [System.IO.File]::AppendAllText($using:TargetLogPath, ($Line + [System.Environment]::NewLine))
                 }
                 & $using:Invoke-LogMsg $Line
                 $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
@@ -184,7 +185,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $ErrScript = {
             $Line = $Event.SourceEventArgs.Data
             if ($Line) {
-                [System.IO.File]::AppendAllText($using:ErrorLogPath, ($Line + [System.Environment]::NewLine))
+                [System.IO.File]::AppendAllText($using:TargetLogPath, ($Line + [System.Environment]::NewLine))
                 & $using:Invoke-LogMsg $Line
                 $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
             }
@@ -201,7 +202,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
 
         $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
-        $MaxStallTicks = 45 * [System.Diagnostics.Stopwatch]::Frequency # 45 second absolute fallback timeout
+        $MaxStallTicks = 45 * [System.Diagnostics.Stopwatch]::Frequency 
 
         # Event execution lookahead check
         while (-not $proc.HasExited) {
