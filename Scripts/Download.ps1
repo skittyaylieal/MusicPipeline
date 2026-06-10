@@ -66,40 +66,38 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
     if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
-    # Thread-Safe Real-Time Logger with Dynamic Retry Back-off and ANSI Color Matrix
-    function Invoke-LogMsg([string]$Text) {
+    # Thread-Safe Real-Time Logger packed into a portable ScriptBlock for event injection
+    $LogBlock = {
+        Param([string]$Text, [int]$SlotIndex, [string]$MasterLog)
         if ([string]::IsNullOrWhiteSpace($Text)) { return }
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         
         $ESC = [char]27
         $Reset = "$ESC[0m"
         
-        # Color profile routing by playlist slot index
-        $ColorCode = switch ($LoopIndex) {
+        $ColorCode = switch ($SlotIndex) {
             1 { "36" }  # Cyan
             2 { "35" }  # Magenta
             3 { "33" }  # Yellow
             default { "32" } # Green fallback
         }
         
-        # Override styling to bold red if an engine failure or thread panic is hit
         if ($Text -match '🛑|THREAD DEBUG ALERT|error:|ERROR:|Usage:') {
             $ColorCode = "1;31"
         }
 
-        $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Playlist $LoopIndex]$Reset"
+        $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Playlist $SlotIndex]$Reset"
         $FormattedLine = "$ColorPrefix $Text"
         
         Write-Output $FormattedLine
         
-        if (Test-Path -LiteralPath $using:GlobalLogFile) {
+        if (Test-Path -LiteralPath $MasterLog) {
             $RetryCount = 0
             $MaxRetries = 15
             $Success    = $false
-            
             while (-not $Success -and $RetryCount -lt $MaxRetries) {
                 try {
-                    [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
+                    [System.IO.File]::AppendAllText($MasterLog, ($FormattedLine + [System.Environment]::NewLine))
                     $Success = $true
                 } catch [System.IO.IOException] {
                     $RetryCount++
@@ -114,7 +112,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
     try {
         if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
 
-        Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
+        # Local log execution shortcut
+        $LogFileInstance = $using:GlobalLogFile
+        & $LogBlock "Processing Playlist URL: $PlaylistURL" $LoopIndex $LogFileInstance
 
         $YTDLArgs = @(
             "--no-colors",
@@ -164,8 +164,11 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc.StartInfo = $psi
         $proc.EnableRaisingEvents = $true
 
-        # SOLUTION: Inject properties right onto the object so async events can read them via $Event.Sender
+        # Injecting all parameters directly onto the object to make event boundaries irrelevant
         Add-Member -InputObject $proc -MemberType NoteProperty -Name "LogPath" -Value $ErrorLogPath
+        Add-Member -InputObject $proc -MemberType NoteProperty -Name "LogEngine" -Value $LogBlock
+        Add-Member -InputObject $proc -MemberType NoteProperty -Name "Slot" -Value $LoopIndex
+        Add-Member -InputObject $proc -MemberType NoteProperty -Name "ConsoleLog" -Value $LogFileInstance
 
         $OutScript = {
             $Line = $Event.SourceEventArgs.Data
@@ -177,7 +180,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
                 if ($script:Capture) {
                     [System.IO.File]::AppendAllText($Event.Sender.LogPath, ($Line + [System.Environment]::NewLine))
                 }
-                & $using:Invoke-LogMsg $Line
+                # Safe out-of-scope execution via explicit execution reference
+                & $Event.Sender.LogEngine $Line $Event.Sender.Slot $Event.Sender.ConsoleLog
                 $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
             }
         }
@@ -186,7 +190,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             $Line = $Event.SourceEventArgs.Data
             if ($Line) {
                 [System.IO.File]::AppendAllText($Event.Sender.LogPath, ($Line + [System.Environment]::NewLine))
-                & $using:Invoke-LogMsg $Line
+                & $Event.Sender.LogEngine $Line $Event.Sender.Slot $Event.Sender.ConsoleLog
                 $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
             }
         }
@@ -211,7 +215,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             # Check for silent network stalls cleanly
             $CurrentTicks = [System.Diagnostics.Stopwatch]::GetTimestamp()
             if (($CurrentTicks - $script:LastActivity) -gt $MaxStallTicks) {
-                & $using:Invoke-LogMsg "🛑 [Pipeline Guard] Pure stream silence caught. Hard-cycling thread workers..."
+                & $proc.LogEngine "🛑 [Pipeline Guard] Pure stream silence caught. Hard-cycling thread workers..." $proc.Slot $proc.ConsoleLog
                 try { $proc | Stop-Process -Force -ErrorAction SilentlyContinue } catch {}
                 break
             }
@@ -225,15 +229,15 @@ $SanitizedURLs | ForEach-Object -Parallel {
         Unregister-Event -SourceIdentifier $ErrEvent.Name -ErrorAction SilentlyContinue
 
         if ($proc.ExitCode -eq 0) {
-            Invoke-LogMsg "Sync completed successfully!"
+            & $proc.LogEngine "Sync completed successfully!" $proc.Slot $proc.ConsoleLog
         } else {
-            Invoke-LogMsg "Finished with warnings/errors. Exit Code: $($proc.ExitCode)"
+            & $proc.LogEngine "Finished with warnings/errors. Exit Code: $($proc.ExitCode)" $proc.Slot $proc.ConsoleLog
         }
 
     } catch {
         $InternalErrMsg = $_.Exception.Message
         $FailedLineNum  = $_.InvocationInfo.ScriptLineNumber
-        Invoke-LogMsg "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
+        Write-Error "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
     }
 } -ThrottleLimit 1
 
