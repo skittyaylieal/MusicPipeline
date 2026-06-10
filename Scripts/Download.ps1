@@ -68,6 +68,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
     # Thread-Safe Real-Time Logger with Dynamic Retry Back-off and ANSI Color Matrix
     function Invoke-LogMsg([string]$Text) {
+        if ([string]::IsNullOrWhiteSpace($Text)) { return }
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         
         $ESC = [char]27
@@ -115,6 +116,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
 
+        # Note: We keep the stable TV client arguments you just successfully tested manually!
         $YTDLArgs = @(
             "--no-colors",
             "--verbose",
@@ -134,15 +136,12 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--cache-dir", $using:LocalCacheDir,
             "--geo-bypass",
             "--js-runtime", "deno",
-            
-            # Reverted back to the highly stable player variant used in your old branch
             "--extractor-args", "youtube:player_js_variant=tv",
-            
             "-f", "ba[ext=m4a]/ba",
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
             "--legacy-server-connect",
-            "--socket-timeout", "5",
+            "--socket-timeout", "15",
             $PlaylistURL
         )
 
@@ -150,125 +149,79 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $psi.FileName               = $using:LocalYTDLPPath
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError  = $true 
-        
-        # CRITICAL FIX: Turned off input redirection to stop Python/Deno from locking on empty windows pipes
         $psi.RedirectStandardInput  = $false 
-        
         $psi.UseShellExecute        = $false
         $psi.CreateNoWindow         = $true
         
         $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
         $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
         
-        # Unbuffered variables bound inside ProcessStartInfo configuration space
         $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
         $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
 
         foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
-        # Execution started without closing standard input channels prematurely
-        $proc = [System.Diagnostics.Process]::Start($psi)
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo = $psi
+        $proc.EnableRaisingEvents = $true
 
-        # --- COMPLETE POST-FLUSH MONITOR ENGINE ---
-        $LastActivityTime = [System.Diagnostics.Stopwatch]::StartNew()
-        $MaxStallSeconds  = 30  # Safety fallback for true network socket lockups
-        
-        $LastSeenLine     = ""
-        $DuplicateCount   = 0
-        $MaxDuplicates    = 3   # Crash buffer trigger limit
-        
-        # State toggle switch flag for error routing
-        $CaptureEverything = $false
+        # Dynamic Script Block Event Triggers for Clean Async Streaming
+        $OutScript = {
+            $Line = $Event.SourceEventArgs.Data
+            if ($Line) {
+                [string]$Cleaned = $Line.Trim()
+                if ($Cleaned -match "Finished downloading playlist:") {
+                    $script:Capture = $true
+                }
+                if ($script:Capture) {
+                    [System.IO.File]::AppendAllText($using:ErrorLogPath, ($Line + [System.Environment]::NewLine))
+                }
+                & $using:Invoke-LogMsg $Line
+                $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
+            }
+        }
 
+        $ErrScript = {
+            $Line = $Event.SourceEventArgs.Data
+            if ($Line) {
+                [System.IO.File]::AppendAllText($using:ErrorLogPath, ($Line + [System.Environment]::NewLine))
+                & $using:Invoke-LogMsg $Line
+                $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
+            }
+        }
+
+        # Bind events to standard engine channels
+        $OutEvent = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -Action $OutScript
+        $ErrEvent = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -Action $ErrScript
+
+        # Launch executable and open async listener streams
+        if ($proc.Start()) {
+            $proc.BeginOutputReadLine()
+            $proc.BeginErrorReadLine()
+        }
+
+        $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
+        $MaxStallTicks = 45 * [System.Diagnostics.Stopwatch]::Frequency # 45 second absolute fallback timeout
+
+        # Event execution lookahead check
         while (-not $proc.HasExited) {
-            $GotNewLines = $false
-
-            # Pump Standard Output Channel
-            while ($proc.StandardOutput.Peek() -ne -1) {
-                $Line = $proc.StandardOutput.ReadLine()
-                if ($Line) { 
-                    $CleanedLine = $Line.Trim()
-                    Invoke-LogMsg $Line 
-                    $GotNewLines = $true
-
-                    # Check for milestone boundary string
-                    if ($CleanedLine -match "Finished downloading playlist:") {
-                        $CaptureEverything = $true
-                    }
-
-                    # Route post-flush output straight to the log file
-                    if ($CaptureEverything) {
-                        [System.IO.File]::AppendAllText($ErrorLogPath, ($Line + [System.Environment]::NewLine))
-                    }
-
-                    # Monitor repetitive lines to stop console crash spams
-                    if ($CleanedLine -eq $LastSeenLine -and -not [string]::IsNullOrWhiteSpace($CleanedLine)) {
-                        $DuplicateCount++
-                    } else {
-                        $LastSeenLine   = $CleanedLine
-                        $DuplicateCount = 0
-                    }
-                }
-            }
-
-            # Pump Standard Error Channel (Always write stderr to log)
-            while ($proc.StandardError.Peek() -ne -1) {
-                $ErrLine = $proc.StandardError.ReadLine()
-                if ($ErrLine) {
-                    Invoke-LogMsg $ErrLine
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
-                    $GotNewLines = $true
-                }
-            }
-
-            # Evaluation Loop Crash Guard
-            if ($DuplicateCount -ge $MaxDuplicates) {
-                Invoke-LogMsg "🛑 [Pipeline Guard] Infinite log repetition loop detected. Forcing process crash cycle..."
-                [System.IO.File]::AppendAllText($ErrorLogPath, ("WARN: Infinite console loop caught on track at " + (Get-Date).ToString() + [System.Environment]::NewLine))
-                try {
-                    $proc | Stop-Process -Force -ErrorAction SilentlyContinue
-                    Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | Stop-Process -Force -ErrorAction SilentlyContinue
-                } catch {}
+            [System.Threading.Thread]::Sleep(200)
+            
+            # Check for silent network stalls cleanly
+            $CurrentTicks = [System.Diagnostics.Stopwatch]::GetTimestamp()
+            if (($CurrentTicks - $script:LastActivity) -gt $MaxStallTicks) {
+                & $using:Invoke-LogMsg "🛑 [Pipeline Guard] Pure stream silence caught. Hard-cycling thread workers..."
+                try { $proc | Stop-Process -Force -ErrorAction SilentlyContinue } catch {}
                 break
             }
-
-            # Evaluation Network Stall Guard
-            if ($GotNewLines) {
-                $LastActivityTime.Restart()
-            } else {
-                if ($LastActivityTime.Elapsed.TotalSeconds -gt $MaxStallSeconds) {
-                    Invoke-LogMsg "🛑 [Pipeline Guard] Track stalled for $MaxStallSeconds seconds of pure silence. Force-cycling process..."
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ("WARN: Connection stalled out at " + (Get-Date).ToString() + [System.Environment]::NewLine))
-                    try {
-                        $proc | Stop-Process -Force -ErrorAction SilentlyContinue
-                        Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | Stop-Process -Force -ErrorAction SilentlyContinue
-                    } catch {}
-                    break
-                }
-            }
-
-            [System.Threading.Thread]::Sleep(150)
         }
 
-        # Clear remaining trailing standard output buffer blocks safely
-        while (($Line = $proc.StandardOutput.ReadLine()) -ne $null) { 
-            if ($Line) { 
-                Invoke-LogMsg $Line 
-                if ($Line -match "Finished downloading playlist:") { $CaptureEverything = $true }
-                if ($CaptureEverything) {
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ($Line + [System.Environment]::NewLine))
-                }
-            } 
-        }
+        # Graceful cleanup validation
+        [System.Threading.Thread]::Sleep(500)
         
-        # Clear remaining trailing standard error buffer blocks safely
-        while (($ErrLine = $proc.StandardError.ReadLine()) -ne $null) { 
-            if ($ErrLine) {
-                Invoke-LogMsg $ErrLine
-                [System.IO.File]::AppendAllText($ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
-            }
-        }
-        # --- END OF MONITOR ENGINE ---
+        # Unregister active event streams cleanly
+        Unregister-Event -SourceIdentifier $OutEvent.Name -ErrorAction SilentlyContinue
+        Unregister-Event -SourceIdentifier $ErrEvent.Name -ErrorAction SilentlyContinue
 
         if ($proc.ExitCode -eq 0) {
             Invoke-LogMsg "Sync completed successfully!"
