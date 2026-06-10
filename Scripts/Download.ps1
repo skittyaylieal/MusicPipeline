@@ -164,8 +164,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc.StartInfo = $psi
         $proc.EnableRaisingEvents = $true
 
-        # FIXED: Pass $ErrorLogPath securely using local block scope binding
-        $TargetLogPath = $ErrorLogPath
+        # SOLUTION: Inject properties right onto the object so async events can read them via $Event.Sender
+        Add-Member -InputObject $proc -MemberType NoteProperty -Name "LogPath" -Value $ErrorLogPath
 
         $OutScript = {
             $Line = $Event.SourceEventArgs.Data
@@ -175,7 +175,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
                     $script:Capture = $true
                 }
                 if ($script:Capture) {
-                    [System.IO.File]::AppendAllText($using:TargetLogPath, ($Line + [System.Environment]::NewLine))
+                    [System.IO.File]::AppendAllText($Event.Sender.LogPath, ($Line + [System.Environment]::NewLine))
                 }
                 & $using:Invoke-LogMsg $Line
                 $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
@@ -185,7 +185,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $ErrScript = {
             $Line = $Event.SourceEventArgs.Data
             if ($Line) {
-                [System.IO.File]::AppendAllText($using:TargetLogPath, ($Line + [System.Environment]::NewLine))
+                [System.IO.File]::AppendAllText($Event.Sender.LogPath, ($Line + [System.Environment]::NewLine))
                 & $using:Invoke-LogMsg $Line
                 $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
             }
