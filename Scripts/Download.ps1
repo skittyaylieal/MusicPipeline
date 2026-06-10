@@ -132,13 +132,14 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "-P", $using:LocalBackupDir,
             "-o", $using:OutputTemplate,
             "--cache-dir", $using:LocalCacheDir,
+            "--geo-bypass",
             "--js-runtime", "deno",
             "--extractor-args", "youtube:player_client=default",
             "-f", "ba[ext=m4a]/ba",
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
             "--legacy-server-connect",
-            "--socket-timeout", "60",
+            "--socket-timeout", "5",
             $PlaylistURL
         )
 
