@@ -66,16 +66,15 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
     if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
-    # Thread-Safe Real-Time Logger packed into a portable ScriptBlock for event injection
-    $LogBlock = {
-        Param([string]$Text, [int]$SlotIndex, [string]$MasterLog)
+    # Core Thread-Safe Logger Matrix
+    function Invoke-LogMsg([string]$Text) {
         if ([string]::IsNullOrWhiteSpace($Text)) { return }
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         
         $ESC = [char]27
         $Reset = "$ESC[0m"
         
-        $ColorCode = switch ($SlotIndex) {
+        $ColorCode = switch ($LoopIndex) {
             1 { "36" }  # Cyan
             2 { "35" }  # Magenta
             3 { "33" }  # Yellow
@@ -86,18 +85,18 @@ $SanitizedURLs | ForEach-Object -Parallel {
             $ColorCode = "1;31"
         }
 
-        $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Playlist $SlotIndex]$Reset"
+        $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Playlist $LoopIndex]$Reset"
         $FormattedLine = "$ColorPrefix $Text"
         
         Write-Output $FormattedLine
         
-        if (Test-Path -LiteralPath $MasterLog) {
+        if (Test-Path -LiteralPath $using:GlobalLogFile) {
             $RetryCount = 0
             $MaxRetries = 15
             $Success    = $false
             while (-not $Success -and $RetryCount -lt $MaxRetries) {
                 try {
-                    [System.IO.File]::AppendAllText($MasterLog, ($FormattedLine + [System.Environment]::NewLine))
+                    [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
                     $Success = $true
                 } catch [System.IO.IOException] {
                     $RetryCount++
@@ -112,9 +111,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
     try {
         if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
 
-        # Local log execution shortcut
-        $LogFileInstance = $using:GlobalLogFile
-        & $LogBlock "Processing Playlist URL: $PlaylistURL" $LoopIndex $LogFileInstance
+        Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
 
         $YTDLArgs = @(
             "--no-colors",
@@ -140,7 +137,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
             "--legacy-server-connect",
-            "--socket-timeout", "15",
+            "--socket-timeout", "30",
             $PlaylistURL
         )
 
@@ -155,89 +152,56 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
         $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
         
+        # Unbuffered environment parameters forced to standard settings
         $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
         $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
 
         foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
-        $proc = New-Object System.Diagnostics.Process
-        $proc.StartInfo = $psi
-        $proc.EnableRaisingEvents = $true
+        $proc = [System.Diagnostics.Process]::Start($psi)
 
-        # Injecting all parameters directly onto the object to make event boundaries irrelevant
-        Add-Member -InputObject $proc -MemberType NoteProperty -Name "LogPath" -Value $ErrorLogPath
-        Add-Member -InputObject $proc -MemberType NoteProperty -Name "LogEngine" -Value $LogBlock
-        Add-Member -InputObject $proc -MemberType NoteProperty -Name "Slot" -Value $LoopIndex
-        Add-Member -InputObject $proc -MemberType NoteProperty -Name "ConsoleLog" -Value $LogFileInstance
+        # Synchronous execution with a clean native 10-minute maximum runtime safety ceiling
+        # This gives large playlists plenty of structural room to paginate naturally
+        $HasExited = $proc.WaitForExit(600000)
 
-        $OutScript = {
-            $Line = $Event.SourceEventArgs.Data
-            if ($Line) {
-                [string]$Cleaned = $Line.Trim()
-                if ($Cleaned -match "Finished downloading playlist:") {
-                    $script:Capture = $true
-                }
+        if (-not $HasExited) {
+            Invoke-LogMsg "🛑 [Pipeline Guard] Process exceeded safety ceiling limits. Terminating instance..."
+            try {
+                $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+                Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | Stop-Process -Force -ErrorAction SilentlyContinue
+            } catch {}
+        }
+
+        # Flush the entire completed buffer securely in a single batch read
+        $StdOut = $proc.StandardOutput.ReadToEnd()
+        $StdErr = $proc.StandardError.ReadToEnd()
+
+        # Parse output data lines cleanly back to user visual terminals
+        if (-not [string]::IsNullOrWhiteSpace($StdOut)) {
+            $StdOut -split "`r?`n" | ForEach-Object { 
+                Invoke-LogMsg $_ 
+                if ($_ -match "Finished downloading playlist:") { $script:Capture = $true }
                 if ($script:Capture) {
-                    [System.IO.File]::AppendAllText($Event.Sender.LogPath, ($Line + [System.Environment]::NewLine))
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ($_ + [System.Environment]::NewLine))
                 }
-                # Safe out-of-scope execution via explicit execution reference
-                & $Event.Sender.LogEngine $Line $Event.Sender.Slot $Event.Sender.ConsoleLog
-                $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
             }
         }
 
-        $ErrScript = {
-            $Line = $Event.SourceEventArgs.Data
-            if ($Line) {
-                [System.IO.File]::AppendAllText($Event.Sender.LogPath, ($Line + [System.Environment]::NewLine))
-                & $Event.Sender.LogEngine $Line $Event.Sender.Slot $Event.Sender.ConsoleLog
-                $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
-            }
+        if (-not [string]::IsNullOrWhiteSpace($StdErr)) {
+            [System.IO.File]::AppendAllText($ErrorLogPath, $StdErr)
+            $StdErr -split "`r?`n" | ForEach-Object { Invoke-LogMsg $_ }
         }
-
-        # Bind events to standard engine channels
-        $OutEvent = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -Action $OutScript
-        $ErrEvent = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -Action $ErrScript
-
-        # Launch executable and open async listener streams
-        if ($proc.Start()) {
-            $proc.BeginOutputReadLine()
-            $proc.BeginErrorReadLine()
-        }
-
-        $script:LastActivity = [System.Diagnostics.Stopwatch]::GetTimestamp()
-        $MaxStallTicks = 45 * [System.Diagnostics.Stopwatch]::Frequency 
-
-        # Event execution lookahead check
-        while (-not $proc.HasExited) {
-            [System.Threading.Thread]::Sleep(200)
-            
-            # Check for silent network stalls cleanly
-            $CurrentTicks = [System.Diagnostics.Stopwatch]::GetTimestamp()
-            if (($CurrentTicks - $script:LastActivity) -gt $MaxStallTicks) {
-                & $proc.LogEngine "🛑 [Pipeline Guard] Pure stream silence caught. Hard-cycling thread workers..." $proc.Slot $proc.ConsoleLog
-                try { $proc | Stop-Process -Force -ErrorAction SilentlyContinue } catch {}
-                break
-            }
-        }
-
-        # Graceful cleanup validation
-        [System.Threading.Thread]::Sleep(500)
-        
-        # Unregister active event streams cleanly
-        Unregister-Event -SourceIdentifier $OutEvent.Name -ErrorAction SilentlyContinue
-        Unregister-Event -SourceIdentifier $ErrEvent.Name -ErrorAction SilentlyContinue
 
         if ($proc.ExitCode -eq 0) {
-            & $proc.LogEngine "Sync completed successfully!" $proc.Slot $proc.ConsoleLog
+            Invoke-LogMsg "Sync completed successfully!"
         } else {
-            & $proc.LogEngine "Finished with warnings/errors. Exit Code: $($proc.ExitCode)" $proc.Slot $proc.ConsoleLog
+            Invoke-LogMsg "Finished with warnings/errors. Exit Code: $($proc.ExitCode)"
         }
 
     } catch {
         $InternalErrMsg = $_.Exception.Message
         $FailedLineNum  = $_.InvocationInfo.ScriptLineNumber
-        Write-Error "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
+        Invoke-LogMsg "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
     }
 } -ThrottleLimit 1
 
