@@ -134,7 +134,10 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--cache-dir", $using:LocalCacheDir,
             "--geo-bypass",
             "--js-runtime", "deno",
-            "--extractor-args", "youtube:player_client=default",
+            
+            # Reverted back to the highly stable player variant used in your old branch
+            "--extractor-args", "youtube:player_js_variant=tv",
+            
             "-f", "ba[ext=m4a]/ba",
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
@@ -147,7 +150,10 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $psi.FileName               = $using:LocalYTDLPPath
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError  = $true 
-        $psi.RedirectStandardInput  = $true 
+        
+        # CRITICAL FIX: Turned off input redirection to stop Python/Deno from locking on empty windows pipes
+        $psi.RedirectStandardInput  = $false 
+        
         $psi.UseShellExecute        = $false
         $psi.CreateNoWindow         = $true
         
@@ -160,8 +166,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
+        # Execution started without closing standard input channels prematurely
         $proc = [System.Diagnostics.Process]::Start($psi)
-        $proc.StandardInput.Close()
 
         # --- COMPLETE POST-FLUSH MONITOR ENGINE ---
         $LastActivityTime = [System.Diagnostics.Stopwatch]::StartNew()
