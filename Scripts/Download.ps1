@@ -171,11 +171,20 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $ErrStream = [System.IO.StreamWriter]::new($ErrFile, $false, [System.Text.Encoding]::UTF8)
 
         # Event bindings for processing unbuffered streams out of memory pipes instantly
+        # (Using local references inside the blocks to comply with strict PowerShell scope syntax)
         $OutDataReceived = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -Action {
-            if ($EventArgs.Data) { $using:OutStream.WriteLine($EventArgs.Data); $using:OutStream.Flush() }
+            if ($EventArgs.Data) { 
+                $Stream = $using:OutStream
+                $Stream.WriteLine($EventArgs.Data)
+                $Stream.Flush() 
+            }
         }
         $ErrDataReceived = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -Action {
-            if ($EventArgs.Data) { $using:ErrStream.WriteLine($EventArgs.Data); $using:ErrStream.Flush() }
+            if ($EventArgs.Data) { 
+                $Stream = $using:ErrStream
+                $Stream.WriteLine($EventArgs.Data)
+                $Stream.Flush() 
+            }
         }
 
         $proc.BeginOutputReadLine()
