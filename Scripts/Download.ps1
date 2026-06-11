@@ -159,13 +159,13 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
         $ArgString = $EscapedArgs -join " "
 
-        # Configuration: Force environment variables inline via standard shell shell chains to enable true UseShellExecute windows
+        # Clean literal construction mapping: Removes illegal spaces before internal string operators
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
-        $psi.FileName               = "cmd.exe"
-        $psi.Arguments = "/c (set PYTHONUNBUFFERED=1&& set YTDLP_UNBUFFERED=1&& set NO_COLOR=1&& `"$LocalYTDLPPath`" $ArgString) >> `"$OutFile`" 2>> `"$ErrFile`""
-        $psi.UseShellExecute        = $true
-        $psi.CreateNoWindow         = $false
-        $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $psi.FileName        = "cmd.exe"
+        $psi.Arguments       = '/c (set PYTHONUNBUFFERED=1&&set YTDLP_UNBUFFERED=1&&set NO_COLOR=1&&"' + $LocalYTDLPPath + '" ' + $ArgString + ') >> "' + $OutFile + '" 2>> "' + $ErrFile + '"'
+        $psi.UseShellExecute = $true
+        $psi.CreateNoWindow  = $false
+        $psi.WindowStyle     = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
         # Initialize the hidden runner process instance 
         $proc = [System.Diagnostics.Process]::Start($psi)

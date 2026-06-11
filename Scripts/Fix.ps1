@@ -44,7 +44,7 @@ foreach ($Log in $ErrorLogs) {
         }
     }
 }
-end
+
 
 # Preserve existing un-resolved manual records if fix.ps1 reruns
 if (Test-Path $ErrorDbPath) {
