@@ -166,24 +166,21 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         $proc = [System.Diagnostics.Process]::Start($psi)
 
-        # Build real-time streaming text writers
-        $OutStream = [System.IO.StreamWriter]::new($OutFile, $false, [System.Text.Encoding]::UTF8)
-        $ErrStream = [System.IO.StreamWriter]::new($ErrFile, $false, [System.Text.Encoding]::UTF8)
+        # Pass the string file paths into explicit local scope variables for event safety
+        $LocalOutFile = $OutFile
+        $LocalErrFile = $ErrFile
 
-        # Event bindings for processing unbuffered streams out of memory pipes instantly
-        # (Using local references inside the blocks to comply with strict PowerShell scope syntax)
+        # Event bindings using direct, atomic file writing to stay fully scope-agnostic
         $OutDataReceived = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -Action {
             if ($EventArgs.Data) { 
-                $Stream = $using:OutStream
-                $Stream.WriteLine($EventArgs.Data)
-                $Stream.Flush() 
+                $Path = $using:LocalOutFile
+                [System.IO.File]::AppendAllText($Path, ($EventArgs.Data + [System.Environment]::NewLine))
             }
         }
         $ErrDataReceived = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -Action {
             if ($EventArgs.Data) { 
-                $Stream = $using:ErrStream
-                $Stream.WriteLine($EventArgs.Data)
-                $Stream.Flush() 
+                $Path = $using:LocalErrFile
+                [System.IO.File]::AppendAllText($Path, ($EventArgs.Data + [System.Environment]::NewLine))
             }
         }
 
@@ -230,11 +227,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
         # Allow final streaming allocations to complete settling
         [System.Threading.Thread]::Sleep(500)
 
-        # Clear event registrations and drop locks cleanly
+        # Clear event registrations and drop system handles cleanly
         Unregister-Event -SourceIdentifier $OutDataReceived.Name -ErrorAction SilentlyContinue
         Unregister-Event -SourceIdentifier $ErrDataReceived.Name -ErrorAction SilentlyContinue
-        $OutStream.Close(); $OutStream.Dispose()
-        $ErrStream.Close(); $ErrStream.Dispose()
 
         # Compile trailing error data segments
         if (Test-Path -LiteralPath $ErrFile) {
@@ -245,7 +240,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             }
         }
 
-        # Wipe working stream files
+        # Wipe working stream files securely
         Remove-Item $OutFile, $ErrFile -Force -ErrorAction SilentlyContinue
 
         if ($proc.ExitCode -eq 0) {
