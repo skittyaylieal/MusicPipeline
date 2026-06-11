@@ -131,7 +131,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "-o", $using:OutputTemplate,
             "--cache-dir", $using:LocalCacheDir,
             "--geo-bypass",
-            
+            "--js-runtime", "deno",
+            "--extractor-args", "youtube:player_js_variant=tv",
             "-f", "ba[ext=m4a]/ba",
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
