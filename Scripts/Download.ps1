@@ -144,14 +144,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = $using:LocalYTDLPPath
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError  = $true 
-        $psi.RedirectStandardInput  = $false 
         $psi.UseShellExecute        = $false
         $psi.CreateNoWindow         = $true
-        
-        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
-        $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
         
         # Unbuffered environment parameters forced to standard settings
         $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
@@ -159,39 +153,91 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
+        # Setup explicit temporary files to intercept text blocks natively
+        $OutFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stdout.tmp"
+        $ErrFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stderr.tmp"
+        if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue }
+        if (Test-Path -LiteralPath $ErrFile) { Remove-Item -LiteralPath $ErrFile -Force -ErrorAction SilentlyContinue }
+
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError  = $true
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
+
         $proc = [System.Diagnostics.Process]::Start($psi)
 
-        # Synchronous execution with a clean native 10-minute maximum runtime safety ceiling
-        # This gives large playlists plenty of structural room to paginate naturally
-        $HasExited = $proc.WaitForExit(600000)
+        # Build real-time streaming text writers
+        $OutStream = [System.IO.StreamWriter]::new($OutFile, $false, [System.Text.Encoding]::UTF8)
+        $ErrStream = [System.IO.StreamWriter]::new($ErrFile, $false, [System.Text.Encoding]::UTF8)
 
-        if (-not $HasExited) {
-            Invoke-LogMsg "🛑 [Pipeline Guard] Process exceeded safety ceiling limits. Terminating instance..."
-            try {
-                $proc | Stop-Process -Force -ErrorAction SilentlyContinue
-                Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | Stop-Process -Force -ErrorAction SilentlyContinue
-            } catch {}
+        # Event bindings for processing unbuffered streams out of memory pipes instantly
+        $OutDataReceived = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -Action {
+            if ($EventArgs.Data) { $using:OutStream.WriteLine($EventArgs.Data); $using:OutStream.Flush() }
+        }
+        $ErrDataReceived = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -Action {
+            if ($EventArgs.Data) { $using:ErrStream.WriteLine($EventArgs.Data); $using:ErrStream.Flush() }
         }
 
-        # Flush the entire completed buffer securely in a single batch read
-        $StdOut = $proc.StandardOutput.ReadToEnd()
-        $StdErr = $proc.StandardError.ReadToEnd()
+        $proc.BeginOutputReadLine()
+        $proc.BeginErrorReadLine()
 
-        # Parse output data lines cleanly back to user visual terminals
-        if (-not [string]::IsNullOrWhiteSpace($StdOut)) {
-            $StdOut -split "`r?`n" | ForEach-Object { 
-                Invoke-LogMsg $_ 
-                if ($_ -match "Finished downloading playlist:") { $script:Capture = $true }
-                if ($script:Capture) {
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ($_ + [System.Environment]::NewLine))
-                }
+        # Non-blocking, dynamic evaluation engine
+        $LastLineCount = 0
+        $TimeoutWatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+        while (-not $proc.HasExited) {
+            [System.Threading.Thread]::Sleep(1000)
+            
+            # Stagnation ceiling check (Triggers only if output stops completely for 10 minutes)
+            if ($TimeoutWatch.Elapsed.TotalMinutes -gt 10) {
+                Invoke-LogMsg "🛑 [Pipeline Guard] Process stagnated or exceeded safety limits. Terminating instance..."
+                try {
+                    $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+                    Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | Stop-Process -Force -ErrorAction SilentlyContinue
+                } catch {}
+                break
+            }
+
+            # Safely tail the text dump and flush lines back out to the web monitor
+            if (Test-Path -LiteralPath $OutFile) {
+                try {
+                    $Lines = Get-Content -LiteralPath $OutFile -ErrorAction SilentlyContinue
+                    if ($Lines -and $Lines.Count -gt $LastLineCount) {
+                        for ($i = $LastLineCount; $i -lt $Lines.Count; $i++) {
+                            $Line = $Lines[$i]
+                            Invoke-LogMsg $Line
+                            if ($Line -match "Finished downloading playlist:") { $script:Capture = $true }
+                            if ($script:Capture) {
+                                [System.IO.File]::AppendAllText($ErrorLogPath, ($Line + [System.Environment]::NewLine))
+                            }
+                        }
+                        $LastLineCount = $Lines.Count
+                        $TimeoutWatch.Restart() # Active progression detected, reset stagnation watch!
+                    }
+                } catch {}
             }
         }
 
-        if (-not [string]::IsNullOrWhiteSpace($StdErr)) {
-            [System.IO.File]::AppendAllText($ErrorLogPath, $StdErr)
-            $StdErr -split "`r?`n" | ForEach-Object { Invoke-LogMsg $_ }
+        # Allow final streaming allocations to complete settling
+        [System.Threading.Thread]::Sleep(500)
+
+        # Clear event registrations and drop locks cleanly
+        Unregister-Event -SourceIdentifier $OutDataReceived.Name -ErrorAction SilentlyContinue
+        Unregister-Event -SourceIdentifier $ErrDataReceived.Name -ErrorAction SilentlyContinue
+        $OutStream.Close(); $OutStream.Dispose()
+        $ErrStream.Close(); $ErrStream.Dispose()
+
+        # Compile trailing error data segments
+        if (Test-Path -LiteralPath $ErrFile) {
+            $Errors = Get-Content -LiteralPath $ErrFile -ErrorAction SilentlyContinue
+            if ($Errors) {
+                [System.IO.File]::AppendAllText($ErrorLogPath, ($Errors -join [System.Environment]::NewLine))
+                foreach ($ErrLine in $Errors) { Invoke-LogMsg $ErrLine }
+            }
         }
+
+        # Wipe working stream files
+        Remove-Item $OutFile, $ErrFile -Force -ErrorAction SilentlyContinue
 
         if ($proc.ExitCode -eq 0) {
             Invoke-LogMsg "Sync completed successfully!"
