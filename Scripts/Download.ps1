@@ -159,38 +159,22 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
         $ArgString = $EscapedArgs -join " "
 
-        # Configuration: Allocate an authentic terminal window subsystem but drop its visibility frame completely
+        # Configuration: Force environment variables inline via standard shell shell chains to enable true UseShellExecute windows
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = "cmd.exe"
-        $psi.Arguments              = "/c `"$LocalYTDLPPath`" $ArgString >> `"$OutFile`" 2>> `"$ErrFile`""
+        $psi.Arguments = "/c (set PYTHONUNBUFFERED=1&& set YTDLP_UNBUFFERED=1&& set NO_COLOR=1&& `"$LocalYTDLPPath`" $ArgString) >> `"$OutFile`" 2>> `"$ErrFile`""
         $psi.UseShellExecute        = $true
-        $psi.CreateNoWindow         = $false  # Must be false for WindowStyle to register
+        $psi.CreateNoWindow         = $false
         $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
-        # Set up explicit unbuffered variables directly into process environment footprint block
-        $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
-        $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
-        $psi.EnvironmentVariables["NO_COLOR"]         = "1"
-
-        # Initialize the hidden runner process instance
+        # Initialize the hidden runner process instance 
         $proc = [System.Diagnostics.Process]::Start($psi)
 
         # Non-blocking, dynamic evaluation engine
         $LastLineCount = 0
-        $TimeoutWatch = [System.Diagnostics.Stopwatch]::StartNew()
 
         while (-not $proc.HasExited) {
             [System.Threading.Thread]::Sleep(1000)
-            
-            # Stagnation ceiling check (Triggers only if output stops completely for 10 minutes)
-            if ($TimeoutWatch.Elapsed.TotalMinutes -gt 10) {
-                Invoke-LogMsg "🛑 [Pipeline Guard] Process stagnated or exceeded safety limits. Terminating instance..."
-                try {
-                    $proc | Stop-Process -Force -ErrorAction SilentlyContinue
-                    Get-Process -Name "deno", "yt-dlp", "ffmpeg" -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-10) } | Stop-Process -Force -ErrorAction SilentlyContinue
-                } catch {}
-                break
-            }
 
             # Safely tail the text dump and flush lines back out to the web monitor
             if (Test-Path -LiteralPath $OutFile) {
@@ -206,7 +190,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
                             }
                         }
                         $LastLineCount = $Lines.Count
-                        $TimeoutWatch.Restart() # Active progression detected, reset stagnation watch!
                     }
                 } catch {}
             }
