@@ -12,8 +12,9 @@ Write-Output "============================================="
 
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
-# Unified Thread-Safe Logger matching the Downloader Engine
+# Unified Thread-Safe Logger matching the Downloader Engine (Fixed local scope tracking)
 function Invoke-LogMsg([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return }
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
     $ESC = [char]27
     $Reset = "$ESC[0m"
@@ -32,14 +33,15 @@ function Invoke-LogMsg([string]$Text) {
     
     Write-Output $FormattedLine
     
-    if (Test-Path -LiteralPath $using:GlobalLogFile) {
+    # FIX: Swapped $using:GlobalLogFile out for the script-scoped variable reference ($GlobalLogFile)
+    if (Test-Path -LiteralPath $GlobalLogFile) {
         $RetryCount = 0
         $MaxRetries = 15
         $Success    = $false
         
         while (-not $Success -and $RetryCount -lt $MaxRetries) {
             try {
-                [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
+                [System.IO.File]::AppendAllText($GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
                 $Success = $true
             } catch [System.IO.IOException] {
                 $RetryCount++
@@ -51,10 +53,10 @@ function Invoke-LogMsg([string]$Text) {
     }
 }
 
-# Real-Time Execution Handler for tracking sub-Python tasks
+# Real-Time Execution Handler for tracking sub-Python tasks (Fixed asynchronous stream evaluation)
 function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList) {
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName               = $Executable
+    $psi.FileName                = $Executable
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError  = $true 
     $psi.RedirectStandardInput  = $true 
@@ -72,24 +74,25 @@ function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList) {
         $proc = [System.Diagnostics.Process]::Start($psi)
         $proc.StandardInput.Close()
 
+        # FIX: Swapped brittle stream peeks for native EndOfStream loop handling to prevent dropped buffers
         while (-not $proc.HasExited) {
-            if ($proc.StandardOutput.Peek() -ge 0) {
+            [System.Threading.Thread]::Sleep(50)
+            while (-not $proc.StandardOutput.EndOfStream) {
                 $Line = $proc.StandardOutput.ReadLine()
                 if ($Line) { Invoke-LogMsg "    [Python STDOUT] $Line" }
             }
-            if ($proc.StandardError.Peek() -ge 0) {
+            while (-not $proc.StandardError.EndOfStream) {
                 $ErrLine = $proc.StandardError.ReadLine()
                 if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" }
             }
-            [System.Threading.Thread]::Sleep(20)
         }
 
-        # Clear final lines
-        while ($proc.StandardOutput.Peek() -ge 0) {
+        # Clear final residual trailing lines out of the process stream registers
+        while (-not $proc.StandardOutput.EndOfStream) {
             $Line = $proc.StandardOutput.ReadLine()
             if ($Line) { Invoke-LogMsg "    [Python STDOUT] $Line" }
         }
-        while ($proc.StandardError.Peek() -ge 0) {
+        while (-not $proc.StandardError.EndOfStream) {
             $ErrLine = $proc.StandardError.ReadLine()
             if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" }
         }
@@ -102,7 +105,6 @@ function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList) {
 }
 
 Invoke-LogMsg "[*] Verifying background Python dependencies..."
-# Use unbuffered pipeline tracking to see pip install updates instantly
 $PipExit = Invoke-NativeProcess "pip" @("install", "--upgrade", "syncedlyrics", "--quiet")
 Invoke-LogMsg "[*] Pip verification routine complete (Exit Code: $PipExit)."
 

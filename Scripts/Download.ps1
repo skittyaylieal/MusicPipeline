@@ -148,33 +148,49 @@ $SanitizedURLs | ForEach-Object -Parallel {
         if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue }
         if (Test-Path -LiteralPath $ErrFile) { Remove-Item -LiteralPath $ErrFile -Force -ErrorAction SilentlyContinue }
 
-        # Safely compile arguments into an escaped string for cmd.exe execution
-        $EscapedArgs = @()
-        foreach ($arg in $YTDLArgs) {
-            if ($arg -match '[\s"]') {
-                $EscapedArgs += '"' + $arg.Replace('"', '\"') + '"'
-            } else {
-                $EscapedArgs += $arg
-            }
-        }
-        $ArgString = $EscapedArgs -join " "
-
-        # Clean literal construction mapping: Removes illegal spaces before internal string operators
+        # Configuration: Launch yt-dlp natively. Bypasses brittle cmd.exe wrappers
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
-        $psi.FileName        = "cmd.exe"
-        $psi.Arguments       = '/c (set PYTHONUNBUFFERED=1&&set YTDLP_UNBUFFERED=1&&set NO_COLOR=1&&"' + $LocalYTDLPPath + '" ' + $ArgString + ') >> "' + $OutFile + '" 2>> "' + $ErrFile + '"'
-        $psi.UseShellExecute = $true
-        $psi.CreateNoWindow  = $false
-        $psi.WindowStyle     = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $psi.FileName               = $LocalYTDLPPath
+        $psi.UseShellExecute        = $false  
+        $psi.CreateNoWindow         = $true   
+        $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
-        # Initialize the hidden runner process instance 
+        # Seamlessly inject environment variables directly into process memory context
+        $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
+        $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
+        $psi.EnvironmentVariables["NO_COLOR"]         = "1"
+
+        # Pass arguments safely as an explicit array literal (avoids quote fragmentation)
+        foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
+
+        # Redirect standard output streams to process memory pipes
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError  = $true
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
+
+        # Initialize native hidden runner process instance 
         $proc = [System.Diagnostics.Process]::Start($psi)
+
+        # Open dedicated I/O disk flush blocks
+        $StreamWriter = [System.IO.StreamWriter]::new($OutFile, $false, [System.Text.Encoding]::UTF8)
+        $StreamError  = [System.IO.StreamWriter]::new($ErrFile, $false, [System.Text.Encoding]::UTF8)
 
         # Non-blocking, dynamic evaluation engine
         $LastLineCount = 0
 
         while (-not $proc.HasExited) {
-            [System.Threading.Thread]::Sleep(1000)
+            [System.Threading.Thread]::Sleep(100)
+
+            # Flush pipeline streams directly from process memory tracking down to temporary files
+            while (-not $proc.StandardOutput.EndOfStream) {
+                $Line = $proc.StandardOutput.ReadLine()
+                if ($Line) { $StreamWriter.WriteLine($Line); $StreamWriter.Flush() }
+            }
+            while (-not $proc.StandardError.EndOfStream) {
+                $ErrLine = $proc.StandardError.ReadLine()
+                if ($ErrLine) { $StreamError.WriteLine($ErrLine); $StreamError.Flush() }
+            }
 
             # Safely tail the text dump and flush lines back out to the web monitor
             if (Test-Path -LiteralPath $OutFile) {
@@ -194,6 +210,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
                 } catch {}
             }
         }
+
+        # Clear active stream pointers
+        $StreamWriter.Close(); $StreamError.Close()
 
         # Allow final streaming allocations to complete settling
         [System.Threading.Thread]::Sleep(500)
