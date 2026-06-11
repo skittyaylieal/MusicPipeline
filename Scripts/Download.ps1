@@ -142,52 +142,38 @@ $SanitizedURLs | ForEach-Object -Parallel {
             $PlaylistURL
         )
 
-        $psi = [System.Diagnostics.ProcessStartInfo]::new()
-        $psi.FileName               = $using:LocalYTDLPPath
-        $psi.UseShellExecute        = $false
-        $psi.CreateNoWindow         = $true
-        
-        # Unbuffered environment parameters forced to standard settings
-        $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
-        $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
-        $psi.EnvironmentVariables["NO_COLOR"]         = "1" # Calms down Deno's terminal state engine
-
-        foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
-
         # Setup explicit temporary files to intercept text blocks natively
         $OutFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stdout.tmp"
         $ErrFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stderr.tmp"
         if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue }
         if (Test-Path -LiteralPath $ErrFile) { Remove-Item -LiteralPath $ErrFile -Force -ErrorAction SilentlyContinue }
 
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError  = $true
-        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
-        $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
+        # Safely compile arguments into an escaped string for cmd.exe execution
+        $EscapedArgs = @()
+        foreach ($arg in $YTDLArgs) {
+            if ($arg -match '[\s"]') {
+                $EscapedArgs += '"' + $arg.Replace('"', '\"') + '"'
+            } else {
+                $EscapedArgs += $arg
+            }
+        }
+        $ArgString = $EscapedArgs -join " "
 
+        # Configuration: Allocate an authentic terminal window subsystem but drop its visibility frame completely
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName               = "cmd.exe"
+        $psi.Arguments              = "/c `"$LocalYTDLPPath`" $ArgString >> `"$OutFile`" 2>> `"$ErrFile`""
+        $psi.UseShellExecute        = $true
+        $psi.CreateNoWindow         = $false  # Must be false for WindowStyle to register
+        $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
+
+        # Set up explicit unbuffered variables directly into process environment footprint block
+        $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
+        $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
+        $psi.EnvironmentVariables["NO_COLOR"]         = "1"
+
+        # Initialize the hidden runner process instance
         $proc = [System.Diagnostics.Process]::Start($psi)
-
-        # Unique naming strings for dynamic unregistration safety
-        $OutEventID = "Out_Event_${LoopIndex}_$([Guid]::NewGuid().Guid.SubString(0,8))"
-        $ErrEventID = "Err_Event_${LoopIndex}_$([Guid]::NewGuid().Guid.SubString(0,8))"
-
-        # Explicit payload binding: We inject the file targets into MessageData.
-        # This makes them readable inside the isolated event action block context without using $using:
-        $OutDataReceived = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -SourceIdentifier $OutEventID -MessageData $OutFile -Action {
-            if ($EventArgs.Data) { 
-                $TargetFilePath = $Event.MessageData
-                [System.IO.File]::AppendAllText($TargetFilePath, ($EventArgs.Data + [System.Environment]::NewLine))
-            }
-        }
-        $ErrDataReceived = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -SourceIdentifier $ErrEventID -MessageData $ErrFile -Action {
-            if ($EventArgs.Data) { 
-                $TargetFilePath = $Event.MessageData
-                [System.IO.File]::AppendAllText($TargetFilePath, ($EventArgs.Data + [System.Environment]::NewLine))
-            }
-        }
-
-        $proc.BeginOutputReadLine()
-        $proc.BeginErrorReadLine()
 
         # Non-blocking, dynamic evaluation engine
         $LastLineCount = 0
@@ -228,10 +214,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         # Allow final streaming allocations to complete settling
         [System.Threading.Thread]::Sleep(500)
-
-        # Clear event registrations and drop system handles cleanly via precise SourceIdentifiers
-        Unregister-Event -SourceIdentifier $OutEventID -ErrorAction SilentlyContinue
-        Unregister-Event -SourceIdentifier $ErrEventID -ErrorAction SilentlyContinue
 
         # Compile trailing error data segments
         if (Test-Path -LiteralPath $ErrFile) {
