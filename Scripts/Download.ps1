@@ -150,6 +150,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         # Unbuffered environment parameters forced to standard settings
         $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
         $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
+        $psi.EnvironmentVariables["NO_COLOR"]         = "1" # Calms down Deno's terminal state engine
 
         foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
