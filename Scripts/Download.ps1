@@ -166,21 +166,22 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         $proc = [System.Diagnostics.Process]::Start($psi)
 
-        # Pass the string file paths into explicit local scope variables for event safety
-        $LocalOutFile = $OutFile
-        $LocalErrFile = $ErrFile
+        # Unique naming strings for dynamic unregistration safety
+        $OutEventID = "Out_Event_${LoopIndex}_$([Guid]::NewGuid().Guid.SubString(0,8))"
+        $ErrEventID = "Err_Event_${LoopIndex}_$([Guid]::NewGuid().Guid.SubString(0,8))"
 
-        # Event bindings using direct, atomic file writing to stay fully scope-agnostic
-        $OutDataReceived = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -Action {
+        # Explicit payload binding: We inject the file targets into MessageData.
+        # This makes them readable inside the isolated event action block context without using $using:
+        $OutDataReceived = Register-ObjectEvent -InputObject $proc -EventName "OutputDataReceived" -SourceIdentifier $OutEventID -MessageData $OutFile -Action {
             if ($EventArgs.Data) { 
-                $Path = $using:LocalOutFile
-                [System.IO.File]::AppendAllText($Path, ($EventArgs.Data + [System.Environment]::NewLine))
+                $TargetFilePath = $Event.MessageData
+                [System.IO.File]::AppendAllText($TargetFilePath, ($EventArgs.Data + [System.Environment]::NewLine))
             }
         }
-        $ErrDataReceived = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -Action {
+        $ErrDataReceived = Register-ObjectEvent -InputObject $proc -EventName "ErrorDataReceived" -SourceIdentifier $ErrEventID -MessageData $ErrFile -Action {
             if ($EventArgs.Data) { 
-                $Path = $using:LocalErrFile
-                [System.IO.File]::AppendAllText($Path, ($EventArgs.Data + [System.Environment]::NewLine))
+                $TargetFilePath = $Event.MessageData
+                [System.IO.File]::AppendAllText($TargetFilePath, ($EventArgs.Data + [System.Environment]::NewLine))
             }
         }
 
@@ -227,9 +228,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
         # Allow final streaming allocations to complete settling
         [System.Threading.Thread]::Sleep(500)
 
-        # Clear event registrations and drop system handles cleanly
-        Unregister-Event -SourceIdentifier $OutDataReceived.Name -ErrorAction SilentlyContinue
-        Unregister-Event -SourceIdentifier $ErrDataReceived.Name -ErrorAction SilentlyContinue
+        # Clear event registrations and drop system handles cleanly via precise SourceIdentifiers
+        Unregister-Event -SourceIdentifier $OutEventID -ErrorAction SilentlyContinue
+        Unregister-Event -SourceIdentifier $ErrEventID -ErrorAction SilentlyContinue
 
         # Compile trailing error data segments
         if (Test-Path -LiteralPath $ErrFile) {
