@@ -136,6 +136,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "-f", "ba[ext=m4a]/ba",
             "--download-archive", $using:LocalActiveHistoryLog, 
             "--ignore-errors",
+            "--no-abort-on-error",
             "--legacy-server-connect",
             "--socket-timeout", "30",
             $PlaylistURL
