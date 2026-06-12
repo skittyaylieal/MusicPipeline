@@ -153,8 +153,8 @@ foreach ($FilePath in $AudioFiles) {
          continue
     }
 
-    # Python Native Metadata Verification via Real-time Stream (With ID3 Support for MP3)
-    Invoke-LogMsg "    [*] Querying embedded container tags for unsynced lyrics..."
+    # Python Native Metadata Verification via Real-time Stream (With ID3 & Instrumental Support)
+    Invoke-LogMsg "    [*] Querying embedded container tags for unsynced lyrics & instrumental flags..."
     $TmpPyCheck = Join-Path $env:TEMP "mutagen_check.py"
     $PreCheckPython = @"
 import mutagen, sys
@@ -164,6 +164,20 @@ from mutagen.id3 import ID3
 try:
     audio = mutagen.File(r'$FilePath')
     if audio is not None:
+        # 1. Look for explicit automatic or manual Instrumental markings
+        if isinstance(audio, FLAC):
+            lang = audio.get('language', [''])[0].lower()
+            comment = audio.get('comment', [''])[0].lower()
+            if lang == 'zxx' or 'instrumental' in comment: sys.exit(3)
+        elif isinstance(audio, MP4):
+            comment = audio.get('\xa9cmt', [''])[0].lower() if '\xa9cmt' in audio else ''
+            if 'instrumental' in comment: sys.exit(3)
+        elif isinstance(audio, ID3) or (audio.tags and hasattr(audio.tags, 'getall')):
+            if audio.tags.getall('TLAN') and audio.tags.getall('TLAN')[0].text[0].lower() == 'zxx': sys.exit(3)
+            for comm in audio.tags.getall('COMM'):
+                if 'instrumental' in comm.text.lower(): sys.exit(3)
+
+        # 2. Check for existing unsynced lyrics
         if isinstance(audio, MP4) and '\xa9lyr' in audio and audio['\xa9lyr']: sys.exit(2)
         elif isinstance(audio, FLAC) and 'lyrics' in audio and audio['lyrics']: sys.exit(2)
         elif isinstance(audio, ID3) or (audio.tags and hasattr(audio.tags, 'getall')):
@@ -177,9 +191,15 @@ except Exception as e:
     $PreCheckPython | Out-File $TmpPyCheck -Encoding utf8NoBOM
     
     $CheckExitCode = Invoke-NativeProcess "python" @($TmpPyCheck)
-    $HasUnsyncedLyrics = ($CheckExitCode -eq 2)
     Remove-Item $TmpPyCheck -Force
     
+    if ($CheckExitCode -eq 3) {
+        Invoke-LogMsg "    [-] Track explicitly marked as Instrumental. Skipping API matching engine."
+        Invoke-LogMsg "---------------------------------------------"
+        continue
+    }
+
+    $HasUnsyncedLyrics = ($CheckExitCode -eq 2)
     Invoke-LogMsg "    [*] Internal metadata analysis complete. Unsynced state present: $HasUnsyncedLyrics"
 
     $SearchQuery = $FileInfo.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' '
@@ -218,7 +238,6 @@ except Exception as e:
     $FallbackExitCode = Invoke-NativeProcess "python" $FallbackArgs
 
     # Fix logic flow matching your rule: syncedlyrics saves genius scrapes as .txt if it's plain lyrics.
-    # If it accidentally dropped an un-timed .lrc, rename it immediately to feed the Mutagen pipeline.
     if (Test-Path -LiteralPath $LrcFile) {
         Rename-Item -LiteralPath $LrcFile -NewName "$($FileInfo.BaseName).txt" -Force
     }
@@ -235,7 +254,6 @@ from mutagen.id3 import ID3, USLT
 try:
     with open(r'$TxtFile', 'r', encoding='utf-8') as f: lyrics_text = f.read()
     
-    # Safe check for file structure tags
     audio = mutagen.File(r'$FilePath')
     if audio is not None:
         if isinstance(audio, MP4):
@@ -247,7 +265,6 @@ try:
             audio.save()
             print('    [+] Unsynced text tag written to FLAC container.')
         else:
-            # Fallback for ID3/MP3 environments
             try:
                 tags = ID3(r'$FilePath')
             except Exception:
@@ -266,7 +283,66 @@ except Exception as e:
         Remove-Item $TmpPyEmbed -Force
         Invoke-LogMsg "    [*] Tag embed operations complete (Exit Code: $EmbedExitCode)."
     } else {
-        Invoke-LogMsg "    [-] Critical Error: Track could not be targeted or verified across any global API indices."
+        # SAFE FALLBACK ROUTINE: Lyric engine returned nothing. Verify if it is an objective instrumental.
+        Invoke-LogMsg "    [*] Track unindexed by lyric engines. Running database validation to check for explicit Instrumental classification..."
+        
+        $TmpPyInstrumentalCheck = Join-Path $env:TEMP "mutagen_is_instrumental.py"
+        $VerifyPython = @"
+import sys, os, urllib.request, json, urllib.parse, mutagen
+from mutagen.mp4 import MP4
+from mutagen.flac import FLAC
+from mutagen.id3 import ID3, COMM
+
+def check_musicbrainz(artist_title):
+    try:
+        url = "https://musicbrainz.org/ws/2/recording/?query=" + urllib.parse.quote(artist_title) + "&fmt=json"
+        req = urllib.request.Request(url, headers={'User-Agent': 'MusicPipelineLyricsEngine/1.0.0 ( filip@FILIPS_MICRO_PC )'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            if data.get('recordings'):
+                top_match = data['recordings'][0]
+                tags = [t.get('name', '').lower() for t in top_match.get('tags', [])]
+                if 'instrumental' in tags:
+                    return True
+                for rel in top_match.get('relations', []):
+                    for attr in rel.get('attributes', []):
+                        if attr.lower() == 'instrumental':
+                            return True
+    except Exception:
+        pass
+    return False
+
+try:
+    search_target = r"$SearchQuery"
+    is_confirmed_instrumental = check_musicbrainz(search_target)
+    
+    if is_confirmed_instrumental:
+        audio = mutagen.File(r'$FilePath')
+        if audio is not None:
+            if isinstance(audio, FLAC):
+                audio['language'] = 'zxx'
+                audio['comment'] = 'Instrumental'
+                audio.save()
+            elif isinstance(audio, MP4):
+                audio['\xa9cmt'] = ['Instrumental']
+                audio.save()
+            else:
+                try: tags = ID3(r'$FilePath')
+                except Exception: tags = ID3()
+                tags.append(mutagen.id3.TLAN(encoding=3, text=['zxx']))
+                tags.add(COMM(encoding=3, lang='eng', desc='Comment', text='Instrumental'))
+                tags.save(r'$FilePath')
+            print("    [+] Verified Instrumental status via MusicBrainz database. Stamping track tags.")
+    else:
+        print("    [-] Track could not be verified as a definitive instrumental. Leaving tags untouched.")
+except Exception as e:
+    print(f"    [!] Safe check error: {e}")
+    sys.exit(0)
+"@
+        $VerifyPython | Out-File $TmpPyInstrumentalCheck -Encoding utf8NoBOM
+        $VerifyExitCode = Invoke-NativeProcess "python" @($TmpPyInstrumentalCheck)
+        Remove-Item $TmpPyInstrumentalCheck -Force
+        
         if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force }
         if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force }
     }
