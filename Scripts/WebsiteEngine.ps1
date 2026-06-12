@@ -613,11 +613,20 @@ try {
             $Response.OutputStream.Close()
         }
         elseif ($UrlPath -eq "/run" -and $Method -eq "POST") { 
-            $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true") 
+            # Safely catch parameters using native collection parsing rather than regex on the raw Uri string
+            $IsSweepRequested = $false
+            if ($null -ne $Request.Url.Query) {
+                $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true") 
+            }
+            
             $RunContext = "Manual" 
             if ($Request.Url.Query -match "type=Automated") { $RunContext = "Automated" } 
             if ($IsSweepRequested) { $RunContext = "Clean Sweep" } 
+            
+            # Fire off asynchronous pipeline execution cleanly
             Invoke-PipelineExecution -CleanSweep $IsSweepRequested -TriggerType $RunContext 
+            
+            # Flush a direct, small buffer explicitly stating dispatch state
             $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}') 
             $Response.ContentType = "application/json" 
             $Response.ContentLength64 = $Buffer.Length 
