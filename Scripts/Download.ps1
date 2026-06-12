@@ -63,7 +63,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $LocalList = $using:GlobalURLsCopy
     $LoopIndex = $LocalList.IndexOf($PlaylistURL) + 1
     
-    # FIX: Scoped directly to the runspace script instance so sub-actions can access it natively
     $script:ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
     if (Test-Path -LiteralPath $script:ErrorLogPath) { Remove-Item -LiteralPath $script:ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
@@ -167,46 +166,39 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc = New-Object System.Diagnostics.Process
         $proc.StartInfo = $psi
         
-        # FIX: Changed references to use $script: scope visibility inside event execution hooks
-        $OutputAction = {
-            if ($EventArgs.Data) {
-                Invoke-LogMsg $EventArgs.Data
-                if ($EventArgs.Data -match "Finished downloading playlist:") { $script:Capture = $true }
-                if ($script:Capture) {
-                    [System.IO.File]::AppendAllText($script:ErrorLogPath, ($EventArgs.Data + [System.Environment]::NewLine))
-                }
-            }
-        }
-        
-        $ErrorAction = {
-            if ($EventArgs.Data) {
-                Invoke-LogMsg $EventArgs.Data
-                [System.IO.File]::AppendAllText($script:ErrorLogPath, ($EventArgs.Data + [System.Environment]::NewLine))
-            }
-        }
-
-        # Bind event handles natively inside the parallel pipeline context
-        $OutEvent = Register-ObjectEvent -InputObject $proc -EventName 'OutputDataReceived' -Action $OutputAction
-        $ErrEvent = Register-ObjectEvent -InputObject $proc -EventName 'ErrorDataReceived' -Action $ErrorAction
-
         # Initialize the actual process
         [void]$proc.Start()
-        
-        # Start asynchronous, non-blocking readings on both channels immediately
-        $proc.BeginOutputReadLine()
-        $proc.BeginErrorReadLine()
 
-        # wait rule to let the events run naturally
-        while (-not $proc.HasExited) {
-            [System.Threading.Thread]::Sleep(200)
+        $script:Capture = $false
+
+        # FIX: Replaced broken background ObjectEvents with a lightning-fast, native non-blocking loop
+        # that manually pulls strings directly from the IO memory pipes as soon as they drop.
+        while (-not $proc.HasExited -or -not $proc.StandardOutput.EndOfStream -or -not $proc.StandardError.EndOfStream) {
+            
+            # Read all currently available text lines out of Standard Output
+            while ($proc.StandardOutput.Peek() -ne -1) {
+                $Line = $proc.StandardOutput.ReadLine()
+                if ($Line) {
+                    Invoke-LogMsg $Line
+                    if ($Line -match "Finished downloading playlist:") { $script:Capture = $true }
+                    if ($script:Capture) {
+                        [System.IO.File]::AppendAllText($script:ErrorLogPath, ($Line + [System.Environment]::NewLine))
+                    }
+                }
+            }
+
+            # Read all currently available text lines out of Standard Error
+            while ($proc.StandardError.Peek() -ne -1) {
+                $ErrLine = $proc.StandardError.ReadLine()
+                if ($ErrLine) {
+                    Invoke-LogMsg $ErrLine
+                    [System.IO.File]::AppendAllText($script:ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
+                }
+            }
+
+            # Super small sleep step prevents high CPU usage while waiting for next streaming block
+            [System.Threading.Thread]::Sleep(40)
         }
-
-        # Safe settling buffer window
-        [System.Threading.Thread]::Sleep(500)
-
-        # Cleanup monitoring event handlers cleanly
-        Unregister-Event -SourceIdentifier $OutEvent.Name
-        Unregister-Event -SourceIdentifier $ErrEvent.Name
 
         if ($proc.ExitCode -eq 0) {
             Invoke-LogMsg "Sync completed successfully!"
