@@ -1,7 +1,12 @@
 Param (
     [string]$ConfigDir = "C:\MusicTools\MusicPipeline\Config",
     [string]$HistoryPath = "C:\MusicTools\MusicPipeline\Config\downloaded_history.txt",
-    [string]$FirefoxPath = "C:\Program Files\Mozilla Firefox\firefox.exe"
+    [string]$FirefoxPath = "C:\Program Files\Mozilla Firefox\firefox.exe",
+    [string]$YTDLPPath = "C:\MusicTools\yt-dlp.exe",
+    [string]$CookiePath = "C:\MusicTools\MusicPipeline\Config\cookies.txt",
+    [string]$BackupDir = "C:\Users\filip\Music\YT_Music_Backup",
+    [string]$ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe",
+    [bool]$AutoRecover = $false
 )
 
 $ErrorDbPath  = Join-Path $ConfigDir "broken_songs.json"
@@ -22,11 +27,11 @@ foreach ($Log in $ErrorLogs) {
 
         # Extract failed video IDs and failure signatures
         if ($Line -match "ERROR:\s*\[youtube\]\s*([^:]+):\s*(.*)") {
-            $VideoID = $逃Matches[1] = $Matches[1].Trim()
+            $VideoID = $Matches[1].Trim()
             $Reason  = $Matches[2].Trim()
             
             # Lookahead logic to catch trailing context warnings
-            if ($i + 1 -lt $RawLines.Count -and $RawLines[$i+1] -match "Sign in to confirm|Video unavailable|private") {
+            if ($i + 1 -lt $RawLines.Count -and $RawLines[$i+1] -match "Sign in to confirm|Video unavailable|private|not made this video available") {
                 $Reason += " ($($RawLines[$i+1].Trim()))"
             }
 
@@ -45,7 +50,6 @@ foreach ($Log in $ErrorLogs) {
     }
 }
 
-
 # Preserve existing un-resolved manual records if fix.ps1 reruns
 if (Test-Path $ErrorDbPath) {
     $ExistingDb = Get-Content -LiteralPath $ErrorDbPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
@@ -59,3 +63,25 @@ if (Test-Path $ErrorDbPath) {
 # Commit to the server database
 $BrokenTracks | ConvertTo-Json -Depth 4 | Out-File -FilePath $ErrorDbPath -Encoding utf8 -Force
 Write-Output "[FIX ENGINE] Analysis finished. Active anomalies compiled to broken_songs.json."
+
+# Local Standalone Console Trigger Automation (Fallback)
+if ($AutoRecover) {
+    $GeoTracks = $BrokenTracks | Where-Object { $_.reason -match "available in your country|GeoRestrictedError|not made this video available" }
+    if ($GeoTracks.Count -gt 0 -and (Test-Path $ProtonCLI)) {
+        Write-Output "[*] Running standalone CLI recovery for $($GeoTracks.Count) country-restricted tracks..."
+        & $ProtonCLI c --cc US
+        Start-Sleep -Seconds 8
+        $Recovered = @()
+        foreach ($Track in $GeoTracks) {
+            $Url = "https://www.youtube.com/watch?v=$($Track.videoId)"
+            & $YTDLPPath --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $CookiePath -P $BackupDir $Url
+            if ($LASTEXITCODE -eq 0) { $Recovered += $Track.videoId }
+        }
+        & $ProtonCLI d
+        if ($Recovered.Count -gt 0) {
+            $CurrentDb = Get-Content -LiteralPath $ErrorDbPath -Raw | ConvertFrom-Json
+            $CleanedDb = $CurrentDb | Where-Object { $Recovered -notcontains $_.videoId }
+            $CleanedDb | ConvertTo-Json -Depth 4 | Out-File -FilePath $ErrorDbPath -Encoding utf8 -Force
+        }
+    }
+}
