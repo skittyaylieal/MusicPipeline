@@ -33,7 +33,6 @@ function Invoke-LogMsg([string]$Text) {
     
     Write-Output $FormattedLine
     
-    # FIX: Swapped $using:GlobalLogFile out for the script-scoped variable reference ($GlobalLogFile)
     if (Test-Path -LiteralPath $GlobalLogFile) {
         $RetryCount = 0
         $MaxRetries = 15
@@ -74,7 +73,6 @@ function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList) {
         $proc = [System.Diagnostics.Process]::Start($psi)
         $proc.StandardInput.Close()
 
-        # FIX: Swapped brittle stream peeks for native EndOfStream loop handling to prevent dropped buffers
         while (-not $proc.HasExited) {
             [System.Threading.Thread]::Sleep(50)
             while (-not $proc.StandardOutput.EndOfStream) {
@@ -87,7 +85,6 @@ function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList) {
             }
         }
 
-        # Clear final residual trailing lines out of the process stream registers
         while (-not $proc.StandardOutput.EndOfStream) {
             $Line = $proc.StandardOutput.ReadLine()
             if ($Line) { Invoke-LogMsg "    [Python STDOUT] $Line" }
@@ -105,7 +102,7 @@ function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList) {
 }
 
 Invoke-LogMsg "[*] Verifying background Python dependencies..."
-$PipExit = Invoke-NativeProcess "pip" @("install", "--upgrade", "syncedlyrics", "--quiet")
+$PipExit = Invoke-NativeProcess "pip" @("install", "--upgrade", "syncedlyrics", "mutagen", "--quiet")
 Invoke-LogMsg "[*] Pip verification routine complete (Exit Code: $PipExit)."
 
 if (-not (Test-Path -LiteralPath $BackupDir -PathType Container)) {
@@ -156,18 +153,22 @@ foreach ($FilePath in $AudioFiles) {
          continue
     }
 
-    # Python Native Metadata Verification via Real-time Stream
+    # Python Native Metadata Verification via Real-time Stream (With ID3 Support for MP3)
     Invoke-LogMsg "    [*] Querying embedded container tags for unsynced lyrics..."
     $TmpPyCheck = Join-Path $env:TEMP "mutagen_check.py"
     $PreCheckPython = @"
 import mutagen, sys
 from mutagen.mp4 import MP4
 from mutagen.flac import FLAC
+from mutagen.id3 import ID3
 try:
     audio = mutagen.File(r'$FilePath')
     if audio is not None:
         if isinstance(audio, MP4) and '\xa9lyr' in audio and audio['\xa9lyr']: sys.exit(2)
         elif isinstance(audio, FLAC) and 'lyrics' in audio and audio['lyrics']: sys.exit(2)
+        elif isinstance(audio, ID3) or (audio.tags and hasattr(audio.tags, 'getall')):
+            for tag in audio.tags.getall('USLT'):
+                if tag.text: sys.exit(2)
     sys.exit(0)
 except Exception as e:
     print(f"Metadata scan failure: {e}")
@@ -185,18 +186,25 @@ except Exception as e:
     Invoke-LogMsg "    [*] Formulated indexing search target string: '$SearchQuery'"
     Invoke-LogMsg "    [*] Launching global timeline sync index query sequence..."
     
-    $Providers = @("lrclib", "musixmatch", "netease", "megalyrics", "megalobiz", "lyricsify")
-    $LrcArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers") + $Providers
-    
-    # Run the main syncedlyrics search matrix natively
-    $LrcExitCode = Invoke-NativeProcess "python" $LrcArgs
-    
-    if (Test-Path -LiteralPath $LrcFile) {
-        Invoke-LogMsg "    [+] Pristine timed timelines (.lrc) successfully committed to disk."
-        Invoke-LogMsg "---------------------------------------------"
-        if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force }
-        continue
+    # Quality prioritized sequence definition
+    $TimedProviders = @("lrclib", "musixmatch", "netease", "megalobiz")
+    $LrcFound = $false
+
+    foreach ($Provider in $TimedProviders) {
+        Invoke-LogMsg "    [*] Querying matrix source: [$Provider]"
+        $LrcArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers", $Provider)
+        $LrcExitCode = Invoke-NativeProcess "python" $LrcArgs
+        
+        if (Test-Path -LiteralPath $LrcFile) {
+            Invoke-LogMsg "    [+] Pristine timed timelines (.lrc) successfully committed via [$Provider]."
+            Invoke-LogMsg "---------------------------------------------"
+            if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force }
+            $LrcFound = $true
+            break
+        }
     }
+    
+    if ($LrcFound) { continue }
 
     if ($HasUnsyncedLyrics) {
         Invoke-LogMsg "    [-] Timed tracking missing, but audio container holds embedded plain text. Aborting search array."
@@ -204,10 +212,16 @@ except Exception as e:
         continue
     }
 
-    # Absolute quality fallback routine requested
+    # Absolute quality fallback routine: Sync missed, drop into Genius tag compilation
     Invoke-LogMsg "    [!] Timed matrix missing. Fallback initiated: Scraping Genius Engine via Native Subprocess..."
     $FallbackArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers", "genius")
     $FallbackExitCode = Invoke-NativeProcess "python" $FallbackArgs
+
+    # Fix logic flow matching your rule: syncedlyrics saves genius scrapes as .txt if it's plain lyrics.
+    # If it accidentally dropped an un-timed .lrc, rename it immediately to feed the Mutagen pipeline.
+    if (Test-Path -LiteralPath $LrcFile) {
+        Rename-Item -LiteralPath $LrcFile -NewName "$($FileInfo.BaseName).txt" -Force
+    }
 
     if (Test-Path -LiteralPath $TxtFile) {
         Invoke-LogMsg "    [+] Flat text lyrics returned by fallback. Constructing Mutagen database encoder..."
@@ -217,8 +231,11 @@ except Exception as e:
 import os, mutagen, sys
 from mutagen.mp4 import MP4
 from mutagen.flac import FLAC
+from mutagen.id3 import ID3, USLT
 try:
     with open(r'$TxtFile', 'r', encoding='utf-8') as f: lyrics_text = f.read()
+    
+    # Safe check for file structure tags
     audio = mutagen.File(r'$FilePath')
     if audio is not None:
         if isinstance(audio, MP4):
@@ -229,6 +246,16 @@ try:
             audio['lyrics'] = lyrics_text
             audio.save()
             print('    [+] Unsynced text tag written to FLAC container.')
+        else:
+            # Fallback for ID3/MP3 environments
+            try:
+                tags = ID3(r'$FilePath')
+            except Exception:
+                tags = ID3()
+            tags.add(USLT(encoding=3, lang='eng', desc='Lyrics', text=lyrics_text))
+            tags.save(r'$FilePath')
+            print('    [+] Unsynced USLT tag written to MP3 container.')
+            
     if os.path.exists(r'$TxtFile'): os.remove(r'$TxtFile')
 except Exception as e: 
     print(f'    [!] Mutagen structural error: {e}')
@@ -241,6 +268,7 @@ except Exception as e:
     } else {
         Invoke-LogMsg "    [-] Critical Error: Track could not be targeted or verified across any global API indices."
         if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force }
+        if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force }
     }
     Invoke-LogMsg "---------------------------------------------"
 }
