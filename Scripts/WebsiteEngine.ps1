@@ -63,13 +63,25 @@ function Start-AsyncLibraryScanner {
                     $Artist = $PathParts[0]
                 }
 
+                # Check for either a native marker file template or an explicit metadata tag file
+                $IsInstrumentalTrack = [bool](Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).inst" -ErrorAction SilentlyContinue)
+                if (-not $IsInstrumentalTrack) {
+                    $LrcPath = "$($File.DirectoryName)\$($File.BaseName).lrc"
+                    if (Test-Path -LiteralPath $LrcPath) {
+                        # Read the top lines of the lyrics file to find a provider tag or comment mapping
+                        $Content = Get-Content -LiteralPath $LrcPath -Raw -TotalCount 10 -ErrorAction SilentlyContinue
+                        if ($Content -and $Content -match "Instrumental") { $IsInstrumentalTrack = $true }
+                    }
+                }
+
                 $TrackDatabase += @{ 
-                    title  = [string]$File.BaseName 
-                    artist = [string]$Artist 
-                    album  = [string]$Album 
-                    sizeMb = [Math]::Round(($File.Length / 1MB), 2) 
-                    hasLrc = [bool](Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc" -ErrorAction SilentlyContinue) 
-                    type   = [string]$File.Extension.ToUpper().Replace('.','') 
+                    title          = [string]$File.BaseName 
+                    artist         = [string]$Artist 
+                    album          = [string]$Album 
+                    sizeMb         = [Math]::Round(($File.Length / 1MB), 2) 
+                    hasLrc         = [bool](Test-Path -LiteralPath "$($File.DirectoryName)\$($File.BaseName).lrc" -ErrorAction SilentlyContinue) 
+                    isInstrumental = $IsInstrumentalTrack
+                    type           = [string]$File.Extension.ToUpper().Replace('.','') 
                 }
 
                 if ($TrackDatabase.Count % 150 -eq 0) { 
@@ -130,6 +142,7 @@ function Start-AsyncLibraryScanner {
 
     $Job = Start-Job -Name "MusicFolderScanner" -ScriptBlock $JobScript -ArgumentList $BackupDir, $MobileDir, $ScriptRepoDir, $Global:CacheFile 
 }
+
 
 function Start-AutomatedChronDaemon {
     param($RuntimePort)

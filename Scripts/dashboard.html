@@ -465,24 +465,28 @@
         function renderMetadataTable(tracks) {
             const tbody = document.getElementById('metadata-rows');
             if (!tbody) return;
-            
+
             if (tracks.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#71717A;">No tracks found matching current filter parameters.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = tracks.map(track => {
-                const lrcBadge = track.hasLrc 
-                    ? `<span class="badge badge-lrc">LRC Sync</span>` 
-                    : `<span class="badge badge-missing">Missing</span>`;
-               
+                const lrcBadge = track.hasLrc ? `<span class="badge badge-lrc">LRC Sync</span>` : `<span class="badge badge-missing">Missing</span>`;
+                
+                // Build the Instrumental pill tag component if flag is verified true
+                const instBadge = track.isInstrumental ? `<span class="badge-inst" style="background: rgba(189, 147, 249, 0.2); color: #BD93F9; border: 1px solid #BD93F9; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 4px; margin-left: 8px; display: inline-block; vertical-align: middle; letter-spacing: 0.5px;">INST</span>` : '';
+
                 return `
                     <tr>
-                        <td style="font-weight:600; color:#FFF;">${track.title || 'Unknown Title'}</td>
-                        <td style="color:#CBD5E1;">${track.artist || 'Unknown Artist'}</td>
-                        <td style="color:#A1A1AA;">${track.album || '-'}</td>
-                        <td><span class="badge" style="background:#27272A; color:#E2E8F0;">${(track.format || 'MP3').toUpperCase()}</span></td>
-                        <td style="color:#00ADB5; font-family:monospace;">${track.bitrate ? track.bitrate + ' kbps' : '-'}</td>
+                        <td style="font-weight:600; color:#FFF; display: flex; align-items: center; justify-content: flex-start;">
+                            <span class="track-title-string">${track.title}</span>
+                            ${instBadge}
+                        </td>
+                        <td style="color:#E2E8F0;">${track.artist || '-'}</td>
+                        <td style="color:#A1A1AA; font-style: italic;">${track.album || '-'}</td>
+                        <td style="font-family:monospace; color:#00ADB5;">${track.type}</td>
+                        <td style="color:#71717A; font-family:monospace;">${track.sizeMb} MB</td>
                         <td style="text-align: center;">${lrcBadge}</td>
                     </tr>
                 `;
