@@ -142,62 +142,72 @@ $SanitizedURLs | ForEach-Object -Parallel {
             $PlaylistURL
         )
 
-        # Configuration: Launch yt-dlp natively
+        # Configuration: Setup temporary file tracking for live tailing
+        $OutFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stream.log"
+        if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue }
+
+        # Setup native argument string for silent background execution via command line piping
+        $YTDLArgsString = $YTDLArgs | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }
+        $CommandLine = "`"$using:LocalYTDLPPath`" $YTDLArgsString > `"$OutFile`" 2>&1"
+
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
-        $psi.FileName               = $using:LocalYTDLPPath
+        $psi.FileName               = "cmd.exe"
+        $psi.Arguments              = "/c $CommandLine"
         $psi.UseShellExecute        = $false  
-        $psi.CreateNoWindow         = $true   
+        $psi.CreateNoWindow         = $true   # Strictly guarantees no terminal pops up or steals desktop focus
         $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
-        # Inject environment variables directly into process memory context
-        $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
-        $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
-        $psi.EnvironmentVariables["NO_COLOR"]         = "1"
-
-        # Pass arguments safely as an explicit array literal
-        foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
-
-        # Redirect standard output streams to handle them asynchronously
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError  = $true
-        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
-        $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
-
-        $proc = New-Object System.Diagnostics.Process
-        $proc.StartInfo = $psi
-        
-        # Initialize the actual process
-        [void]$proc.Start()
+        $proc = [System.Diagnostics.Process]::Start($psi)
 
         $script:Capture = $false
+        $LastLineCount = 0
 
-        # FIX: Replaced broken background ObjectEvents with a lightning-fast, native non-blocking loop
-        # that manually pulls strings directly from the IO memory pipes as soon as they drop.
-        while (-not $proc.HasExited -or -not $proc.StandardOutput.EndOfStream -or -not $proc.StandardError.EndOfStream) {
-            
-            # Read all currently available text lines out of Standard Output
-            while ($proc.StandardOutput.Peek() -ne -1) {
-                $Line = $proc.StandardOutput.ReadLine()
-                if ($Line) {
-                    Invoke-LogMsg $Line
-                    if ($Line -match "Finished downloading playlist:") { $script:Capture = $true }
-                    if ($script:Capture) {
-                        [System.IO.File]::AppendAllText($script:ErrorLogPath, ($Line + [System.Environment]::NewLine))
+        # LIVE AGGREGATOR LOOP: Continuously streams text from disk as yt-dlp flushes it
+        while (-not $proc.HasExited) {
+            [System.Threading.Thread]::Sleep(100) # Prevents high CPU consumption while spinning
+
+            if (Test-Path -LiteralPath $OutFile) {
+                try {
+                    # Open file with FileShare.ReadWrite to avoid locking out the yt-dlp engine stream
+                    $Stream = [System.IO.File]::Open($OutFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                    $Reader = [System.IO.StreamReader]::new($Stream, [System.Text.Encoding]::UTF8)
+                    $Lines = [System.Collections.Generic.List[string]]::new()
+                    
+                    while (($Line = $Reader.ReadLine()) -ne $null) {
+                        $Lines.Add($Line)
+                    }
+                    $Reader.Close(); $Stream.Close()
+
+                    # Whenever new stream segments register, read and flush them live to console log
+                    if ($Lines.Count -gt $LastLineCount) {
+                        for ($i = $LastLineCount; $i -lt $Lines.Count; $i++) {
+                            $CurrentLine = $Lines[$i]
+                            Invoke-LogMsg $CurrentLine
+
+                            if ($CurrentLine -match "Finished downloading playlist:") { $script:Capture = $true }
+                            if ($script:Capture) {
+                                [System.IO.File]::AppendAllText($script:ErrorLogPath, ($CurrentLine + [System.Environment]::NewLine))
+                            }
+                        }
+                        $LastLineCount = $Lines.Count
+                    }
+                } catch {
+                    # Fail silently if the file is momentarily locked by the OS during flush cycles
+                }
+            }
+        }
+
+        # Final terminal processing pass to harvest any remaining text drops right at death
+        if (Test-Path -LiteralPath $OutFile) {
+            try {
+                $Lines = Get-Content -LiteralPath $OutFile -ErrorAction SilentlyContinue
+                if ($Lines -and $Lines.Count -gt $LastLineCount) {
+                    for ($i = $LastLineCount; $i -lt $Lines.Count; $i++) {
+                        Invoke-LogMsg $Lines[$i]
                     }
                 }
-            }
-
-            # Read all currently available text lines out of Standard Error
-            while ($proc.StandardError.Peek() -ne -1) {
-                $ErrLine = $proc.StandardError.ReadLine()
-                if ($ErrLine) {
-                    Invoke-LogMsg $ErrLine
-                    [System.IO.File]::AppendAllText($script:ErrorLogPath, ($ErrLine + [System.Environment]::NewLine))
-                }
-            }
-
-            # Super small sleep step prevents high CPU usage while waiting for next streaming block
-            [System.Threading.Thread]::Sleep(40)
+                Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
+            } catch {}
         }
 
         if ($proc.ExitCode -eq 0) {
