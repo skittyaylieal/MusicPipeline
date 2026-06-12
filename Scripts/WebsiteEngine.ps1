@@ -271,7 +271,8 @@ function Invoke-PipelineExecution {
             
             $HistoryDB = @()
             if (Test-Path $EnvMap.TimingFile) {
-                try { $HistoryDB = Get-Content -LiteralPath $EnvMap.TimingFile -Raw | ConvertFrom-Json } catch { $HistoryDB = @() }
+                # Force collection encapsulation via @() to stop single objects from shifting data types
+                try { $HistoryDB = @(Get-Content -LiteralPath $EnvMap.TimingFile -Raw | ConvertFrom-Json) } catch { $HistoryDB = @() }
             }
             if ($null -eq $HistoryDB) { $HistoryDB = @() } 
             
