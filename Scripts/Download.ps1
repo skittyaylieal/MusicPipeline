@@ -146,9 +146,19 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $OutFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stream.log"
         if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue }
 
-        # Setup native argument string for silent background execution via command line piping
-        $YTDLArgsString = $YTDLArgs | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }
-        $CommandLine = "`"$using:LocalYTDLPPath`" $YTDLArgsString > `"$OutFile`" 2>&1"
+        # FIX: Explicitly escape double quotes around individual arguments to protect spaces/backslashes from splitting
+        $EscapedArgs = @()
+        foreach ($Arg in $YTDLArgs) {
+            if ($Arg -match '[\s\\]' -and -not ($Arg -match '^".*"$')) {
+                $EscapedArgs += "`"$Arg`""
+            } else {
+                $EscapedArgs += $Arg
+            }
+        }
+        $YTDLArgsString = $EscapedArgs -join " "
+        
+        # Build a safely nested executable execution string for CMD processing
+        $CommandLine = "`"`"$using:LocalYTDLPPath`" $YTDLArgsString > `"$OutFile`" 2>&1`""
 
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = "cmd.exe"

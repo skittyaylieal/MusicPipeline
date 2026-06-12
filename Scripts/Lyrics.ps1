@@ -192,7 +192,7 @@ except Exception as e:
 
     foreach ($Provider in $TimedProviders) {
         Invoke-LogMsg "    [*] Querying matrix source: [$Provider]"
-        $LrcArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers", $Provider)
+        $LrcArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--p", $Provider)
         $LrcExitCode = Invoke-NativeProcess "python" $LrcArgs
         
         if (Test-Path -LiteralPath $LrcFile) {
@@ -214,7 +214,7 @@ except Exception as e:
 
     # Absolute quality fallback routine: Sync missed, drop into Genius tag compilation
     Invoke-LogMsg "    [!] Timed matrix missing. Fallback initiated: Scraping Genius Engine via Native Subprocess..."
-    $FallbackArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--providers", "genius")
+    $FallbackArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "--p", "genius")
     $FallbackExitCode = Invoke-NativeProcess "python" $FallbackArgs
 
     # Fix logic flow matching your rule: syncedlyrics saves genius scrapes as .txt if it's plain lyrics.
