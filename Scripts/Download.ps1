@@ -150,7 +150,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         # Configuration: Launch yt-dlp natively. Bypasses brittle cmd.exe wrappers
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
-        $psi.FileName               = $LocalYTDLPPath
+        # FIX: Added $using: modifier to correctly transfer the parent variable into this runspace thread context
+        $psi.FileName               = $using:LocalYTDLPPath
         $psi.UseShellExecute        = $false  
         $psi.CreateNoWindow         = $true   
         $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
