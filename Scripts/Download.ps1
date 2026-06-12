@@ -63,8 +63,9 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $LocalList = $using:GlobalURLsCopy
     $LoopIndex = $LocalList.IndexOf($PlaylistURL) + 1
     
-    $ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
-    if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
+    # FIX: Scoped directly to the runspace script instance so sub-actions can access it natively
+    $script:ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
+    if (Test-Path -LiteralPath $script:ErrorLogPath) { Remove-Item -LiteralPath $script:ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
     # Core Thread-Safe Logger Matrix
     function Invoke-LogMsg([string]$Text) {
@@ -166,13 +167,13 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $proc = New-Object System.Diagnostics.Process
         $proc.StartInfo = $psi
         
-        # FIX: Wire up event-driven script block actions to fire instantly when a line is sent to a buffer
+        # FIX: Changed references to use $script: scope visibility inside event execution hooks
         $OutputAction = {
             if ($EventArgs.Data) {
                 Invoke-LogMsg $EventArgs.Data
                 if ($EventArgs.Data -match "Finished downloading playlist:") { $script:Capture = $true }
                 if ($script:Capture) {
-                    [System.IO.File]::AppendAllText($using:ErrorLogPath, ($EventArgs.Data + [System.Environment]::NewLine))
+                    [System.IO.File]::AppendAllText($script:ErrorLogPath, ($EventArgs.Data + [System.Environment]::NewLine))
                 }
             }
         }
@@ -180,7 +181,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $ErrorAction = {
             if ($EventArgs.Data) {
                 Invoke-LogMsg $EventArgs.Data
-                [System.IO.File]::AppendAllText($using:ErrorLogPath, ($EventArgs.Data + [System.Environment]::NewLine))
+                [System.IO.File]::AppendAllText($script:ErrorLogPath, ($EventArgs.Data + [System.Environment]::NewLine))
             }
         }
 
@@ -191,11 +192,11 @@ $SanitizedURLs | ForEach-Object -Parallel {
         # Initialize the actual process
         [void]$proc.Start()
         
-        # FIX: Start asynchronous, non-blocking readings on both channels immediately
+        # Start asynchronous, non-blocking readings on both channels immediately
         $proc.BeginOutputReadLine()
         $proc.BeginErrorReadLine()
 
-        # Simple, non-blocking wait rule to let the events run naturally
+        # wait rule to let the events run naturally
         while (-not $proc.HasExited) {
             [System.Threading.Thread]::Sleep(200)
         }
