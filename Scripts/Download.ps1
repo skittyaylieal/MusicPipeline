@@ -142,93 +142,70 @@ $SanitizedURLs | ForEach-Object -Parallel {
             $PlaylistURL
         )
 
-        # Setup explicit temporary files to intercept text blocks natively
-        $OutFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stdout.tmp"
-        $ErrFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stderr.tmp"
-        if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue }
-        if (Test-Path -LiteralPath $ErrFile) { Remove-Item -LiteralPath $ErrFile -Force -ErrorAction SilentlyContinue }
-
-        # Configuration: Launch yt-dlp natively. Bypasses brittle cmd.exe wrappers
+        # Configuration: Launch yt-dlp natively
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
-        # FIX: Added $using: modifier to correctly transfer the parent variable into this runspace thread context
         $psi.FileName               = $using:LocalYTDLPPath
         $psi.UseShellExecute        = $false  
         $psi.CreateNoWindow         = $true   
         $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
-        # Seamlessly inject environment variables directly into process memory context
+        # Inject environment variables directly into process memory context
         $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
         $psi.EnvironmentVariables["YTDLP_UNBUFFERED"] = "1"
         $psi.EnvironmentVariables["NO_COLOR"]         = "1"
 
-        # Pass arguments safely as an explicit array literal (avoids quote fragmentation)
+        # Pass arguments safely as an explicit array literal
         foreach ($arg in $YTDLArgs) { $psi.ArgumentList.Add($arg) }
 
-        # Redirect standard output streams to process memory pipes
+        # Redirect standard output streams to handle them asynchronously
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError  = $true
         $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
         $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
 
-        # Initialize native hidden runner process instance 
-        $proc = [System.Diagnostics.Process]::Start($psi)
-
-        # Open dedicated I/O disk flush blocks
-        $StreamWriter = [System.IO.StreamWriter]::new($OutFile, $false, [System.Text.Encoding]::UTF8)
-        $StreamError  = [System.IO.StreamWriter]::new($ErrFile, $false, [System.Text.Encoding]::UTF8)
-
-        # Non-blocking, dynamic evaluation engine
-        $LastLineCount = 0
-
-        while (-not $proc.HasExited) {
-            [System.Threading.Thread]::Sleep(100)
-
-            # Flush pipeline streams directly from process memory tracking down to temporary files
-            while (-not $proc.StandardOutput.EndOfStream) {
-                $Line = $proc.StandardOutput.ReadLine()
-                if ($Line) { $StreamWriter.WriteLine($Line); $StreamWriter.Flush() }
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo = $psi
+        
+        # FIX: Wire up event-driven script block actions to fire instantly when a line is sent to a buffer
+        $OutputAction = {
+            if ($EventArgs.Data) {
+                Invoke-LogMsg $EventArgs.Data
+                if ($EventArgs.Data -match "Finished downloading playlist:") { $script:Capture = $true }
+                if ($script:Capture) {
+                    [System.IO.File]::AppendAllText($using:ErrorLogPath, ($EventArgs.Data + [System.Environment]::NewLine))
+                }
             }
-            while (-not $proc.StandardError.EndOfStream) {
-                $ErrLine = $proc.StandardError.ReadLine()
-                if ($ErrLine) { $StreamError.WriteLine($ErrLine); $StreamError.Flush() }
-            }
-
-            # Safely tail the text dump and flush lines back out to the web monitor
-            if (Test-Path -LiteralPath $OutFile) {
-                try {
-                    $Lines = Get-Content -LiteralPath $OutFile -ErrorAction SilentlyContinue
-                    if ($Lines -and $Lines.Count -gt $LastLineCount) {
-                        for ($i = $LastLineCount; $i -lt $Lines.Count; $i++) {
-                            $Line = $Lines[$i]
-                            Invoke-LogMsg $Line
-                            if ($Line -match "Finished downloading playlist:") { $script:Capture = $true }
-                            if ($script:Capture) {
-                                [System.IO.File]::AppendAllText($ErrorLogPath, ($Line + [System.Environment]::NewLine))
-                            }
-                        }
-                        $LastLineCount = $Lines.Count
-                    }
-                } catch {}
+        }
+        
+        $ErrorAction = {
+            if ($EventArgs.Data) {
+                Invoke-LogMsg $EventArgs.Data
+                [System.IO.File]::AppendAllText($using:ErrorLogPath, ($EventArgs.Data + [System.Environment]::NewLine))
             }
         }
 
-        # Clear active stream pointers
-        $StreamWriter.Close(); $StreamError.Close()
+        # Bind event handles natively inside the parallel pipeline context
+        $OutEvent = Register-ObjectEvent -InputObject $proc -EventName 'OutputDataReceived' -Action $OutputAction
+        $ErrEvent = Register-ObjectEvent -InputObject $proc -EventName 'ErrorDataReceived' -Action $ErrorAction
 
-        # Allow final streaming allocations to complete settling
+        # Initialize the actual process
+        [void]$proc.Start()
+        
+        # FIX: Start asynchronous, non-blocking readings on both channels immediately
+        $proc.BeginOutputReadLine()
+        $proc.BeginErrorReadLine()
+
+        # Simple, non-blocking wait rule to let the events run naturally
+        while (-not $proc.HasExited) {
+            [System.Threading.Thread]::Sleep(200)
+        }
+
+        # Safe settling buffer window
         [System.Threading.Thread]::Sleep(500)
 
-        # Compile trailing error data segments
-        if (Test-Path -LiteralPath $ErrFile) {
-            $Errors = Get-Content -LiteralPath $ErrFile -ErrorAction SilentlyContinue
-            if ($Errors) {
-                [System.IO.File]::AppendAllText($ErrorLogPath, ($Errors -join [System.Environment]::NewLine))
-                foreach ($ErrLine in $Errors) { Invoke-LogMsg $ErrLine }
-            }
-        }
-
-        # Wipe working stream files securely
-        Remove-Item $OutFile, $ErrFile -Force -ErrorAction SilentlyContinue
+        # Cleanup monitoring event handlers cleanly
+        Unregister-Event -SourceIdentifier $OutEvent.Name
+        Unregister-Event -SourceIdentifier $ErrEvent.Name
 
         if ($proc.ExitCode -eq 0) {
             Invoke-LogMsg "Sync completed successfully!"
