@@ -532,7 +532,7 @@
             fetch('/clearlogs', { method: 'POST' }).then(() => {
                 localLogsCache = []; // Clear background memory
                 linesRenderedLimit = 1000; // Reset lookback boundaries
-                document.getElementById('terminal-feed').innerHTML = "Logs cleared by console command. Awaiting execution state metrics stream..."; [cite: 157]
+                document.getElementById('terminal-feed').innerHTML = "Logs cleared by console command. Awaiting execution state metrics stream..."; 
             });
         }
 
@@ -600,37 +600,37 @@
             fetch('/stream')
                 .then(res => res.json())
                 .then(data => {
-                    isPipelineActive = data.running; [cite: 172]
+                    isPipelineActive = data.running; 
         
-                    if (document.getElementById('run-btn')) { [cite: 173]
-                        document.getElementById('run-btn').disabled = isPipelineActive; [cite: 173]
-                        document.getElementById('sweep-btn').disabled = isPipelineActive; [cite: 173]
+                    if (document.getElementById('run-btn')) { 
+                        document.getElementById('run-btn').disabled = isPipelineActive; 
+                        document.getElementById('sweep-btn').disabled = isPipelineActive; 
                     }
       
-                    const stopBtn = document.getElementById('stop-btn'); [cite: 174]
-                    if (stopBtn) { [cite: 174]
-                        stopBtn.disabled = !isPipelineActive; [cite: 174]
-                        stopBtn.innerText = isPipelineActive ? "🛑 Terminate Pipeline" : "Pipeline Inactive"; [cite: 175]
+                    const stopBtn = document.getElementById('stop-btn'); 
+                    if (stopBtn) { 
+                        stopBtn.disabled = !isPipelineActive; 
+                        stopBtn.innerText = isPipelineActive ? "🛑 Terminate Pipeline" : "Pipeline Inactive"; 
                     }
                     
-                    if(data.logs && data.logs.length > 0) { [cite: 175]
-                        const consoleBox = document.getElementById('terminal-feed'); [cite: 176]
-                        if (consoleBox) { [cite: 176]
-                            const userSelection = window.getSelection().toString(); [cite: 176]
-                            if (!userSelection) { [cite: 177]
+                    if(data.logs && data.logs.length > 0) { 
+                        const consoleBox = document.getElementById('terminal-feed'); 
+                        if (consoleBox) { 
+                            const userSelection = window.getSelection().toString(); 
+                            if (!userSelection) { 
                                 
                                 // Update background memory cache with raw data strings
                                 localLogsCache = data.logs;
 
                                 // Check if user is near the bottom before rendering changes
-                                const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 70; [cite: 179]
+                                const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 70; 
 
                                 // If scrolled to the bottom, keep the window stuck to the latest lines
                                 if (isScrolledToBottom) {
                                     linesRenderedLimit = 1000;
                                     const targetChunks = localLogsCache.slice(-linesRenderedLimit);
                                     consoleBox.innerHTML = targetChunks.map(line => parseAnsiToHtml(String(line))).join('\n');
-                                    consoleBox.scrollTop = consoleBox.scrollHeight; [cite: 179]
+                                    consoleBox.scrollTop = consoleBox.scrollHeight; 
                                 } else {
                                     // If user scrolled up to read, update the existing slice in place without forcing a jump
                                     const currentScrollPos = consoleBox.scrollTop;
@@ -641,8 +641,8 @@
                             }
                         }
                     }
-                    setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000); [cite: 180]
-                }).catch(() => { setTimeout(runLogStreamer, 4000); }); [cite: 180]
+                    setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000); 
+                }).catch(() => { setTimeout(runLogStreamer, 4000); }); 
         }
 
         // Setup scroll pagination hooks after the DOM content initializes
