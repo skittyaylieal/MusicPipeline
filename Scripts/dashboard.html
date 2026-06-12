@@ -530,7 +530,9 @@
 
         function triggerClearLogs() {
             fetch('/clearlogs', { method: 'POST' }).then(() => {
-                document.getElementById('terminal-feed').innerHTML = "Logs cleared by console command. Awaiting execution state metrics stream...";
+                localLogsCache = []; // Clear background memory
+                linesRenderedLimit = 1000; // Reset lookback boundaries
+                document.getElementById('terminal-feed').innerHTML = "Logs cleared by console command. Awaiting execution state metrics stream..."; [cite: 157]
             });
         }
 
@@ -590,44 +592,84 @@
             return result;
         }
 
-        // 5. TERMINAL LOG STREAMER
+        // Global memory cache to hold full strings without bogging down the DOM
+        let localLogsCache = [];
+        let linesRenderedLimit = 1000; 
+
         function runLogStreamer() {
             fetch('/stream')
                 .then(res => res.json())
                 .then(data => {
-                    isPipelineActive = data.running;
+                    isPipelineActive = data.running; [cite: 172]
         
-                    if (document.getElementById('run-btn')) {
-                        document.getElementById('run-btn').disabled = isPipelineActive;
-                        document.getElementById('sweep-btn').disabled = isPipelineActive;
+                    if (document.getElementById('run-btn')) { [cite: 173]
+                        document.getElementById('run-btn').disabled = isPipelineActive; [cite: 173]
+                        document.getElementById('sweep-btn').disabled = isPipelineActive; [cite: 173]
+                    }
+      
+                    const stopBtn = document.getElementById('stop-btn'); [cite: 174]
+                    if (stopBtn) { [cite: 174]
+                        stopBtn.disabled = !isPipelineActive; [cite: 174]
+                        stopBtn.innerText = isPipelineActive ? "🛑 Terminate Pipeline" : "Pipeline Inactive"; [cite: 175]
                     }
                     
-                    const stopBtn = document.getElementById('stop-btn');
-                    if (stopBtn) {
-                        stopBtn.disabled = !isPipelineActive;
-                        stopBtn.innerText = isPipelineActive ? "🛑 Terminate Pipeline" : "Pipeline Inactive";
-                    }
-                    
-                    if(data.logs && data.logs.length > 0) {
-                        const consoleBox = document.getElementById('terminal-feed');
-                        if (consoleBox) {
-                            const userSelection = window.getSelection().toString();
-                            if (!userSelection) { 
-                                const convertedLines = data.logs.map(line => {
-                                    if (line === null || line === undefined) return '';
-                                    if (typeof line === 'object') return JSON.stringify(line);
-                                    return parseAnsiToHtml(String(line));
-                                });
-                                const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 50;
+                    if(data.logs && data.logs.length > 0) { [cite: 175]
+                        const consoleBox = document.getElementById('terminal-feed'); [cite: 176]
+                        if (consoleBox) { [cite: 176]
+                            const userSelection = window.getSelection().toString(); [cite: 176]
+                            if (!userSelection) { [cite: 177]
                                 
-                                consoleBox.innerHTML = convertedLines.join('\n');
-                                if (isScrolledToBottom) consoleBox.scrollTop = consoleBox.scrollHeight;
+                                // Update background memory cache with raw data strings
+                                localLogsCache = data.logs;
+
+                                // Check if user is near the bottom before rendering changes
+                                const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 70; [cite: 179]
+
+                                // If scrolled to the bottom, keep the window stuck to the latest lines
+                                if (isScrolledToBottom) {
+                                    linesRenderedLimit = 1000;
+                                    const targetChunks = localLogsCache.slice(-linesRenderedLimit);
+                                    consoleBox.innerHTML = targetChunks.map(line => parseAnsiToHtml(String(line))).join('\n');
+                                    consoleBox.scrollTop = consoleBox.scrollHeight; [cite: 179]
+                                } else {
+                                    // If user scrolled up to read, update the existing slice in place without forcing a jump
+                                    const currentScrollPos = consoleBox.scrollTop;
+                                    const targetChunks = localLogsCache.slice(-linesRenderedLimit);
+                                    consoleBox.innerHTML = targetChunks.map(line => parseAnsiToHtml(String(line))).join('\n');
+                                    consoleBox.scrollTop = currentScrollPos;
+                                }
                             }
                         }
                     }
-                    setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000);
-                }).catch(() => { setTimeout(runLogStreamer, 4000); });
+                    setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000); [cite: 180]
+                }).catch(() => { setTimeout(runLogStreamer, 4000); }); [cite: 180]
         }
+
+        // Setup scroll pagination hooks after the DOM content initializes
+        document.addEventListener("DOMContentLoaded", () => {
+            const consoleBox = document.getElementById('terminal-feed');
+            if (consoleBox) {
+                consoleBox.addEventListener('scroll', () => {
+                    // Trigger expansion when scrolling close to the top of the container
+                    if (consoleBox.scrollTop < 100 && localLogsCache.length > linesRenderedLimit) {
+                        
+                        const oldHeight = consoleBox.scrollHeight;
+                        const oldScrollTop = consoleBox.scrollTop;
+
+                        // Expand window allocation step size
+                        linesRenderedLimit = Math.min(linesRenderedLimit + 1000, localLogsCache.length);
+                        
+                        // Re-render expanded slice chunk
+                        const targetChunks = localLogsCache.slice(-linesRenderedLimit);
+                        consoleBox.innerHTML = targetChunks.map(line => parseAnsiToHtml(String(line))).join('\n');
+
+                        // Adjust scroll top to prevent browser jump artifacts
+                        consoleBox.scrollTop = oldScrollTop + (consoleBox.scrollHeight - oldHeight);
+                    }
+                });
+            }
+        });
+
 
         // 6. PERFORMANCE ANALYTICS CHARTING
         function loadAnalytics() {
