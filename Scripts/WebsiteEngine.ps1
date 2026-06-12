@@ -99,7 +99,7 @@ function Start-AsyncLibraryScanner {
                     if ($LocalHash -ne $RemoteHash) { 
                         $Alerts += @{ 
                             type      = "warning" 
-                            message   = "Repository Update Available: Changes pushed from Mac are ready." 
+                            message   = "Repository Update Available: Changes pushed from Mac are ready."
                             fixAction = "gitpull" 
                         }
                     }
@@ -197,7 +197,6 @@ function Invoke-PipelineExecution {
         $OverallStopwatch = [System.Diagnostics.Stopwatch]::StartNew() 
 
         try {
-            # STEP 1: Cookie Validation
             Log-Progress "`e[1;33m[STEP 1/5]`e[0m Running Cookie Validation..." 
             $S1Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1" 
@@ -206,9 +205,9 @@ function Invoke-PipelineExecution {
                 $Step1Result = & $S1ScriptPath @S1Params 2>&1 
                 $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ CookieCheck.ps1 missing. Skipping." }
-            $S1Watch.Stop(); $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
+            $S1Watch.Stop();
+            $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
 
-            # STEP 2: Downloader Script
             Log-Progress "`e[1;33m[STEP 2/5]`e[0m Running Native Pipeline Downloader..." 
             $S2Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1" 
@@ -229,9 +228,9 @@ function Invoke-PipelineExecution {
                 $Step2Result = & $S2ScriptPath @S2Params 2>&1 
                 $Step2Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
-            $S2Watch.Stop(); $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
+            $S2Watch.Stop();
+            $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
 
-            # STEP 3: Error Analysis
             Log-Progress "`e[1;33m[STEP 3/5]`e[0m Running Error Log Analysis..." 
             $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
@@ -240,9 +239,9 @@ function Invoke-PipelineExecution {
                 $Step3Result = & $S3ScriptPath @S3Params 2>&1 
                 $Step3Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ Fix.ps1 missing. Skipping." }
-            $S3Watch.Stop(); $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
+            $S3Watch.Stop();
+            $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
 
-            # STEP 4: Lyrics Database Sync
             Log-Progress "`e[1;33m[STEP 4/5]`e[0m Syncing Local Lyrics Databases..." 
             $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
@@ -251,9 +250,9 @@ function Invoke-PipelineExecution {
                 $Step4Result = & $S4ScriptPath @S4Params 2>&1 
                 $Step4Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
-            $S4Watch.Stop(); $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
+            $S4Watch.Stop();
+            $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
 
-            # STEP 5: Transcoding Engine
             Log-Progress "`e[1;33m[STEP 5/5]`e[0m Executing Lossy Mobile Deployment Transcoding..." 
             $S5Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
@@ -262,7 +261,8 @@ function Invoke-PipelineExecution {
                 $Step5Result = & $S5ScriptPath @S5Params 2>&1 
                 $Step5Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping." }
-            $S5Watch.Stop(); $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
+            $S5Watch.Stop();
+            $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
 
             $OverallStopwatch.Stop() 
             $TotalTime = [string]::Format("{0:hh\:mm\:ss}", $OverallStopwatch.Elapsed) 
@@ -356,7 +356,7 @@ try {
     $PrimaryIP = if ($LocalIPs) { $LocalIPs[0] } else { "127.0.0.1" } 
 
     Write-Output "--------------------------------------------------" 
-    Write-Output " SERVER LIVE AND ADAPTIVELY MAPPED!" 
+    Write-Output " SERVER LIVE AND ADAPTIVELY MAPPED!"
     Write-Output " Internal Endpoint : http://127.0.0.1:$TargetPort/" 
     Write-Output " Clean Browser URL : http://$PrimaryIP/" 
     Write-Output "--------------------------------------------------" 
@@ -391,9 +391,7 @@ try {
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlContent) 
                 $Response.ContentType = "text/html; charset=utf-8" 
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            } else {
-                $Response.StatusCode = 404
-            }
+            } else { $Response.StatusCode = 404 }
             $Response.OutputStream.Close()
         }
         elseif ($UrlPath -eq "/broken-songs" -and $Method -eq "GET") {
@@ -409,24 +407,129 @@ try {
             $BrokenDbFile = "C:\MusicTools\MusicPipeline\Config\broken_songs.json"
             $HistoryFile  = "C:\MusicTools\MusicPipeline\Config\downloaded_history.txt"
             
-            $SongId   = $Request.QueryString["id"]
-            $Action   = $Request.QueryString["action"]
-            $VideoID  = $Request.QueryString["videoId"]
+            # Read from JSON body input stream rather than QueryStrings
+            $Reader = New-Object System.IO.StreamReader($Request.InputStream)
+            $BodyJson = $Reader.ReadToEnd()
+            $Payload = $BodyJson | ConvertFrom-Json
+            
+            $SongId  = $Payload.id
+            $Action  = $Payload.action
+            $VideoID = $Payload.videoId
 
             if ($SongId -and (Test-Path $BrokenDbFile)) {
                 $CurrentList = Get-Content -LiteralPath $BrokenDbFile -Raw | ConvertFrom-Json
-                $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
-                $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $BrokenDbFile -Encoding utf8 -Force
+                $TargetSong = $CurrentList | Where-Object { $_.id -eq $SongId }
+                
+                # Check if it requires a manual background single VPN routing download
+                if ($Action -eq "geo_vpn_fix" -and $TargetSong) {
+                    $Global:IsPipelineRunning = $true
+                    if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
+                    
+                    $SingleJobBlock = {
+                        param($Log, $Backup, $Cfg, $Vid, $Sid, $DbFile, $HistFile)
+                        $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
+                        $YTDLP = "C:\MusicTools\yt-dlp.exe"
+                        $Cookies = "C:\MusicTools\MusicPipeline\Config\cookies.txt"
+                        
+                        "`e[1;35m[SYSTEM] Targeted VPN Link Established for ID: $Vid...`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                        & $ProtonCLI c --cc US 2>&1 | Out-Null
+                        Start-Sleep -Seconds 8
+                        
+                        $TargetUrl = "https://www.youtube.com/watch?v=$Vid"
+                        & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
+                        $Status = $LASTEXITCODE
+                        
+                        & $ProtonCLI d 2>&1 | Out-Null
+                        if ($Status -eq 0) {
+                            "`e[1;32m[SUCCESS] Track successfully resolved over VPN.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                            $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
+                            $ReloadDb | Where-Object { $_.id -ne $Sid } | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
+                        } else {
+                            "`e[1;31m[ERROR] Extraction failed over active VPN adapter link.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                        }
+                    }
+                    $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $SingleJobBlock -ArgumentList $Global:DiagLogFile, $BackupDir, $ConfigDir, $TargetSong.videoId, $SongId, $BrokenDbFile, $HistoryFile
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Dispatched targeted single VPN route"}')
+                } else {
+                    # Standard baseline resolutions (mark fixed, skip)
+                    $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
+                    $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $BrokenDbFile -Encoding utf8 -Force
 
-                if ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
-                    $ArchiveLine = "youtube $VideoID"
-                    [System.IO.File]::AppendAllText($HistoryFile, ($ArchiveLine + [System.Environment]::NewLine))
+                    if ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
+                        $ArchiveLine = "youtube $VideoID"
+                        [System.IO.File]::AppendAllText($HistoryFile, ($ArchiveLine + [System.Environment]::NewLine))
+                    }
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success"}')
                 }
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success"}')
                 $Response.StatusCode = 200
             } else {
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Invalid request target"}')
                 $Response.StatusCode = 400
+            }
+            $Response.ContentType = "application/json"
+            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+            $Response.OutputStream.Close()
+        }
+        elseif ($UrlPath -eq "/run-geo-recovery" -and $Method -eq "POST") { # Aligned with frontend routing name
+            if ($Global:IsPipelineRunning) {
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline active"}')
+                $Response.StatusCode = 409
+            } else {
+                $Global:IsPipelineRunning = $true
+                if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
+                "`e[1;35m[SYSTEM] Initializing Safe Asynchronous ProtonVPN Geo-Recovery Loop...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+
+                $RecoveryJobBlock = {
+                    param($Log, $Backup, $Cfg)
+                    function Log-VpnProgress([string]$M) {
+                        $T = (Get-Date).ToString("HH:mm:ss")
+                        "`e[90m[$T]`e[0m $M" | Out-File -FilePath $Log -Append -Encoding utf8
+                    }
+
+                    $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
+                    $YTDLP = "C:\MusicTools\yt-dlp.exe"
+                    $Cookies = "C:\MusicTools\MusicPipeline\Config\cookies.txt"
+                    $DbFile = Join-Path $Cfg "broken_songs.json"
+
+                    if (-not (Test-Path $DbFile)) { Log-VpnProgress "🛑 Error database missing."; return }
+                    $Db = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
+                    $GeoTracks = $Db | Where-Object { $_.reason -match "available in your country|GeoRestrictedError|not made this video available|sign in to confirm" }
+
+                    if ($null -eq $GeoTracks -or $GeoTracks.Count -eq 0) {
+                        Log-VpnProgress "🔍 Clean analytics match. Zero songs are currently blocked behind geo-restrictions."
+                        return
+                    }
+
+                    Log-VpnProgress "`e[1;33m[*] Routing connection... Forcing USA safe exit node.`e[0m"
+                    & $ProtonCLI c --cc US 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
+                    Start-Sleep -Seconds 8
+
+                    $SuccessTracks = @()
+                    foreach ($Track in $GeoTracks) {
+                        $TargetUrl = "https://www.youtube.com/watch?v=$($Track.videoId)"
+                        Log-VpnProgress "🚀 Pulling track through secure tunnel: $TargetUrl"
+                        & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
+                        if ($LASTEXITCODE -eq 0) {
+                            Log-VpnProgress "[+] Download Success: $($Track.videoId)"
+                            $SuccessTracks += $Track.videoId
+                        } else {
+                            Log-VpnProgress "🛑 Dynamic tunnel breakdown or failure on ID: $($Track.videoId)"
+                        }
+                    }
+
+                    Log-VpnProgress "`e[1;31m[*] Terminating active routing adapters... Closing VPN connection.`e[0m"
+                    & $ProtonCLI d 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
+
+                    if ($SuccessTracks.Count -gt 0) {
+                        $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
+                        $CleanedDb = $ReloadDb | Where-Object { $SuccessTracks -notcontains $_.videoId }
+                        $CleanedDb | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
+                        Log-VpnProgress "`e[1;32m[SUCCESS] Removed ($($SuccessTracks.Count)) anomalies from broken_songs.json!`e[0m"
+                    }
+                }
+                $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $RecoveryJobBlock -ArgumentList $Global:DiagLogFile, $BackupDir, $ConfigDir
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
+                $Response.StatusCode = 200
             }
             $Response.ContentType = "application/json"
             $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
@@ -465,7 +568,8 @@ try {
                     $FileStream = [System.IO.File]::Open($Global:DiagLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
                     $StreamReader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
                     while ($null -ne ($Line = $StreamReader.ReadLine())) { $AllLines += $Line }
-                    $StreamReader.Close(); $FileStream.Close()
+                    $StreamReader.Close();
+                    $FileStream.Close()
                 } catch { $AllLines = @() }
 
                 if ($AllLines.Count -gt 0) {
@@ -481,7 +585,7 @@ try {
             } else { $Global:IsPipelineRunning = $false } 
 
             $JsonPayload = @{ 
-                running = $Global:IsPipelineRunning; 
+                running = $Global:IsPipelineRunning;
                 logs    = $CurrentLogs;
                 totalLines = $AllLines.Count
             } | ConvertTo-Json -Compress 
@@ -531,8 +635,7 @@ try {
 
                 $Global:IsPipelineRunning = $false
                 $Timestamp = (Get-Date).ToString("HH:mm:ss")
-                "`e[1;31m[$Timestamp] [SYSTEM] Pipeline and all child processes manually terminated.`e[0m" | 
-                    Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+                "`e[1;31m[$Timestamp] [SYSTEM] Pipeline and all child processes manually terminated.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
 
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}')
                 $Response.StatusCode = 200
@@ -559,6 +662,6 @@ try {
             try { $Response.OutputStream.Close() } catch {}
         }
     }
-}  
+}
 catch { Write-Host "⚠️ Router Stream Exception: $_" -ForegroundColor Yellow } 
 finally { if ($null -ne $Listener) { if ($Listener.IsListening) { $Listener.Stop() }; $Listener.Close() } }

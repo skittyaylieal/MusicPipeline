@@ -358,9 +358,16 @@
 
         <div id="pane-fixer" class="page-pane">
             <div class="panel panel-extended">
-                <h2>🔧 Pipeline Error Resolution & Broken Song Fixer</h2>
+                <h2>
+                    🔧 Pipeline Error Resolution & Broken Song Fixer
+                    <div class="control-group">
+                        <button class="btn" id="geo-recovery-btn" onclick="triggerGlobalGeoRecovery()" style="background: #8B5CF6;">
+                            🌍 Run Geo-Recovery Loop (ProtonVPN)
+                        </button>
+                    </div>
+                </h2>
                 <p style="color: #A1A1AA; margin-top: -5px; margin-bottom: 20px;">
-                    The following tracks failed to download or process during pipeline runs. Resolve them manually or push them to history to skip them.
+                    The following tracks failed to download or process during pipeline runs. Resolve them manually, trigger the automated VPN bypass loop, or push them to history to skip them.
                 </p>
 
                 <div class="table-wrapper" style="border: 1px solid #27272A; border-radius: 6px; background: #0B0B0E;">
@@ -757,15 +764,33 @@
                     }
 
                     tbody.innerHTML = data.map(item => {
+                        // Check if the error reason indicates a geo-block/regional restriction
+                        const isGeoBlocked = item.reason && (
+                            item.reason.toLowerCase().includes('geo') || 
+                            item.reason.toLowerCase().includes('available in your country') ||
+                            item.reason.toLowerCase().includes('sign in to confirm')
+                        );
+
+                        // Dynamic row styling to highlight geo-blocked tracks
+                        const rowStyle = isGeoBlocked ? 'background: rgba(139, 92, 246, 0.05); border-left: 3px solid #8B5CF6;' : '';
+                        const errorColor = isGeoBlocked ? '#BD93F9' : '#F87171'; // Purple accent for geo-restricted items
+
                         return `
-                            <tr>
+                            <tr style="${rowStyle}">
                                 <td style="font-weight:600; color:#FFF;">${item.query || 'Unknown Track Query'}</td>
-                                <td style="color:#F87171; font-family:monospace;">${item.reason || 'Extraction failed'}</td>
+                                <td style="color:${errorColor}; font-family:monospace;">
+                                    ${isGeoBlocked ? '🌍 [Geo-Blocked] ' : ''}${item.reason || 'Extraction failed'}
+                                </td>
                                 <td style="color:#A1A1AA;">${item.playlist || '-'}</td>
                                 <td style="text-align: center;">
                                     <div style="display:flex; gap:8px; justify-content:center;">
+                                        ${isGeoBlocked ? `
+                                            <button class="btn" style="padding:6px 12px; font-size:0.85em; background: #8B5CF6;" onclick="triggerGeoRecovery('${item.id}')">
+                                                🔌 VPN Fix
+                                            </button>
+                                        ` : ''}
                                         <button class="btn" style="padding:6px 12px; font-size:0.85em;" onclick="resolveSong('${item.id}', 'mark_fixed')">✅ Fixed</button>
-                                        <button class="btn btn-warn" style="padding:6px 12px; font-size:0.85em;" onclick="resolveSong('${item.id}', 'write_history', '${item.videoId || ''}')">⏭️ Skip / Ignore</button>
+                                        <button class="btn btn-warn" style="padding:6px 12px; font-size:0.85em;" onclick="resolveSong('${item.id}', 'write_history', '${item.videoId || ''}')">⏭️ Skip</button>
                                     </div>
                                 </td>
                             </tr>
@@ -792,6 +817,52 @@
                     alert("Error updating track status: " + (data.message || "Unknown error"));
                 }
             });
+        }
+
+        // Trigger VPN recovery for a specific track ID
+        function triggerGeoRecovery(songId) {
+            if (!confirm("This will connect to ProtonVPN (US Exit Node) to re-download this track. Continue?")) return;
+            
+            switchPage('pane-console', 'link-console');
+            const feed = document.getElementById('terminal-feed');
+            if (feed) feed.innerHTML += `\n<span style="color:#BD93F9; font-weight:bold;">[System] Initiating targeted VPN recovery for Track ID: ${songId}...</span>`;
+
+            fetch('/resolve-song', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: songId, action: 'geo_vpn_fix' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' || data.status === 'dispatched') {
+                    loadBrokenSongs();
+                    loadMetrics();
+                } else {
+                    alert("Error initiating VPN fix: " + (data.message || "Unknown error"));
+                }
+            });
+        }
+
+        // Trigger the full automated headless ProtonVPN loop
+        function triggerGlobalGeoRecovery() {
+            const btn = document.getElementById('geo-recovery-btn');
+            if (btn) btn.disabled = true;
+
+            fetch('/run-geo-recovery', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'dispatched') {
+                        switchPage('pane-console', 'link-console');
+                        const feed = document.getElementById('terminal-feed');
+                        if (feed) feed.innerHTML += `\n<span style="color:#BD93F9; font-weight:bold;">[System] Headless ProtonVPN Recovery Loop dispatched successfully. Monitoring stream logs...</span>`;
+                    }
+                })
+                .catch(() => {
+                    alert("Failed to contact geo-recovery server endpoint.");
+                })
+                .finally(() => {
+                    if (btn) btn.disabled = false;
+                });
         }
 
         // Core Loops & Initialization
