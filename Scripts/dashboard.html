@@ -1173,16 +1173,24 @@
             .catch(e => console.error("Delete profile failed", e));
         }
 
-        // Core Loops & System Initialization
-        setInterval(loadMetrics, 3000);
-        setInterval(loadAnalytics, 10000);
-        setTimeout(runLogStreamer, 1000);
+        // --- Core Initialization ---
+        window.addEventListener('load', () => {
+            // Stagger the initial load to prevent "Thundering Herd" socket abortion
+            setTimeout(loadMetrics, 100);
+            setTimeout(loadAnalytics, 400);
+            setTimeout(loadBrokenSongs, 700);
+            setTimeout(loadProfilesFrameworkSystem, 1000);
+
+            // Start background loops only after the initial surge has settled
+            setTimeout(() => {
+                setInterval(loadMetrics, 3000);
+                setInterval(loadAnalytics, 10000);
+            }, 2000);
+
+            // Streamer has its own built-in recursion, so just kick it off once
+            setTimeout(runLogStreamer, 1500);
+        }); 
         
-        // Context Initialization Sequences
-        loadMetrics();
-        loadAnalytics();
-        loadBrokenSongs();
-        loadProfilesFrameworkSystem();
     </script>
 </body>
 </html>
