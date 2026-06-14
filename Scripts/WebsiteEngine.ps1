@@ -418,13 +418,13 @@ try {
     Start-AsyncLibraryScanner 
     Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
     
-    trap {
-        Write-Host "🛑 Shutting down server engine cleanly..." -ForegroundColor Red 
-        if ($null -ne $Listener -and $Listener.IsListening) { $Listener.Stop() } 
-        if ($null -ne $Listener) { $Listener.Close() } 
-        netsh interface portproxy reset | Out-Null 
-        exit 
-    }
+    #trap {
+    #    Write-Host "🛑 Shutting down server engine cleanly..." -ForegroundColor Red 
+    #    if ($null -ne $Listener -and $Listener.IsListening) { $Listener.Stop() } 
+    #    if ($null -ne $Listener) { $Listener.Close() } 
+    #    netsh interface portproxy reset | Out-Null 
+    #    exit 
+    #}
 
     while ($true) {
         $Context = $Listener.GetContext() 
