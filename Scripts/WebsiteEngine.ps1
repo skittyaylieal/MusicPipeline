@@ -569,7 +569,31 @@ try {
                     $TargetSong = $CurrentList | Where-Object { $_.id -eq $SongId }
                     
                     if ($Action -eq "geo_vpn_fix" -and $TargetSong) {
-                        # Dispatch Job logic here (omitted for brevity, keep your existing logic if needed, but return safe JSON)
+                        $Global:IsPipelineRunning = $true
+                        if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
+                        
+                        $SingleJobBlock = {
+                            param($Log, $Backup, $Cfg, $Vid, $Sid, $DbFile, $HistFile, $YTDLP, $Cookies)
+                            $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
+                            
+                            "`e[1;35m[SYSTEM] Targeted VPN Link Established for ID: $Vid...`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                            & $ProtonCLI c --cc US 2>&1 | Out-Null
+                            Start-Sleep -Seconds 8
+                            
+                            $TargetUrl = "https://www.youtube.com/watch?v=$Vid"
+                            & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
+                            $Status = $LASTEXITCODE
+                            
+                            & $ProtonCLI d 2>&1 | Out-Null
+                            if ($Status -eq 0) {
+                                "`e[1;32m[SUCCESS] Track successfully resolved over VPN.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                                $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
+                                $ReloadDb | Where-Object { $_.id -ne $Sid } | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
+                            } else {
+                                "`e[1;31m[ERROR] Extraction failed over active VPN adapter link.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                            }
+                        }
+                        $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $SingleJobBlock -ArgumentList $Global:DiagLogFile, $Global:Profile.BackupDir, $ConfigDir, $TargetSong.videoId, $SongId, $Global:Profile.BrokenSongsFile, $Global:Profile.HistoryFile, $Global:Profile.YTDLPExe, $Global:Profile.CookieFile
                         $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Dispatched targeted single VPN route"}')
                     } else {
                         $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
@@ -594,7 +618,57 @@ try {
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline active"}')
                     $Response.StatusCode = 409
                 } else {
-                    # Dispatch logic here...
+                    $Global:IsPipelineRunning = $true
+                    if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
+                    "`e[1;35m[SYSTEM] Initializing Safe Asynchronous ProtonVPN Geo-Recovery Loop...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+
+                    $RecoveryJobBlock = {
+                        param($Log, $Backup, $Cfg, $DbFile, $YTDLP, $Cookies)
+                        function Log-VpnProgress([string]$M) {
+                            $T = (Get-Date).ToString("HH:mm:ss")
+                            "`e[90m[$T]`e[0m $M" | Out-File -FilePath $Log -Append -Encoding utf8
+                        }
+
+                        $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
+
+                        if (-not (Test-Path $DbFile)) { Log-VpnProgress "🛑 Error database missing."; return }
+                        $Db = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
+                        $GeoTracks = $Db | Where-Object { $_.reason -match "available in your country|GeoRestrictedError|not made this video available|sign in to confirm" }
+
+                        if ($null -eq $GeoTracks -or $GeoTracks.Count -eq 0) {
+                            Log-VpnProgress "🔍 Clean analytics match. Zero songs are currently blocked behind geo-restrictions."
+                            return
+                        }
+
+                        Log-VpnProgress "`e[1;33m[*] Routing connection... Forcing USA safe exit node.`e[0m"
+                        & $ProtonCLI c --cc US 2>&1 | Out-Null
+                        Start-Sleep -Seconds 8
+
+                        $SuccessTracks = @()
+                        foreach ($Track in $GeoTracks) {
+                            $TargetUrl = "https://www.youtube.com/watch?v=$($Track.videoId)"
+                            Log-VpnProgress "🚀 Pulling track through secure tunnel: $TargetUrl"
+                            & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
+                            if ($LASTEXITCODE -eq 0) {
+                                Log-VpnProgress "[+] Download Success: $($Track.videoId)"
+                                $SuccessTracks += $Track.videoId
+                            } else {
+                                Log-VpnProgress "🛑 Dynamic tunnel breakdown or failure on ID: $($Track.videoId)"
+                            }
+                        }
+
+                        Log-VpnProgress "`e[1;31m[*] Terminating active routing adapters... Closing VPN connection.`e[0m"
+                        & $ProtonCLI d 2>&1 | Out-Null
+
+                        if ($SuccessTracks.Count -gt 0) {
+                            $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
+                            $CleanedDb = $ReloadDb | Where-Object { $SuccessTracks -notcontains $_.videoId }
+                            $CleanedDb | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
+                            Log-VpnProgress "`e[1;32m[SUCCESS] Removed ($($SuccessTracks.Count)) anomalies from broken_songs.json!`e[0m"
+                        }
+                    }
+                    $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $RecoveryJobBlock -ArgumentList $Global:DiagLogFile, $Global:Profile.BackupDir, $ConfigDir, $Global:Profile.BrokenSongsFile, $Global:Profile.YTDLPExe, $Global:Profile.CookieFile
+                    
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
                     $Response.StatusCode = 200
                 }
@@ -690,23 +764,50 @@ try {
                 $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/run" -and $Method -eq "POST") { 
+                $IsSweepRequested = $false
+                if ($null -ne $Request.Url.Query) { $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true") }
+                
+                $RunContext = "Manual" 
+                if ($Request.Url.Query -match "type=Automated") { $RunContext = "Automated" } 
+                if ($IsSweepRequested) { $RunContext = "Clean Sweep" } 
+                
+                Invoke-PipelineExecution -CleanSweep $IsSweepRequested -TriggerType $RunContext 
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}') 
                 $Response.ContentType = "application/json" 
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
                 $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}')
-                $Response.StatusCode = 200
+                try {
+                    $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue
+                    if ($DownloadJob) {
+                        Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue
+                        Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue
+                    }
+                    Stop-Process -Name "yt-dlp" -Force -ErrorAction SilentlyContinue
+                    Stop-Process -Name "ffmpeg" -Force -ErrorAction SilentlyContinue
+
+                    $Global:IsPipelineRunning = $false
+                    $Timestamp = (Get-Date).ToString("HH:mm:ss")
+                    "`e[1;31m[$Timestamp] [SYSTEM] Pipeline and all child processes manually terminated.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}')
+                    $Response.StatusCode = 200
+                } catch {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to terminate job"}')
+                    $Response.StatusCode = 500
+                }
                 $Response.ContentType = "application/json"
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") { 
+                Invoke-HotReload 
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}') 
                 $Response.ContentType = "application/json" 
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
                 $Response.OutputStream.Close() 
+                Stop-Process -Id $PID -Force 
             }
             else { 
                 $Response.StatusCode = 404 
