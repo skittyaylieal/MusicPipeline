@@ -444,7 +444,13 @@ try {
             }
             elseif ($UrlPath -eq "/broken-songs" -and $Method -eq "GET") {
                 $RawData = "[]"
-                if (Test-Path $Global:Profile.BrokenSongsFile) { $RawData = Get-Content -LiteralPath $Global:Profile.BrokenSongsFile -Raw }
+                if (Test-Path $Global:Profile.BrokenSongsFile) {
+                    try {
+                        $RawData = Get-Content -LiteralPath $Global:Profile.BrokenSongsFile -Raw
+                    } catch {
+                        Write-Host "Warning: Could not read $Global:Profile.BrokenSongsFile" -ForegroundColor Yellow
+                    }
+                }
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
                 $Response.ContentType = "application/json"
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
@@ -452,7 +458,14 @@ try {
             }
             # --- PROFILE ENDPOINTS ---
             elseif ($UrlPath -eq "/profiles" -and $Method -eq "GET") {
-                $RawData = Get-Content -LiteralPath $ProfilesFile -Raw
+                $RawData = "[]"
+                if (Test-Path $ProfilesFile) {
+                    try {
+                        $RawData = Get-Content -LiteralPath $ProfilesFile -Raw
+                    } catch {
+                        Write-Host "Warning: Could not read $ProfilesFile" -ForegroundColor Yellow
+                    }
+                }
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
                 $Response.ContentType = "application/json"
                 $Response.ContentLength64 = $Buffer.Length
@@ -688,8 +701,14 @@ try {
                 $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/analytics" -and $Method -eq "GET") { 
-                $RawData = "[]" 
-                if (Test-Path $Global:TimingFile) { $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw } 
+                $RawData = "[]"
+                if (Test-Path $Global:TimingFile) {
+                    try {
+                        $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw
+                    } catch {
+                        Write-Host "Warning: Could not read $Global:TimingFile" -ForegroundColor Yellow
+                    }
+                }
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData) 
                 $Response.ContentType = "application/json" 
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
