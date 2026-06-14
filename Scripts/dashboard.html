@@ -567,6 +567,9 @@
         let performanceChartInstance = null;
         let activeLogLinePointer = 0;
         let fullProfilesObjectContainer = {};
+        
+        // Global Circuit Breaker to prevent 25GB RAM memory leaks
+        let errorCount = 0;
 
         // Sidebar Navigation Animations & Display Routines
         function toggleDrawer() {
@@ -597,9 +600,16 @@
 
         // Global Metrics Parsing and Synchronization Loops
         function loadMetrics() {
+            if (errorCount > 5) return; // Circuit Breaker
+            
             fetch('/metrics')
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error("Server returned " + res.status);
+                    return res.json();
+                })
                 .then(data => {
+                    errorCount = 0; // Reset breaker on success
+                    
                     document.getElementById('m-master-count').innerText = data.masterCount || 0;
                     document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
                     
@@ -640,7 +650,12 @@
                     if (document.getElementById('pane-tracks').classList.contains('active') && !document.getElementById('track-search-filter').value) {
                         renderTracksTable(globalTrackCache);
                     }
-                }).catch(e => console.error("Metrics framework pull failure", e));
+                })
+                .catch(e => {
+                    errorCount++;
+                    console.error("Metrics framework pull failure", e);
+                    if (errorCount === 6) console.warn("Too many errors. Pausing background refreshes to protect memory.");
+                });
         }
 
         // Search & Filter Algorithms
@@ -695,10 +710,17 @@
 
         // Error Anomaly Resolution Routines
         function loadBrokenSongs() {
+            if (errorCount > 5) return; // Circuit Breaker
+            
             fetch('/broken-songs')
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error("Server returned " + res.status);
+                    return res.json();
+                })
                 .then(data => {
+                    errorCount = 0; // Reset breaker on success
                     const tbody = document.getElementById('errors-table-body');
+                    
                     if (!data || data.length === 0) {
                         tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #50FA7B;">✨ Analysis complete. Zero anomalous tracks registered.</td></tr>`;
                         return;
@@ -723,7 +745,11 @@
                             </tr>
                         `;
                     }).join('');
-                }).catch(e => console.error("Broken songs compilation trace failure", e));
+                })
+                .catch(e => {
+                    errorCount++;
+                    console.error("Broken songs compilation trace failure", e);
+                });
         }
 
         function resolveAnomalousTrack(id, action, videoId) {
@@ -741,7 +767,7 @@
                 } else {
                     alert("Error initiating VPN fix: " + (data.message || "Unknown error"));
                 }
-            });
+            }).catch(e => console.error("Action dispatch failure", e));
         }
 
         function triggerGlobalGeoRecovery() {
@@ -767,9 +793,15 @@
 
         // Live Log Buffer Streaming Logic
         function runLogStreamer() {
+            if (errorCount > 5) return; // Circuit Breaker stops the recursive loop
+
             fetch(`/stream?skip=${activeLogLinePointer}`)
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error("Server returned " + res.status);
+                    return res.json();
+                })
                 .then(data => {
+                    errorCount = 0; // Reset breaker on success
                     const feed = document.getElementById('terminal-feed');
                     const badge = document.getElementById('pipeline-status-badge');
 
@@ -801,15 +833,27 @@
                         feed.scrollTop = feed.scrollHeight;
                     }
                     setTimeout(runLogStreamer, 1200);
-                }).catch(() => setTimeout(runLogStreamer, 4000));
+                })
+                .catch(e => {
+                    errorCount++;
+                    // Backoff delay before failing or retrying
+                    setTimeout(runLogStreamer, 4000); 
+                });
         }
 
         // Performance Chronography Visualization Subsystems
         function loadAnalytics() {
+            if (errorCount > 5) return; // Circuit Breaker
+            
             fetch('/analytics')
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error("Server returned " + res.status);
+                    return res.json();
+                })
                 .then(data => {
+                    errorCount = 0; // Reset breaker on success
                     const tbody = document.getElementById('analytics-table-body');
+                    
                     if (!data || data.length === 0) {
                         tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #71717A;">Zero historical sync data points verified.</td></tr>`;
                         return;
@@ -834,7 +878,11 @@
                     if (document.getElementById('pane-analytics').classList.contains('active')) {
                         renderPerformanceChart();
                     }
-                }).catch(e => console.error("Chronography mapping compilation crash", e));
+                })
+                .catch(e => {
+                    errorCount++;
+                    console.error("Chronography mapping compilation crash", e);
+                });
         }
 
         function convertTimeToSeconds(timeStr) {
@@ -895,7 +943,8 @@
             switchPage('pane-console', 'link-console');
             fetch(endpoint, { method: 'POST' })
                 .then(res => res.json())
-                .then(() => console.log(`Dispatched engine sequence: ${endpoint}`));
+                .then(() => console.log(`Dispatched engine sequence: ${endpoint}`))
+                .catch(e => console.error("Failed pipeline dispatch", e));
         }
 
         function dispatchStopPipeline() {
@@ -905,7 +954,8 @@
                     if(data.status === 'stopped') {
                         alert("Pipeline execution stack and parallel downstream binaries halted.");
                     }
-                });
+                })
+                .catch(e => console.error("Failed stop dispatch", e));
         }
 
         function dispatchClearLogs() {
@@ -916,7 +966,8 @@
                         activeLogLinePointer = 0;
                         document.getElementById('terminal-feed').innerHTML = '';
                     }
-                });
+                })
+                .catch(e => console.error("Failed to clear logs", e));
         }
 
         function triggerHotPull() {
@@ -926,16 +977,23 @@
                 .then(res => res.json())
                 .then(() => {
                     console.log("Hot pull initialization dispatched.");
-                });
+                })
+                .catch(e => console.error("Failed hot pull", e));
         }
 
         // ================================================================= -->
         // CONFIGURATION PROFILE INTERACTIVE LOGIC (NEW ENGINE IMPLEMENTATION)
         // ================================================================= -->
         function loadProfilesFrameworkSystem() {
+            if (errorCount > 5) return; // Circuit Breaker
+            
             fetch('/profiles')
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error("Server returned " + res.status);
+                    return res.json();
+                })
                 .then(data => {
+                    errorCount = 0; // Reset breaker on success
                     fullProfilesObjectContainer = data.profiles;
                     const dropdown = document.getElementById('profile-selection-dropdown');
                     
@@ -952,7 +1010,11 @@
 
                     dropdown.value = currentSelection;
                     loadTargetProfileToForm();
-                }).catch(e => console.error("Could not fetch user dynamic context profiles database", e));
+                })
+                .catch(e => {
+                    errorCount++;
+                    console.error("Could not fetch user dynamic context profiles database", e);
+                });
         }
 
         function loadTargetProfileToForm() {
@@ -1001,7 +1063,8 @@
                 } else {
                     alert(`Context bounce routine rejected: ${data.message}`);
                 }
-            });
+            })
+            .catch(e => console.error("Context switch failed", e));
         }
 
         function saveProfileDataChanges() {
@@ -1051,7 +1114,8 @@
                 } else {
                     alert(`Failed to save configuration modifications: ${data.message}`);
                 }
-            });
+            })
+            .catch(e => console.error("Save profile failed", e));
         }
 
         function createNewProfile() {
@@ -1076,7 +1140,8 @@
                     document.getElementById('profile-selection-dropdown').value = newName.trim();
                     loadProfilesFrameworkSystem();
                 }
-            });
+            })
+            .catch(e => console.error("Create profile failed", e));
         }
 
         function deleteTargetProfile() {
@@ -1105,7 +1170,8 @@
                 } else {
                     alert(`Deletion transaction failed: ${data.message}`);
                 }
-            });
+            })
+            .catch(e => console.error("Delete profile failed", e));
         }
 
         // Core Loops & System Initialization
