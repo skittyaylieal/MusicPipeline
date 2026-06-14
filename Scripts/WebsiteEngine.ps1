@@ -427,396 +427,411 @@ try {
     #}
 
     while ($true) {
-        $Context = $Listener.GetContext() 
-        $Request = $Context.Request 
-        $Response = $Context.Response 
-        $UrlPath = $Request.Url.LocalPath 
-        $Method  = $Request.HttpMethod 
+        try {
+            $Context = $Listener.GetContext() 
+            $Request = $Context.Request 
+            $Response = $Context.Response 
+            $UrlPath = $Request.Url.LocalPath 
+            $Method  = $Request.HttpMethod 
 
-        $Response.KeepAlive = $false 
-        $Response.Headers.Add("Connection", "close") 
-        $Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate") 
-        $Response.Headers.Add("Pragma", "no-cache") 
-        $Response.Headers.Add("Expires", "0") 
+            $Response.KeepAlive = $false 
+            $Response.Headers.Add("Connection", "close") 
+            $Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate") 
+            $Response.Headers.Add("Pragma", "no-cache") 
+            $Response.Headers.Add("Expires", "0") 
 
-        if ($UrlPath -eq "/" -and $Method -eq "GET") {
-            if (Test-Path $HtmlFile) {
-                $HtmlContent = Get-Content -LiteralPath $HtmlFile -Raw -Encoding utf8 
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlContent) 
-                $Response.ContentType = "text/html; charset=utf-8" 
+            if ($UrlPath -eq "/" -and $Method -eq "GET") {
+                if (Test-Path $HtmlFile) {
+                    $HtmlContent = Get-Content -LiteralPath $HtmlFile -Raw -Encoding utf8 
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes($HtmlContent) 
+                    $Response.ContentType = "text/html; charset=utf-8" 
+                    $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                } else { $Response.StatusCode = 404 }
+                $Response.OutputStream.Close()
+            }
+            elseif ($UrlPath -eq "/broken-songs" -and $Method -eq "GET") {
+                $RawData = "[]"
+                if (Test-Path $Global:Profile.BrokenSongsFile) { $RawData = Get-Content -LiteralPath $Global:Profile.BrokenSongsFile -Raw }
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
+                $Response.ContentType = "application/json"
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            } else { $Response.StatusCode = 404 }
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/broken-songs" -and $Method -eq "GET") {
-            $RawData = "[]"
-            if (Test-Path $Global:Profile.BrokenSongsFile) { $RawData = Get-Content -LiteralPath $Global:Profile.BrokenSongsFile -Raw }
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
-            $Response.ContentType = "application/json"
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
-        }
-        # --- PROFILE ENDPOINTS ---
-        elseif ($UrlPath -eq "/profiles" -and $Method -eq "GET") {
-            $RawData = Get-Content -LiteralPath $ProfilesFile -Raw
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
-            $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/profiles/switch" -and $Method -eq "POST") {
-            $Reader = New-Object System.IO.StreamReader($Request.InputStream)
-            $JSONBody = $Reader.ReadToEnd() | ConvertFrom-Json
-            
-            $ProfilesJson = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
-            if ($ProfilesJson.profiles.$($JSONBody.profileName)) {
-                $ProfilesJson.activeProfile = $JSONBody.profileName
-                $ProfilesJson | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
-                Load-ProfileContext
-                
-                # Dynamic context sync re-bounce
-                Start-AsyncLibraryScanner
-                Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"switched","profile":"' + $JSONBody.profileName + '"}')
-            } else {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Profile not found"}')
-                $Response.StatusCode = 404
+                $Response.OutputStream.Close()
             }
-            $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/profiles/save" -and $Method -eq "POST") {
-            $Reader = New-Object System.IO.StreamReader($Request.InputStream)
-            $JSONBody = $Reader.ReadToEnd() | ConvertFrom-Json
-            
-            $ProfilesJson = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
-            $TargetProfile = $JSONBody.profileName
-            
-            # Overwrite or create the config object for that specific profile key
-            if (-not $ProfilesJson.profiles) { Add-Member -InputObject $ProfilesJson -MemberType NoteProperty -Name "profiles" -Value @{} }
-            $ProfilesJson.profiles | Add-Member -MemberType NoteProperty -Name $TargetProfile -Value $JSONBody.config -Force
-
-            $ProfilesJson | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
-            Load-ProfileContext
-            
-            # Dynamic re-bounce context if modifying active parameters
-            if ($TargetProfile -eq $Global:ActiveProfileName) {
-                Start-AsyncLibraryScanner
-                Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
+            # --- PROFILE ENDPOINTS ---
+            elseif ($UrlPath -eq "/profiles" -and $Method -eq "GET") {
+                $RawData = Get-Content -LiteralPath $ProfilesFile -Raw
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
             }
-            
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"saved"}')
-            $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/profiles/create" -and $Method -eq "POST") {
-            $Reader = New-Object System.IO.StreamReader($Request.InputStream)
-            $JSONBody = $Reader.ReadToEnd() | ConvertFrom-Json
-            $NewName = $JSONBody.profileName
-            
-            $ProfilesJson = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
-            if ($ProfilesJson.profiles.PSObject.Properties.Name -contains $NewName) {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Profile already exists"}')
-                $Response.StatusCode = 400
-            } else {
-                # Clone template properties using Default as a fallback baseline
-                $BaseTemplate = $ProfilesJson.profiles.Default
-                $ProfileConfig = if ($JSONBody.config) { $JSONBody.config } else { $BaseTemplate }
+            elseif ($UrlPath -eq "/profiles/switch" -and $Method -eq "POST") {
+                $Reader = New-Object System.IO.StreamReader($Request.InputStream)
+                $JSONBody = $Reader.ReadToEnd() | ConvertFrom-Json
                 
-                $ProfilesJson.profiles | Add-Member -MemberType NoteProperty -Name $NewName -Value $ProfileConfig
-                $ProfilesJson | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
-                
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"created"}')
-                $Response.StatusCode = 200
-            }
-            $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/profiles/delete" -and $Method -eq "POST") {
-            $Reader = New-Object System.IO.StreamReader($Request.InputStream)
-            $JSONBody = $Reader.ReadToEnd() | ConvertFrom-Json
-            $TargetProfile = $JSONBody.profileName
-            
-            $ProfilesJson = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
-            if ($TargetProfile -eq "Default") {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Cannot delete default system fallback profile"}')
-                $Response.StatusCode = 403
-            } elseif ($ProfilesJson.profiles.PSObject.Properties.Name -contains $TargetProfile) {
-                $ProfilesJson.profiles.psobject.properties.Remove($TargetProfile)
-                if ($ProfilesJson.activeProfile -eq $TargetProfile) {
-                    $ProfilesJson.activeProfile = "Default"
+                $ProfilesJson = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
+                if ($ProfilesJson.profiles.$($JSONBody.profileName)) {
+                    $ProfilesJson.activeProfile = $JSONBody.profileName
+                    $ProfilesJson | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
+                    Load-ProfileContext
+                    
+                    # Dynamic context sync re-bounce
+                    Start-AsyncLibraryScanner
+                    Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"switched","profile":"' + $JSONBody.profileName + '"}')
+                } else {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Profile not found"}')
+                    $Response.StatusCode = 404
                 }
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
+            }
+            elseif ($UrlPath -eq "/profiles/save" -and $Method -eq "POST") {
+                $Reader = New-Object System.IO.StreamReader($Request.InputStream)
+                $JSONBody = $Reader.ReadToEnd() | ConvertFrom-Json
+                
+                $ProfilesJson = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
+                $TargetProfile = $JSONBody.profileName
+                
+                # Overwrite or create the config object for that specific profile key
+                if (-not $ProfilesJson.profiles) { Add-Member -InputObject $ProfilesJson -MemberType NoteProperty -Name "profiles" -Value @{} }
+                $ProfilesJson.profiles | Add-Member -MemberType NoteProperty -Name $TargetProfile -Value $JSONBody.config -Force
+
                 $ProfilesJson | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
                 Load-ProfileContext
                 
-                # Re-align dynamic engines to live fallback profile
-                Start-AsyncLibraryScanner
-                Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
+                # Dynamic re-bounce context if modifying active parameters
+                if ($TargetProfile -eq $Global:ActiveProfileName) {
+                    Start-AsyncLibraryScanner
+                    Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
+                }
                 
-                $Payload = @{ status = "deleted"; activeProfile = $Global:ActiveProfileName } | ConvertTo-Json
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($Payload)
-                $Response.StatusCode = 200
-            } else {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Profile not found"}')
-                $Response.StatusCode = 404
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"saved"}')
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
             }
-            $Response.ContentType = "application/json"
-            $Response.ContentLength64 = $Buffer.Length
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
-        }
-        # -----------------------------
-        elseif ($UrlPath -eq "/resolve-song" -and $Method -eq "POST") {
-            $Reader = New-Object System.IO.StreamReader($Request.InputStream)
-            $Payload = $Reader.ReadToEnd() | ConvertFrom-Json
-            
-            $SongId  = $Payload.id
-            $Action  = $Payload.action
-            $VideoID = $Payload.videoId
-
-            if ($SongId -and (Test-Path $Global:Profile.BrokenSongsFile)) {
-                $CurrentList = Get-Content -LiteralPath $Global:Profile.BrokenSongsFile -Raw | ConvertFrom-Json
-                $TargetSong = $CurrentList | Where-Object { $_.id -eq $SongId }
+            elseif ($UrlPath -eq "/profiles/create" -and $Method -eq "POST") {
+                $Reader = New-Object System.IO.StreamReader($Request.InputStream)
+                $JSONBody = $Reader.ReadToEnd() | ConvertFrom-Json
+                $NewName = $JSONBody.profileName
                 
-                if ($Action -eq "geo_vpn_fix" -and $TargetSong) {
+                $ProfilesJson = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
+                if ($ProfilesJson.profiles.PSObject.Properties.Name -contains $NewName) {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Profile already exists"}')
+                    $Response.StatusCode = 400
+                } else {
+                    # Clone template properties using Default as a fallback baseline
+                    $BaseTemplate = $ProfilesJson.profiles.Default
+                    $ProfileConfig = if ($JSONBody.config) { $JSONBody.config } else { $BaseTemplate }
+                    
+                    $ProfilesJson.profiles | Add-Member -MemberType NoteProperty -Name $NewName -Value $ProfileConfig
+                    $ProfilesJson | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
+                    
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"created"}')
+                    $Response.StatusCode = 200
+                }
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
+            }
+            elseif ($UrlPath -eq "/profiles/delete" -and $Method -eq "POST") {
+                $Reader = New-Object System.IO.StreamReader($Request.InputStream)
+                $JSONBody = $Reader.ReadToEnd() | ConvertFrom-Json
+                $TargetProfile = $JSONBody.profileName
+                
+                $ProfilesJson = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
+                if ($TargetProfile -eq "Default") {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Cannot delete default system fallback profile"}')
+                    $Response.StatusCode = 403
+                } elseif ($ProfilesJson.profiles.PSObject.Properties.Name -contains $TargetProfile) {
+                    $ProfilesJson.profiles.psobject.properties.Remove($TargetProfile)
+                    if ($ProfilesJson.activeProfile -eq $TargetProfile) {
+                        $ProfilesJson.activeProfile = "Default"
+                    }
+                    $ProfilesJson | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
+                    Load-ProfileContext
+                    
+                    # Re-align dynamic engines to live fallback profile
+                    Start-AsyncLibraryScanner
+                    Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
+                    
+                    $Payload = @{ status = "deleted"; activeProfile = $Global:ActiveProfileName } | ConvertTo-Json
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes($Payload)
+                    $Response.StatusCode = 200
+                } else {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Profile not found"}')
+                    $Response.StatusCode = 404
+                }
+                $Response.ContentType = "application/json"
+                $Response.ContentLength64 = $Buffer.Length
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
+            }
+            # -----------------------------
+            elseif ($UrlPath -eq "/resolve-song" -and $Method -eq "POST") {
+                $Reader = New-Object System.IO.StreamReader($Request.InputStream)
+                $Payload = $Reader.ReadToEnd() | ConvertFrom-Json
+                
+                $SongId  = $Payload.id
+                $Action  = $Payload.action
+                $VideoID = $Payload.videoId
+
+                if ($SongId -and (Test-Path $Global:Profile.BrokenSongsFile)) {
+                    $CurrentList = Get-Content -LiteralPath $Global:Profile.BrokenSongsFile -Raw | ConvertFrom-Json
+                    $TargetSong = $CurrentList | Where-Object { $_.id -eq $SongId }
+                    
+                    if ($Action -eq "geo_vpn_fix" -and $TargetSong) {
+                        $Global:IsPipelineRunning = $true
+                        if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
+                        
+                        $SingleJobBlock = {
+                            param($Log, $Backup, $Cfg, $Vid, $Sid, $DbFile, $HistFile, $YTDLP, $Cookies)
+                            $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
+                            
+                            "`e[1;35m[SYSTEM] Targeted VPN Link Established for ID: $Vid...`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                            & $ProtonCLI c --cc US 2>&1 | Out-Null
+                            Start-Sleep -Seconds 8
+                            
+                            $TargetUrl = "https://www.youtube.com/watch?v=$Vid"
+                            & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
+                            $Status = $LASTEXITCODE
+                            
+                            & $ProtonCLI d 2>&1 | Out-Null
+                            if ($Status -eq 0) {
+                                "`e[1;32m[SUCCESS] Track successfully resolved over VPN.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                                $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
+                                $ReloadDb | Where-Object { $_.id -ne $Sid } | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
+                            } else {
+                                "`e[1;31m[ERROR] Extraction failed over active VPN adapter link.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                            }
+                        }
+                        $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $SingleJobBlock -ArgumentList $Global:DiagLogFile, $Global:Profile.BackupDir, $ConfigDir, $TargetSong.videoId, $SongId, $Global:Profile.BrokenSongsFile, $Global:Profile.HistoryFile, $Global:Profile.YTDLPExe, $Global:Profile.CookieFile
+                        $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Dispatched targeted single VPN route"}')
+                    } else {
+                        $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
+                        $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $Global:Profile.BrokenSongsFile -Encoding utf8 -Force
+
+                        if ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
+                            $ArchiveLine = "youtube $VideoID"
+                            [System.IO.File]::AppendAllText($Global:Profile.HistoryFile, ($ArchiveLine + [System.Environment]::NewLine))
+                        }
+                        $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success"}')
+                    }
+                    $Response.StatusCode = 200
+                } else {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Invalid request target"}')
+                    $Response.StatusCode = 400
+                }
+                $Response.ContentType = "application/json"
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
+            }
+            elseif ($UrlPath -eq "/run-geo-recovery" -and $Method -eq "POST") {
+                if ($Global:IsPipelineRunning) {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline active"}')
+                    $Response.StatusCode = 409
+                } else {
                     $Global:IsPipelineRunning = $true
                     if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
-                    
-                    $SingleJobBlock = {
-                        param($Log, $Backup, $Cfg, $Vid, $Sid, $DbFile, $HistFile, $YTDLP, $Cookies)
+                    "`e[1;35m[SYSTEM] Initializing Safe Asynchronous ProtonVPN Geo-Recovery Loop...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+
+                    $RecoveryJobBlock = {
+                        param($Log, $Backup, $Cfg, $DbFile, $YTDLP, $Cookies)
+                        function Log-VpnProgress([string]$M) {
+                            $T = (Get-Date).ToString("HH:mm:ss")
+                            "`e[90m[$T]`e[0m $M" | Out-File -FilePath $Log -Append -Encoding utf8
+                        }
+
                         $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
-                        
-                        "`e[1;35m[SYSTEM] Targeted VPN Link Established for ID: $Vid...`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+
+                        if (-not (Test-Path $DbFile)) { Log-VpnProgress "🛑 Error database missing."; return }
+                        $Db = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
+                        $GeoTracks = $Db | Where-Object { $_.reason -match "available in your country|GeoRestrictedError|not made this video available|sign in to confirm" }
+
+                        if ($null -eq $GeoTracks -or $GeoTracks.Count -eq 0) {
+                            Log-VpnProgress "🔍 Clean analytics match. Zero songs are currently blocked behind geo-restrictions."
+                            return
+                        }
+
+                        Log-VpnProgress "`e[1;33m[*] Routing connection... Forcing USA safe exit node.`e[0m"
                         & $ProtonCLI c --cc US 2>&1 | Out-Null
                         Start-Sleep -Seconds 8
-                        
-                        $TargetUrl = "https://www.youtube.com/watch?v=$Vid"
-                        & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
-                        $Status = $LASTEXITCODE
-                        
+
+                        $SuccessTracks = @()
+                        foreach ($Track in $GeoTracks) {
+                            $TargetUrl = "https://www.youtube.com/watch?v=$($Track.videoId)"
+                            Log-VpnProgress "🚀 Pulling track through secure tunnel: $TargetUrl"
+                            & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
+                            if ($LASTEXITCODE -eq 0) {
+                                Log-VpnProgress "[+] Download Success: $($Track.videoId)"
+                                $SuccessTracks += $Track.videoId
+                            } else {
+                                Log-VpnProgress "🛑 Dynamic tunnel breakdown or failure on ID: $($Track.videoId)"
+                            }
+                        }
+
+                        Log-VpnProgress "`e[1;31m[*] Terminating active routing adapters... Closing VPN connection.`e[0m"
                         & $ProtonCLI d 2>&1 | Out-Null
-                        if ($Status -eq 0) {
-                            "`e[1;32m[SUCCESS] Track successfully resolved over VPN.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+
+                        if ($SuccessTracks.Count -gt 0) {
                             $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
-                            $ReloadDb | Where-Object { $_.id -ne $Sid } | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
-                        } else {
-                            "`e[1;31m[ERROR] Extraction failed over active VPN adapter link.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
+                            $CleanedDb = $ReloadDb | Where-Object { $SuccessTracks -notcontains $_.videoId }
+                            $CleanedDb | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
+                            Log-VpnProgress "`e[1;32m[SUCCESS] Removed ($($SuccessTracks.Count)) anomalies from broken_songs.json!`e[0m"
                         }
                     }
-                    $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $SingleJobBlock -ArgumentList $Global:DiagLogFile, $Global:Profile.BackupDir, $ConfigDir, $TargetSong.videoId, $SongId, $Global:Profile.BrokenSongsFile, $Global:Profile.HistoryFile, $Global:Profile.YTDLPExe, $Global:Profile.CookieFile
-                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Dispatched targeted single VPN route"}')
-                } else {
-                    $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
-                    $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $Global:Profile.BrokenSongsFile -Encoding utf8 -Force
-
-                    if ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
-                        $ArchiveLine = "youtube $VideoID"
-                        [System.IO.File]::AppendAllText($Global:Profile.HistoryFile, ($ArchiveLine + [System.Environment]::NewLine))
-                    }
-                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success"}')
+                    $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $RecoveryJobBlock -ArgumentList $Global:DiagLogFile, $Global:Profile.BackupDir, $ConfigDir, $Global:Profile.BrokenSongsFile, $Global:Profile.YTDLPExe, $Global:Profile.CookieFile
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
+                    $Response.StatusCode = 200
                 }
-                $Response.StatusCode = 200
-            } else {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Invalid request target"}')
-                $Response.StatusCode = 400
+                $Response.ContentType = "application/json"
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
             }
-            $Response.ContentType = "application/json"
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/run-geo-recovery" -and $Method -eq "POST") {
-            if ($Global:IsPipelineRunning) {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline active"}')
-                $Response.StatusCode = 409
-            } else {
-                $Global:IsPipelineRunning = $true
-                if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
-                "`e[1;35m[SYSTEM] Initializing Safe Asynchronous ProtonVPN Geo-Recovery Loop...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
-
-                $RecoveryJobBlock = {
-                    param($Log, $Backup, $Cfg, $DbFile, $YTDLP, $Cookies)
-                    function Log-VpnProgress([string]$M) {
-                        $T = (Get-Date).ToString("HH:mm:ss")
-                        "`e[90m[$T]`e[0m $M" | Out-File -FilePath $Log -Append -Encoding utf8
-                    }
-
-                    $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
-
-                    if (-not (Test-Path $DbFile)) { Log-VpnProgress "🛑 Error database missing."; return }
-                    $Db = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
-                    $GeoTracks = $Db | Where-Object { $_.reason -match "available in your country|GeoRestrictedError|not made this video available|sign in to confirm" }
-
-                    if ($null -eq $GeoTracks -or $GeoTracks.Count -eq 0) {
-                        Log-VpnProgress "🔍 Clean analytics match. Zero songs are currently blocked behind geo-restrictions."
-                        return
-                    }
-
-                    Log-VpnProgress "`e[1;33m[*] Routing connection... Forcing USA safe exit node.`e[0m"
-                    & $ProtonCLI c --cc US 2>&1 | Out-Null
-                    Start-Sleep -Seconds 8
-
-                    $SuccessTracks = @()
-                    foreach ($Track in $GeoTracks) {
-                        $TargetUrl = "https://www.youtube.com/watch?v=$($Track.videoId)"
-                        Log-VpnProgress "🚀 Pulling track through secure tunnel: $TargetUrl"
-                        & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
-                        if ($LASTEXITCODE -eq 0) {
-                            Log-VpnProgress "[+] Download Success: $($Track.videoId)"
-                            $SuccessTracks += $Track.videoId
-                        } else {
-                            Log-VpnProgress "🛑 Dynamic tunnel breakdown or failure on ID: $($Track.videoId)"
-                        }
-                    }
-
-                    Log-VpnProgress "`e[1;31m[*] Terminating active routing adapters... Closing VPN connection.`e[0m"
-                    & $ProtonCLI d 2>&1 | Out-Null
-
-                    if ($SuccessTracks.Count -gt 0) {
-                        $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
-                        $CleanedDb = $ReloadDb | Where-Object { $SuccessTracks -notcontains $_.videoId }
-                        $CleanedDb | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
-                        Log-VpnProgress "`e[1;32m[SUCCESS] Removed ($($SuccessTracks.Count)) anomalies from broken_songs.json!`e[0m"
-                    }
+            elseif ($UrlPath -eq "/analytics" -and $Method -eq "GET") { 
+                $RawData = "[]" 
+                if (Test-Path $Global:TimingFile) { $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw } 
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData) 
+                $Response.ContentType = "application/json" 
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+                $Response.OutputStream.Close()
+            }
+            elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
+                $DataPayload = ($Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress)
+                if (Test-Path $Global:CacheFile) { 
+                    try {
+                        $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue 
+                        if ($RawJson) { $DataPayload = $RawJson } 
+                    } catch {}
                 }
-                $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $RecoveryJobBlock -ArgumentList $Global:DiagLogFile, $Global:Profile.BackupDir, $ConfigDir, $Global:Profile.BrokenSongsFile, $Global:Profile.YTDLPExe, $Global:Profile.CookieFile
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
-                $Response.StatusCode = 200
-            }
-            $Response.ContentType = "application/json"
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/analytics" -and $Method -eq "GET") { 
-            $RawData = "[]" 
-            if (Test-Path $Global:TimingFile) { $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw } 
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData) 
-            $Response.ContentType = "application/json" 
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
-            $DataPayload = ($Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress)
-            if (Test-Path $Global:CacheFile) { 
-                try {
-                    $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue 
-                    if ($RawJson) { $DataPayload = $RawJson } 
-                } catch {}
-            }
 
-            # Safely append profile telemetry to metrics dispatch table without messing up tracking arrays
-            if ($DataPayload -is [string]) {
-                $JSONObj = $DataPayload | ConvertFrom-Json
-                $JSONObj | Add-Member -Type NoteProperty -Name "activeProfile" -Value $Global:ActiveProfileName -Force
-                $DataPayload = $JSONObj | ConvertTo-Json -Depth 4
-            }
-
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
-            $Response.ContentType = "application/json" 
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
-            $CurrentLogs = @()
-            $AllLines = @()
-            $SkipCount = 0
-            if ($Request.Url.Query -match "skip=(\d+)") { $SkipCount = [int]$Matches[1] }
-
-            if (Test-Path $Global:DiagLogFile) { 
-                try {
-                    $FileStream = [System.IO.File]::Open($Global:DiagLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-                    $StreamReader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
-                    while ($null -ne ($Line = $StreamReader.ReadLine())) { $AllLines += $Line }
-                    $StreamReader.Close(); $FileStream.Close()
-                } catch { $AllLines = @() }
-
-                if ($AllLines.Count -gt 0 -and $SkipCount -lt $AllLines.Count) {
-                    $CurrentLogs = $AllLines[$SkipCount..($AllLines.Count - 1)]
+                # Safely append profile telemetry to metrics dispatch table without messing up tracking arrays
+                if ($DataPayload -is [string]) {
+                    $JSONObj = $DataPayload | ConvertFrom-Json
+                    $JSONObj | Add-Member -Type NoteProperty -Name "activeProfile" -Value $Global:ActiveProfileName -Force
+                    $DataPayload = $JSONObj | ConvertTo-Json -Depth 4
                 }
-            } 
-            
-            $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue 
-            if ($DownloadJob) {
-                if ($DownloadJob.State -ne "Running") { $Global:IsPipelineRunning = $false; Remove-Job -Job $DownloadJob -Force } 
-            } else { $Global:IsPipelineRunning = $false } 
 
-            $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs; totalLines = $AllLines.Count } | ConvertTo-Json -Compress 
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
-            $Response.ContentType = "application/json" 
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") { 
-            try {
-                Clear-Content -LiteralPath $Global:DiagLogFile -ErrorAction Stop 
-                "`e[1;36m[SYSTEM] Console logs manually cleared.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"cleared"}') 
-                $Response.StatusCode = 200 
-            } catch {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to clear logs"}') 
-                $Response.StatusCode = 500 
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
+                $Response.ContentType = "application/json" 
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+                $Response.OutputStream.Close()
             }
-            $Response.ContentType = "application/json" 
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/run" -and $Method -eq "POST") { 
-            $IsSweepRequested = $false
-            if ($null -ne $Request.Url.Query) { $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true") }
-            
-            $RunContext = "Manual" 
-            if ($Request.Url.Query -match "type=Automated") { $RunContext = "Automated" } 
-            if ($IsSweepRequested) { $RunContext = "Clean Sweep" } 
-            
-            Invoke-PipelineExecution -CleanSweep $IsSweepRequested -TriggerType $RunContext 
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}') 
-            $Response.ContentType = "application/json" 
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
-            $Response.OutputStream.Close()
-        }
-        elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") {
-            try {
-                $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue
+            elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
+                $CurrentLogs = @()
+                $AllLines = @()
+                $SkipCount = 0
+                if ($Request.Url.Query -match "skip=(\d+)") { $SkipCount = [int]$Matches[1] }
+
+                if (Test-Path $Global:DiagLogFile) { 
+                    try {
+                        $FileStream = [System.IO.File]::Open($Global:DiagLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                        $StreamReader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
+                        while ($null -ne ($Line = $StreamReader.ReadLine())) { $AllLines += $Line }
+                        $StreamReader.Close(); $FileStream.Close()
+                    } catch { $AllLines = @() }
+
+                    if ($AllLines.Count -gt 0 -and $SkipCount -lt $AllLines.Count) {
+                        $CurrentLogs = $AllLines[$SkipCount..($AllLines.Count - 1)]
+                    }
+                } 
+                
+                $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue 
                 if ($DownloadJob) {
-                    Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue
-                    Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue
-                }
-                Stop-Process -Name "yt-dlp" -Force -ErrorAction SilentlyContinue
-                Stop-Process -Name "ffmpeg" -Force -ErrorAction SilentlyContinue
+                    if ($DownloadJob.State -ne "Running") { $Global:IsPipelineRunning = $false; Remove-Job -Job $DownloadJob -Force } 
+                } else { $Global:IsPipelineRunning = $false } 
 
-                $Global:IsPipelineRunning = $false
-                $Timestamp = (Get-Date).ToString("HH:mm:ss")
-                "`e[1;31m[$Timestamp] [SYSTEM] Pipeline and all child processes manually terminated.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
-
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}')
-                $Response.StatusCode = 200
-            } catch {
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to terminate job"}')
-                $Response.StatusCode = 500
+                $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs; totalLines = $AllLines.Count } | ConvertTo-Json -Compress 
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
+                $Response.ContentType = "application/json" 
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+                $Response.OutputStream.Close()
             }
-            $Response.ContentType = "application/json"
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-            $Response.OutputStream.Close()
+            elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") { 
+                try {
+                    Clear-Content -LiteralPath $Global:DiagLogFile -ErrorAction Stop 
+                    "`e[1;36m[SYSTEM] Console logs manually cleared.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"cleared"}') 
+                    $Response.StatusCode = 200 
+                } catch {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to clear logs"}') 
+                    $Response.StatusCode = 500 
+                }
+                $Response.ContentType = "application/json" 
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+                $Response.OutputStream.Close()
+            }
+            elseif ($UrlPath -eq "/run" -and $Method -eq "POST") { 
+                $IsSweepRequested = $false
+                if ($null -ne $Request.Url.Query) { $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true") }
+                
+                $RunContext = "Manual" 
+                if ($Request.Url.Query -match "type=Automated") { $RunContext = "Automated" } 
+                if ($IsSweepRequested) { $RunContext = "Clean Sweep" } 
+                
+                Invoke-PipelineExecution -CleanSweep $IsSweepRequested -TriggerType $RunContext 
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}') 
+                $Response.ContentType = "application/json" 
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+                $Response.OutputStream.Close()
+            }
+            elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") {
+                try {
+                    $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue
+                    if ($DownloadJob) {
+                        Stop-Job -Job $DownloadJob -ErrorAction SilentlyContinue
+                        Remove-Job -Job $DownloadJob -Force -ErrorAction SilentlyContinue
+                    }
+                    Stop-Process -Name "yt-dlp" -Force -ErrorAction SilentlyContinue
+                    Stop-Process -Name "ffmpeg" -Force -ErrorAction SilentlyContinue
+
+                    $Global:IsPipelineRunning = $false
+                    $Timestamp = (Get-Date).ToString("HH:mm:ss")
+                    "`e[1;31m[$Timestamp] [SYSTEM] Pipeline and all child processes manually terminated.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}')
+                    $Response.StatusCode = 200
+                } catch {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Failed to terminate job"}')
+                    $Response.StatusCode = 500
+                }
+                $Response.ContentType = "application/json"
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
+            }
+            elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") { 
+                Invoke-HotReload 
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}') 
+                $Response.ContentType = "application/json" 
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+                $Response.OutputStream.Close() 
+                Stop-Process -Id $PID -Force 
+            }
+            else { 
+                $Response.StatusCode = 404 
+                try { $Response.OutputStream.Close() } catch {}
+            }
+
+        } catch {
+            # If a specific request crashes, log it and keep the server alive!
+            Write-Host "⚠️ Request Error: $_" -ForegroundColor Yellow
+            try { $Response.Abort() } catch {} # Ensure the connection is dropped
         }
-        elseif ($UrlPath -eq "/pull" -and $Method -eq "POST") { 
-            Invoke-HotReload 
-            $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"pulling"}') 
-            $Response.ContentType = "application/json" 
-            $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
-            $Response.OutputStream.Close() 
-            Stop-Process -Id $PID -Force 
-        }
-        else { 
-            $Response.StatusCode = 404 
-            try { $Response.OutputStream.Close() } catch {}
-        }
+
     }
 }
-catch { Write-Host "⚠️ Router Stream Exception: $_" -ForegroundColor Yellow } 
-finally { if ($null -ne $Listener) { if ($Listener.IsListening) { $Listener.Stop() }; $Listener.Close() } }
+catch {
+    # If the Server itself crashes (e.g., port binding failed), kill the script
+    Write-Host "🛑 Fatal Server Error: $_" -ForegroundColor Red
+}
+finally {
+    # This always runs, ensuring the listener is closed properly
+    if ($null -ne $Listener) { $Listener.Stop(); $Listener.Close() }
+    netsh interface portproxy reset
+}
