@@ -696,34 +696,41 @@ try {
                 $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
-                $DataPayload = '{"status":"loading","activeProfile":"' + $Global:ActiveProfileName + '"}'
+                $DataPayload = '{"status":"error","message":"Data not initialized"}'
                 
                 try {
-                    if (Test-Path $Global:CacheFile) { 
-                        # Open with FileShare.ReadWrite to prevent file-locking crashes
+                    if (Test-Path $Global:CacheFile) {
+                        # Robust read
                         $FileStream = [System.IO.File]::Open($Global:CacheFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
                         $Reader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
                         $RawJson = $Reader.ReadToEnd()
                         $Reader.Close()
                         $FileStream.Close()
 
-                        if (-not [string]::IsNullOrWhiteSpace($RawJson)) { 
-                            $DataPayload = $RawJson 
+                        if (-not [string]::IsNullOrWhiteSpace($RawJson)) {
+                            $JSONObj = $RawJson | ConvertFrom-Json
+                            $JSONObj | Add-Member -Type NoteProperty -Name "activeProfile" -Value $Global:ActiveProfileName -Force
+                            $DataPayload = $JSONObj | ConvertTo-Json -Depth 4 -Compress
                         }
                     }
-                    
-                    # Parse and inject active profile
-                    $JSONObj = $DataPayload | ConvertFrom-Json
-                    $JSONObj | Add-Member -Type NoteProperty -Name "activeProfile" -Value $Global:ActiveProfileName -Force
-                    $DataPayload = $JSONObj | ConvertTo-Json -Depth 4 -Compress
+                    $Response.StatusCode = 200
                 } catch {
-                    # Silent fail: keep the fallback payload if parsing fails
+                    # Catch logic errors (e.g. malformed JSON)
+                    Write-Host "DEBUG: Metrics block failed: $($_.Exception.Message)" -ForegroundColor Red
+                    $Response.StatusCode = 500
+                    $DataPayload = '{"status":"error","message":"' + $_.Exception.Message + '"}'
+                } finally {
+                    # This executes REGARDLESS of success or failure
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
+                    $Response.ContentType = "application/json"
+                    
+                    try {
+                        $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                    } catch {
+                        # Handle potential stream writing errors
+                    }
+                    $Response.OutputStream.Close()
                 }
-
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
-                $Response.ContentType = "application/json" 
-                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
-                $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
                 $CurrentLogs = @()
