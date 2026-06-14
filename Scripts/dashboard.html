@@ -30,857 +30,712 @@
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
-            z-index: 100;
+            z-index: 1000;
+            transition: all 0.2s ease;
             box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            transition: background 0.2s;
         }
-        #menu-trigger:hover { background: #222226;
+        #menu-trigger:hover {
+            background: #27272A;
+            border-color: #3F3F46;
         }
-
-        .sidebar {
-            height: 100%;
-            width: 260px;
+        #sidebar-drawer {
             position: fixed;
             top: 0;
-            left: -265px;
-            background: #09090B;
-            border-right: 1px solid #1C1C21;
-            padding-top: 60px;
-            transition: 0.25s ease-in-out;
-            z-index: 99;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+            left: -300px;
+            width: 260px;
+            height: 100%;
+            background: #121215;
+            border-right: 1px solid #1E1E22;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.6);
+            z-index: 999;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 30px 20px;
+            padding-top: 80px;
         }
-        .sidebar.open { left: 0;
+        #sidebar-drawer.open {
+            left: 0;
         }
-        .sidebar .close-btn { position: absolute; top: 10px; right: 20px; font-size: 28px;
-            cursor: pointer; color: #71717A; }
-        .sidebar-header { padding: 10px 25px; font-size: 0.8em;
-            text-transform: uppercase; color: #52525B; letter-spacing: 1px; font-weight: bold; }
-        .nav-link { display: block;
-            padding: 14px 25px; color: #A1A1AA; text-decoration: none; font-weight: 500; transition: 0.2s; border-left: 3px solid transparent;
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(3px);
+            z-index: 998;
+            display: none;
         }
-        .nav-link:hover, .nav-link.active { background: #141417; color: #39FF14; border-left-color: #00ADB5;
+        .drawer-overlay.show {
+            display: block;
         }
-
-        /* SPA Layout View Switchers */
-        .page-pane { display: none;
+        .menu-item {
+            padding: 14px 18px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #A1A1AA;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .page-pane.active-pane { display: block;
+        .menu-item:hover {
+            background: #1A1A1E;
+            color: #F4F4F5;
         }
-
-        .alert-container { margin: -25px -25px 20px -25px;
-        }
-        .alert { padding: 18px 24px; border-radius: 0 0 4px 4px; margin-bottom: 4px;
-            font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-        .alert-danger { background: #4C1D1D; color: #F87171; border: 1px solid #7F1D1D;
-        }
-        .alert-warning { background: #453015; color: #FBBF24; border: 1px solid #78350F;
-        }
-        
-        .grid { display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
-        .card { background: #18181C;
-            padding: 20px; border-radius: 10px; border: 1px solid #27272A; text-align: center;
-        }
-        .card h3 { margin: 0; color: #A1A1AA; font-size: 0.9em; text-transform: uppercase;
-            letter-spacing: 0.5px; }
-        .card .value { font-size: 2em; font-weight: bold; margin: 10px 0;
-            color: #00ADB5; }
-        
-        .panel { background: #18181C;
-            border-radius: 10px; border: 1px solid #27272A; padding: 20px; display: flex; flex-direction: column; min-width: 0; overflow: hidden; margin-bottom: 25px;
-        }
-        .panel-dashboard { height: 280px;
-        }
-        .panel-console-view { height: 70vh;
-        }
-        .panel-extended { min-height: 600px;
-        }
-        
-        .table-wrapper { overflow-y: auto;
-            flex-grow: 1; min-height: 0; }
-        h2 { margin-top: 0; color: #FFF; font-size: 1.3em;
-            border-bottom: 1px solid #27272A; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
-        }
-        .control-group { display: flex; gap: 10px;
-        }
-        
-        .btn { background: #00ADB5;
-            color: #FFF; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;
-        }
-        .btn-warn { background: #D97706;
-        }
-        .btn-danger { background: #B91C1C;
-        }
-        .btn:hover { opacity: 0.9;
-        }
-        .btn:disabled { background: #3F3F46; cursor: not-allowed; opacity: 0.6;
-        }
-        
-        .console { background: #09090B;
-            border-radius: 6px; padding: 15px; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.9em; line-height: 1.45; color: #39FF14;
-            overflow-y: auto; flex-grow: 1; white-space: pre-wrap; word-break: break-all; border: 1px solid #18181B;
-        }
-        
-        /* Layout controls for querying */
-        .filter-row { display: grid;
-            grid-template-columns: 3fr 1fr; gap: 12px; margin-bottom: 15px; }
-        .search-box, .filter-dropdown { background: #222226;
-            border: 1px solid #3F3F46; color: #FFF; padding: 12px; border-radius: 5px; font-size: 0.95em; width: 100%; box-sizing: border-box;
-        }
-        .filter-dropdown { cursor: pointer; color: #CBD5E1;
-        }
-        
-        table { width: 100%;
-            border-collapse: collapse; font-size: 0.9em; text-align: left; }
-        th { background: #222226; color: #A1A1AA;
-            padding: 12px 10px; font-weight: 600; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #27272A;
-        }
-        td { padding: 12px 10px; border-bottom: 1px solid #27272A; font-size: 0.92em;
-            vertical-align: middle; }
-        
-        /* Visual Charts Layout Framework */
-        .charts-matrix { display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 20px; margin-bottom: 25px; }
-        .chart-container { background: #141417;
-            border: 1px solid #222226; border-radius: 8px; padding: 15px; height: 300px; position: relative;
+        .menu-item.active {
+            background: #27272A;
+            color: #BD93F9;
+            font-weight: 600;
+            box-shadow: inset 3px 0 0 #BD93F9;
         }
 
-        /* Multi-segment stacked bar charts for step breakdowns inside data logs */
-        .timeline-graph-wrapper { display: flex;
-            flex-direction: column; gap: 4px; width: 100%; min-width: 200px; }
-        .timeline-bar { display: flex;
-            width: 100%; height: 8px; background: #222226; border-radius: 4px; overflow: hidden;
+        /* ================================================================= */
+        /* LAYOUT ARCHITECTURE & CORE MECHANICS                              */
+        /* ================================================================= */
+        .app-pane {
+            display: none;
+            animation: fadeIn 0.25s ease-out;
         }
-        .seg { height: 100%;
+        .app-pane.active {
+            display: block;
         }
-        .seg-s1 { background: #3B82F6;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .seg-s2 { background: #EF4444;
-        }
-        .seg-s3 { background: #F59E0B;
-        }
-        .seg-s4 { background: #10B981;
-        }
-        .seg-s5 { background: #8B5CF6;
-        }
-        .seg-fallback { background: #3F3F46;
-        }
-        
-        .graph-legend { display: flex;
-            gap: 6px; font-size: 0.75em; color: #71717A; font-family: monospace; }
 
-        .badge { padding: 3px 8px;
-            border-radius: 4px; font-size: 0.75em; font-weight: bold; display: inline-block; }
-        .badge-lrc { background: #1C3D27;
-            color: #4ADE80; }
-        .badge-missing { background: #4C1D1D; color: #F87171;
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #1E1E22;
+            padding-bottom: 15px;
         }
-        .badge-manual { background: #047857; color: #34D399;
-        }
-        .badge-auto { background: #1D4ED8; color: #93C5FD;
-        }
-        .badge-sweep { background: #78350F; color: #FBBF24; border: 1px solid #D97706;
+        .header-section h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #E2E8F0 0%, #A1A1AA 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
         
-        .row-clean-sweep { background: rgba(217, 119, 6, 0.04);
-            border-left: 3px solid #D97706; }
-        .row-clean-sweep td { color: #FDE047;
+        /* Status Banner Badges */
+        .status-pill {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
-        
-        .spinner { border: 3px solid #27272A;
-            border-top: 3px solid #00ADB5; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle;
-            margin-left: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg);
-            } 100% { transform: rotate(360deg); } }
-        .scan-status { font-size: 0.85em; color: #A1A1AA;
-            font-weight: normal; }
+        .status-active { background: rgba(80, 250, 123, 0.15); color: #50FA7B; border: 1px solid rgba(80, 250, 123, 0.3); }
+        .status-idle { background: rgba(139, 233, 253, 0.15); color: #8BE9FD; border: 1px solid rgba(139, 233, 253, 0.3); }
 
-        @media (max-width: 768px) {
-            body { padding: 15px;
-                padding-top: 70px !important; }
-            .alert-container { margin: -15px -15px 15px -15px;
-            }
-            .alert { font-size: 1.05em; padding: 16px 18px;
-                flex-direction: column; gap: 12px; text-align: center; }
-            .alert button { width: 100%;
-            }
-            .grid { grid-template-columns: 1fr 1fr; gap: 12px;
-                margin-bottom: 15px; }
-            .card { padding: 15px 10px;
-            }
-            .card .value { font-size: 1.4em; margin: 5px 0;
-            }
-            h2 { font-size: 1.1em; flex-direction: column; align-items: stretch;
-                gap: 10px; text-align: center; }
-            .control-group { justify-content: center;
-                width: 100%; flex-wrap: wrap; }
-            .btn { padding: 10px 12px;
-                font-size: 0.85em; flex-grow: 1; text-align: center; }
-            .filter-row { grid-template-columns: 1fr;
-                gap: 8px; }
-            .charts-matrix { grid-template-columns: 1fr; gap: 12px;
-                }
-            .chart-container { height: 240px; padding: 8px;
-            }
-            table { font-size: 0.8em;
-            }
-            th, td { padding: 8px 6px;
-            }
-            .timeline-graph-wrapper { display: none;
-            }
+        /* Metrics Display Grid Tables */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            background: #141417;
+            border: 1px solid #1E1E22;
+            border-radius: 12px;
+            padding: 22px;
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #27272A;
+        }
+        .metric-card.purple::before { background: #BD93F9; }
+        .metric-card.pink::before { background: #FF79C6; }
+        .metric-card.cyan::before { background: #8BE9FD; }
+        
+        .metric-card h3 { margin: 0; font-size: 13px; color: #71717A; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-value { font-size: 32px; font-weight: 700; margin: 10px 0 4px 0; color: #F4F4F5; }
+        .metric-sub { font-size: 12px; color: #A1A1AA; }
+
+        /* Universal Controls Panels */
+        .control-panel {
+            background: #141417;
+            border: 1px solid #1E1E22;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .panel-title {
+            font-size: 16px; font-weight: 600; margin-top: 0; margin-bottom: 15px; color: #E2E8F0;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; }
+
+        /* Standardized Form Controls & Buttons */
+        button {
+            background: #27272A; color: #E2E8F0; border: 1px solid #3F3F46;
+            padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 13px;
+            cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 8px;
+        }
+        button:hover { background: #3F3F46; border-color: #52525B; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-primary { background: #BD93F9; color: #0F0F11; border: 1px solid #A478E7; }
+        .btn-primary:hover { background: #A478E7; }
+        .btn-danger { background: rgba(255, 95, 85, 0.15); color: #FF5F55; border: 1px solid rgba(255, 95, 85, 0.3); }
+        .btn-danger:hover { background: rgba(255, 95, 85, 0.25); }
+        .btn-accent { background: rgba(255, 121, 198, 0.1); color: #FF79C6; border: 1px solid rgba(255, 121, 198, 0.2); }
+        .btn-accent:hover { background: rgba(255, 121, 198, 0.2); }
+
+        select, input[type="text"], textarea {
+            background: #18181C; color: #E2E8F0; border: 1px solid #27272A;
+            padding: 10px 14px; border-radius: 6px; font-size: 14px; outline: none;
+            font-family: inherit; width: 100%; box-sizing: border-box;
+        }
+        select:focus, input[type="text"]:focus, textarea:focus {
+            border-color: #BD93F9; box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.15);
+        }
+
+        /* Alert Callout Containers */
+        .alert-box {
+            padding: 14px 18px; border-radius: 8px; margin-bottom: 15px;
+            display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+        }
+        .alert-danger { background: rgba(255, 85, 85, 0.12); color: #FF5555; border: 1px solid rgba(255, 85, 85, 0.25); }
+        .alert-warning { background: rgba(255, 184, 108, 0.12); color: #FFB86C; border: 1px solid rgba(255, 184, 108, 0.25); }
+
+        /* Form Configuration Framework */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .config-group {
+            margin-bottom: 15px;
+        }
+        .config-group label {
+            display: block;
+            font-size: 13px;
+            color: #A1A1AA;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        /* Interactive Tables UI */
+        .table-container {
+            background: #141417; border: 1px solid #1E1E22; border-radius: 12px; overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th { background: #1A1A1F; padding: 14px 18px; color: #A1A1AA; font-weight: 600; border-bottom: 1px solid #1E1E22; }
+        td { padding: 14px 18px; border-bottom: 1px solid #1A1A1E; color: #E2E8F0; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #18181C; }
+
+        /* Terminal Logging Infrastructure */
+        #terminal-feed {
+            background: #09090B; border: 1px solid #1E1E22; border-radius: 12px;
+            padding: 20px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            line-height: 1.6; max-height: 550px; overflow-y: auto; white-space: pre-wrap; color: #A1A1AA;
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.8);
+        }
+
+        /* Badge Pills Contexts */
+        .badge {
+            padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block;
+        }
+        .badge-flac { background: rgba(80, 250, 123, 0.15); color: #50FA7B; }
+        .badge-m4a { background: rgba(139, 233, 253, 0.15); color: #8BE9FD; }
+        .badge-mp3 { background: rgba(255, 184, 108, 0.15); color: #FFB86C; }
+        .badge-lrc { background: rgba(255, 121, 198, 0.15); color: #FF79C6; }
+        .badge-inst { background: rgba(189, 147, 249, 0.15); color: #BD93F9; }
+
+        /* Utilities Control Search Options */
+        .search-bar-wrap {
+            display: flex; gap: 12px; margin-bottom: 20px;
+        }
+        .search-bar-wrap input { max-width: 400px; }
+
+        /* Active Profile Header Tag */
+        #active-profile-tag {
+            font-size: 13px;
+            background: rgba(189, 147, 249, 0.1);
+            color: #BD93F9;
+            border: 1px solid rgba(189, 147, 249, 0.2);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
 
-    <div id="menu-trigger" onclick="toggleSidebar()">☰ Menu</div>
-
-    <div id="sidebar" class="sidebar">
-        <div class="close-btn" onclick="toggleSidebar()">×</div>
-        <div class="sidebar-header">Command Systems</div>
-        <a href="#" id="link-main" class="nav-link active" onclick="switchPage('pane-main', 'link-main')">📊 Core Overview</a>
-        <a href="#" id="link-console" class="nav-link" onclick="switchPage('pane-console', 'link-console')">📟 Terminal Monitor</a>
-        <a href="#" id="link-inspector" class="nav-link" onclick="switchPage('pane-inspector', 'link-inspector')">🎵 Track Metadata Explorer</a>
-        <a href="#" id="link-analytics" class="nav-link" onclick="switchPage('pane-analytics', 'link-analytics')">📈 Performance Time Analyser</a>
-        <a href="#" id="link-fixer" class="nav-link" onclick="switchPage('pane-fixer', 'link-fixer')">🔧 Broken Songs Fixer</a>
+    <button id="menu-trigger" onclick="toggleDrawer()">☰ Menu Operations</button>
+    <div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer()"></div>
+    <div id="sidebar-drawer">
+        <div class="menu-item active" id="link-overview" onclick="switchPage('pane-overview', 'link-overview')">📊 Overview Dashboard</div>
+        <div class="menu-item" id="link-tracks" onclick="switchPage('pane-tracks', 'link-tracks')">🎵 Tracks Library</div>
+        <div class="menu-item" id="link-errors" onclick="switchPage('pane-errors', 'link-errors')">⚠️ Resolution Hub</div>
+        <div class="menu-item" id="link-console" onclick="switchPage('pane-console', 'link-console')">💻 Stream Console</div>
+        <div class="menu-item" id="link-analytics" onclick="switchPage('pane-analytics', 'link-analytics')">📈 Pipeline Performance</div>
+        <div class="menu-item" id="link-profiles" onclick="switchPage('pane-profiles', 'link-profiles')">⚙️ Configuration Profiles</div>
     </div>
 
-    <div class="alert-container" id="alerts-zone"></div>
+    <div id="pane-overview" class="app-pane active">
+        <div class="header-section">
+            <div>
+                <h1>Music Pipeline Master Console</h1>
+                <div style="margin-top: 5px; display: flex; align-items: center; gap: 10px;">
+                    <span id="pipeline-status-badge" class="status-pill status-idle">Scanning Environment</span>
+                    <span id="active-profile-tag">Profile: Loading...</span>
+                </div>
+            </div>
+            <div>
+                <button class="btn-accent" onclick="triggerHotPull()">🔄 Remote Hot-Reload</button>
+            </div>
+        </div>
 
-    <div class="grid">
-        <div class="card"><h3>Master Tracks</h3><div class="value" id="stat-master-count">-</div></div>
-        <div class="card"><h3>Mobile Storage</h3><div class="value" id="stat-mobile-count">-</div></div>
-        <div class="card"><h3>Lyrics Index</h3><div class="value" id="stat-lrc-count">-</div></div>
-        <div class="card"><h3>Storage Weights</h3><div class="value" id="stat-sizes">-</div></div>
+        <div id="alerts-injection-zone"></div>
+
+        <div class="metrics-grid">
+            <div class="metric-card purple">
+                <h3>Master Archival Storage</h3>
+                <div class="metric-value" id="m-master-count">0</div>
+                <div class="metric-sub" id="m-master-size">0.00 GB Total (Bitperfect FLAC/Lossless Source)</div>
+            </div>
+            <div class="metric-card pink">
+                <h3>Lossy Deployment Target</h3>
+                <div class="metric-value" id="m-mobile-count">0</div>
+                <div class="metric-sub" id="m-mobile-size">0.00 GB Total (Compressed AAC/M4A Architecture)</div>
+            </div>
+            <div class="metric-card cyan">
+                <h3>Synchronized LRC Assets</h3>
+                <div class="metric-value" id="m-lrc-count">0</div>
+                <div class="metric-sub" id="m-lrc-coverage">0% Coverage Rate Across Local Repository</div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h3 class="panel-title">⚡ Operational Directives Framework</h3>
+            <div class="btn-group">
+                <button class="btn-primary" id="btn-run-standard" onclick="dispatchPipeline('/run')">🚀 Execute Core Synchronization Pipeline</button>
+                <button class="btn-accent" id="btn-run-sweep" onclick="dispatchPipeline('/run?sweep=true')">🧹 Dispatch Forced Clean Sweep Sequence</button>
+                <button class="btn-danger" id="btn-stop" onclick="dispatchStopPipeline()">🛑 Terminate Active Pipeline Subprocesses</button>
+            </div>
+        </div>
     </div>
 
-    <div id="app-viewport">
+    <div id="pane-tracks" class="app-pane">
+        <div class="header-section">
+            <h1>Local Repository Track Ledger</h1>
+        </div>
 
-        <div id="pane-main" class="page-pane active-pane">
-            <div class="panel panel-dashboard">
-                <h2>Quick Engine Controls <span id="scan-indicator" class="scan-status"></span></h2>
-                <div style="display: flex;
-                    flex-direction: column; justify-content: center; align-items: center; height: 100%; gap: 15px;">
-                    <p style="color: #A1A1AA;
-                        margin: 0; text-align: center;">Execute server sync tasks or switch sections via the side drawer.</p>
-                    <div class="control-group" style="width: 100%;
-                        max-width: 600px;">
-                        <button class="btn" id="run-btn" onclick="triggerPipeline(false)" style="flex:1;">Run Master Sync</button>
-                        <button class="btn btn-danger" id="sweep-btn" onclick="triggerPipeline(true)" style="background: #78350F;
-                            border: 1px solid #D97706; flex:1;">🔥 Clean Sweep</button>
-                    </div>
-                </div>
+        <div class="control-panel">
+            <div class="search-bar-wrap">
+                <input type="text" id="track-search-filter" placeholder="Filter records by Title, Artist, or Album details..." oninput="evaluateTrackFilters()">
+                <select id="track-format-filter" style="max-width: 180px;" onchange="evaluateTrackFilters()">
+                    <option value="ALL">All Encodings</option>
+                    <option value="FLAC">FLAC Lossless</option>
+                    <option value="M4A">M4A Container</option>
+                    <option value="MP3">MP3 Legacy</option>
+                    <option value="LRC">Has Lyrics (.lrc)</option>
+                    <option value="INST">Instrumental (.inst)</option>
+                </select>
+                <select id="track-sort-order" style="max-width: 180px;" onchange="evaluateTrackFilters()">
+                    <option value="TITLE">Sort by Title</option>
+                    <option value="ARTIST">Sort by Artist</option>
+                    <option value="SIZE">Sort by Asset Size</option>
+                </select>
             </div>
         </div>
 
-        <div id="pane-console" class="page-pane">
-            <div class="panel panel-console-view">
-                <h2>
-                    Pipeline Stream Engine Log
-                    <div class="control-group">
-                        <button class="btn btn-warn" id="clear-btn" onclick="triggerClearLogs()">🧹 Clear View</button>
-                        <button class="btn btn-danger" id="stop-btn" onclick="stopPipeline()" disabled>🛑 Stop Run</button>
-                    </div>
-                </h2>
-                <div class="console" id="terminal-feed">Ready. Awaiting run triggers...</div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Track Title String</th>
+                        <th>Primary Artist Mapping</th>
+                        <th>Target Album Container</th>
+                        <th>Allocation</th>
+                        <th>Extension Flags</th>
+                    </tr>
+                </thead>
+                <tbody id="tracks-table-body">
+                    <tr><td colspan="5" style="text-align: center; color: #71717A;">Executing asynchronous metadata directory crawl sequence...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="pane-errors" class="app-pane">
+        <div class="header-section">
+            <h1>Anomalous Track Resolution Hub</h1>
+            <button class="btn-accent" id="geo-recovery-btn" onclick="triggerGlobalGeoRecovery()">🌐 Headless ProtonVPN Loop</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp Context</th>
+                        <th>Identified Track Metric Description</th>
+                        <th>Exception Crash Diagnostic Context Data</th>
+                        <th>Targeted Administrative Override Core Options</th>
+                    </tr>
+                </thead>
+                <tbody id="errors-table-body">
+                    <tr><td colspan="4" style="text-align: center; color: #71717A;">Parsing upstream JSON anomaly tables...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="pane-console" class="app-pane">
+        <div class="header-section">
+            <h1>Diagnostic System Stream Console</h1>
+            <button class="btn-danger" onclick="dispatchClearLogs()">🧹 Wipe Log Buffers</button>
+        </div>
+        <div id="terminal-feed">Initializing active network stdout trace modules...</div>
+    </div>
+
+    <div id="pane-analytics" class="app-pane">
+        <div class="header-section">
+            <h1>Pipeline Performance Chronography</h1>
+        </div>
+        <div class="control-panel" style="background: #141417; min-height: 350px;">
+            <canvas id="performanceChart" style="max-height: 400px; width: 100%;"></canvas>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Execution Timestamp</th>
+                        <th>Trigger Call context</th>
+                        <th>S1: Cookies</th>
+                        <th>S2: Extraction</th>
+                        <th>S3: Verification</th>
+                        <th>S4: Metadata</th>
+                        <th>S5: Transcode</th>
+                        <th>Net Block Duration</th>
+                    </tr>
+                </thead>
+                <tbody id="analytics-table-body">
+                    <tr><td colspan="8" style="text-align: center; color: #71717A;">Compiling database timing records...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="pane-profiles" class="app-pane">
+        <div class="header-section">
+            <h1>System Configuration Profile Manager</h1>
+            <div class="btn-group">
+                <button class="btn-primary" onclick="createNewProfile()">➕ Create New Profile</button>
+                <button class="btn-danger" onclick="deleteTargetProfile()">🗑️ Delete Selected Profile</button>
             </div>
         </div>
 
-        <div id="pane-inspector" class="page-pane">
-            <div class="panel panel-extended">
-                <h2>Track Metadata Explorer</h2>
-                
-                <div class="filter-row">
-                    <input type="text" class="search-box" id="search-input" placeholder="Search track title, artist, or album..." onkeyup="filterDatabase()">
-                    <select class="filter-dropdown" id="filter-lrc" onchange="filterDatabase()">
-                        <option value="ALL">All Lyrics States</option>
-                        <option value="LRC">Timed Lyrics Sync Only (LRC)</option>
-                        <option value="MISSING">Missing Lyrics Index</option>
-                    </select>
-                </div>
-
-                <div class="table-wrapper" style="border: 1px solid #27272A;
-                    border-radius: 6px; background: #0B0B0E;">
-                    <table id="metadata-table">
-                        <thead>
-                            <tr>
-                                <th>Track Title</th>
-                                <th>Artist</th>
-                                <th>Album</th>
-                                <th>Format</th>
-                                <th>Bitrate</th>
-                                <th style="text-align: center;
-                                    width: 120px;">Lyrics State</th>
-                            </tr>
-                        </thead>
-                        <tbody id="metadata-rows">
-                            <tr><td colspan="6" style="text-align:center; padding: 20px;
-                                color:#71717A;">Loading tracks database archive...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+        <div class="control-panel">
+            <h3 class="panel-title">📂 Profile Workspace Selection</h3>
+            <div style="display: flex; gap: 15px; align-items: center; max-width: 600px;">
+                <select id="profile-selection-dropdown" onchange="loadTargetProfileToForm()"></select>
+                <button class="btn-accent" style="white-space: nowrap;" onclick="switchActiveProfileBackend()">🎯 Switch Active Workspace</button>
             </div>
         </div>
 
-        <div id="pane-analytics" class="page-pane">
-            <div class="panel panel-extended" style="height: auto;">
-                <h2>📊 Pipeline Time Analyser & Execution Bottleneck Profiles</h2>
-                
-                <div class="charts-matrix">
-                    <div class="chart-container">
-                        <canvas id="chartTrendTotal"></canvas>
+        <div class="control-panel">
+            <h3 class="panel-title">🛠️ Configuration Options Manifest</h3>
+            <div class="config-grid">
+                <div>
+                    <h4 style="color: #BD93F9; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Target Library System Path Anchors</h4>
+                    <div class="config-group">
+                        <label>Archival Lossless Backup Target Directory (BackupDir)</label>
+                        <input type="text" id="cfg-BackupDir">
                     </div>
-                    <div class="chart-container">
-                        <canvas id="chartTrendSteps"></canvas>
+                    <div class="config-group">
+                        <label>Compressed lossy Target Deployment Directory (MobileDir)</label>
+                        <input type="text" id="cfg-MobileDir">
+                    </div>
+                    <div class="config-group">
+                        <label>Geo-restricted Track Exception Database File Path (BrokenSongsFile)</label>
+                        <input type="text" id="cfg-BrokenSongsFile">
+                    </div>
+                    <div class="config-group">
+                        <label>Diagnostic Console Logging Pipeline Stream Target (DiagLogFile)</label>
+                        <input type="text" id="cfg-DiagLogFile">
+                    </div>
+                    <div class="config-group">
+                        <label>Asynchronous Library Cache Database Ledger Path (CacheFile)</label>
+                        <input type="text" id="cfg-CacheFile">
+                    </div>
+                    <div class="config-group">
+                        <label>Historical Operational Runtime Chronology JSON (TimingFile)</label>
+                        <input type="text" id="cfg-TimingFile">
                     </div>
                 </div>
 
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Trigger Type</th>
-                                <th>Total Time</th>
-                                <th>Relative Step Impact Breakdown Timeline</th>
-                            </tr>
-                        </thead>
-                        <tbody id="timing-history-rows">
-                            <tr><td colspan="4" style="text-align:center;
-                                color:#71717A;">Loading metric stream logs...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div id="pane-fixer" class="page-pane">
-            <div class="panel panel-extended">
-                <h2>
-                    🔧 Pipeline Error Resolution & Broken Song Fixer
-                    <div class="control-group">
-                        <button class="btn" id="geo-recovery-btn" onclick="triggerGlobalGeoRecovery()" style="background: #8B5CF6;">
-                            🌍 Run Geo-Recovery Loop (ProtonVPN)
-                        </button>
+                <div>
+                    <h4 style="color: #FF79C6; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Process Binaries & Core Engine Dependencies</h4>
+                    <div class="config-group">
+                        <label>Net Cookie Handshake Authentication Payload Path (CookieFile)</label>
+                        <input type="text" id="cfg-CookieFile">
                     </div>
-                </h2>
-                <p style="color: #A1A1AA; margin-top: -5px; margin-bottom: 20px;">
-                    The following tracks failed to download or process during pipeline runs. Resolve them manually, trigger the automated VPN bypass loop, or push them to history to skip them.
-                </p>
-
-                <div class="table-wrapper" style="border: 1px solid #27272A; border-radius: 6px; background: #0B0B0E;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Track / Search Query</th>
-                                <th>Error Reason</th>
-                                <th>Playlist Source</th>
-                                <th style="text-align: center; width: 280px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="fixer-rows">
-                            <tr><td colspan="4" style="text-align:center; padding: 20px; color:#71717A;">Loading error queue...</td></tr>
-                        </tbody>
-                    </table>
+                    <div class="config-group">
+                        <label>YTDLP Execution Archive Extraction History Record (HistoryFile)</label>
+                        <input type="text" id="cfg-HistoryFile">
+                    </div>
+                    <div class="config-group">
+                        <label>Absolute Path Location Context for yt-dlp.exe (YTDLPExe)</label>
+                        <input type="text" id="cfg-YTDLPExe">
+                    </div>
+                    <div class="config-group">
+                        <label>Absolute Path Location Context for ffmpeg.exe (FFmpegExe)</label>
+                        <input type="text" id="cfg-FFmpegExe">
+                    </div>
+                    <div class="config-group">
+                        <label>Absolute Path Location Context for firefox.exe Binary (FirefoxExe)</label>
+                        <input type="text" id="cfg-FirefoxExe">
+                    </div>
+                    <div class="config-group">
+                        <label>Downstream Cookie Handshake Validation Target URL (CheckURL)</label>
+                        <input type="text" id="cfg-CheckURL">
+                    </div>
                 </div>
             </div>
-        </div>
 
+            <div class="config-grid">
+                <div>
+                    <h4 style="color: #8BE9FD; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Throttling, Automation & Performance Loops</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="config-group">
+                            <label>Base Extraction Delay (SleepInterval)</label>
+                            <input type="text" id="cfg-SleepInterval">
+                        </div>
+                        <div class="config-group">
+                            <label>Max Extraction Delay (MaxSleepInterval)</label>
+                            <input type="text" id="cfg-MaxSleepInterval">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="config-group">
+                            <label>Throttling Burst Limit (SleepRequests)</label>
+                            <input type="text" id="cfg-SleepRequests">
+                        </div>
+                        <div class="config-group">
+                            <label>FFmpeg Transcode Worker Limit (MaxCompressThreads)</label>
+                            <input type="text" id="cfg-MaxCompressThreads">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="config-group">
+                            <label>Folder Scanner Loop (Sec)</label>
+                            <input type="text" id="cfg-ScannerSleepIntervalSec">
+                        </div>
+                        <div class="config-group">
+                            <label>Automated Cron Cycle (Sec)</label>
+                            <input type="text" id="cfg-ChronDaemonSleepSec">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 style="color: #50FA7B; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Active Sync Target Playlists Ledger Matrix</h4>
+                    <div class="config-group">
+                        <label>Target Remote Playlists Array (One absolute URL entry per text line row)</label>
+                        <textarea id="cfg-Playlists" rows="8" placeholder="https://www.youtube.com/playlist?list=..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid #27272A; padding-top: 20px; display: flex; justify-content: flex-end;">
+                <button class="btn-primary" style="padding: 12px 30px; font-size: 14px;" onclick="saveProfileDataChanges()">💾 Save Changes to Active Profile Configuration Container</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        let isPipelineActive = false;
-        let chartTotalInstance = null;
-        let chartStepsInstance = null;
-        let globalTracksCache = [];
+        let globalTrackCache = [];
+        let performanceChartInstance = null;
+        let activeLogLinePointer = 0;
+        let fullProfilesObjectContainer = {};
 
-        // 1. NAVIGATION ROUTING & SIDEBAR SYSTEM
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('open');
+        // Sidebar Navigation Animations & Display Routines
+        function toggleDrawer() {
+            const drawer = document.getElementById('sidebar-drawer');
+            const overlay = document.getElementById('drawer-overlay');
+            drawer.classList.toggle('open');
+            overlay.classList.toggle('show');
         }
 
         function switchPage(paneId, linkId) {
-            document.querySelectorAll('.page-pane').forEach(pane => pane.classList.remove('active-pane'));
-            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-
-            document.getElementById(paneId).classList.add('active-pane');
-            document.getElementById(linkId).classList.add('active');
-            document.getElementById('sidebar').classList.remove('open');
+            document.querySelectorAll('.app-pane').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(l => l.classList.remove('active'));
             
-            if (paneId === 'pane-analytics') {
-                loadAnalytics();
+            document.getElementById(paneId).classList.add('active');
+            document.getElementById(linkId).classList.add('active');
+            
+            const drawer = document.getElementById('sidebar-drawer');
+            const overlay = document.getElementById('drawer-overlay');
+            if (drawer.classList.contains('open')) {
+                drawer.classList.remove('open');
+                overlay.classList.remove('show');
             }
-            if (paneId === 'pane-fixer') {
-                loadBrokenSongs();
+
+            if (paneId === 'pane-analytics') {
+                setTimeout(renderPerformanceChart, 100);
             }
         }
 
-        // 2. LIVE METRICS & ALERT ENGINE
+        // Global Metrics Parsing and Synchronization Loops
         function loadMetrics() {
             fetch('/metrics')
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('stat-master-count').innerText = data.masterCount || 0;
-                    document.getElementById('stat-mobile-count').innerText = data.mobileCount || 0;
-                    document.getElementById('stat-lrc-count').innerText = data.lrcCount || 0;
-                    document.getElementById('stat-sizes').innerText = `${data.masterSize || 0} GB / ${data.mobileSize || 0} GB`;
+                    document.getElementById('m-master-count').innerText = data.masterCount || 0;
+                    document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
                     
-                    const indicator = document.getElementById('scan-indicator');
-                    if (data.loadingState === 'scanning') {
-                        indicator.innerHTML = `Scanning Storage <span class="spinner"></span>`;
-                    } else {
-                        indicator.innerText = `● Engine Idle`;
+                    document.getElementById('m-mobile-count').innerText = data.mobileCount || 0;
+                    document.getElementById('m-mobile-size').innerText = `${data.mobileSize || "0.00"} GB Total (Compressed AAC/M4A Architecture)`;
+                    
+                    document.getElementById('m-lrc-count').innerText = data.lrcCount || 0;
+                    let coverage = data.masterCount ? Math.round((data.lrcCount / data.masterCount) * 100) : 0;
+                    document.getElementById('m-lrc-coverage').innerText = `${coverage}% Coverage Rate Across Local Repository`;
+
+                    if (data.activeProfile) {
+                        document.getElementById('active-profile-tag').innerText = `Profile: ${data.activeProfile}`;
                     }
 
-                    const alertsZone = document.getElementById('alerts-zone');
+                    // Manage Global System Application Pipeline Alerts
+                    const alertsZone = document.getElementById('alerts-injection-zone');
                     alertsZone.innerHTML = '';
                     if (data.alerts && data.alerts.length > 0) {
                         data.alerts.forEach(alert => {
-                            const div = document.createElement('div');
-                            div.className = `alert alert-${alert.type}`;
-   
-                            let actionBtn = '';
-                            if (alert.fixAction === 'gitpull') {
-                                actionBtn = `<button class="btn btn-warn" onclick="triggerGitPull()">Pull Updates</button>`;
-                            } else if (alert.fixAction === 'sync') {
-                                actionBtn = `<button class="btn" onclick="triggerPipeline(false)">Sync Missing Tracks</button>`;
+                            let alertClass = alert.type === 'danger' ? 'alert-danger' : 'alert-warning';
+                            let fixButton = '';
+                            if (alert.fixAction === 'sync') {
+                                fixButton = `<button class="btn-primary" style="padding:4px 10px; font-size:11px;" onclick="dispatchPipeline('/run')">Fix Sync</button>`;
+                            } else if (alert.fixAction === 'gitpull') {
+                                fixButton = `<button class="btn-accent" style="padding:4px 10px; font-size:11px;" onclick="triggerHotPull()">Pull Updates</button>`;
                             }
-  
-                            div.innerHTML = `<span>⚠️ ${alert.message}</span> ${actionBtn}`;
-                            alertsZone.appendChild(div);
+                            alertsZone.innerHTML += `
+                                <div class="alert-box ${alertClass}">
+                                    <span>⚠️ <strong>System Notice:</strong> ${alert.message}</span>
+                                    ${fixButton}
+                                </div>
+                            `;
                         });
                     }
 
-                    if (data.tracks && data.tracks.length > 0) {
-                        globalTracksCache = data.tracks;
-                        renderMetadataTable(globalTracksCache);
+                    // Setup Global Trace State Machines
+                    globalTrackCache = data.tracks || [];
+                    if (document.getElementById('pane-tracks').classList.contains('active') && !document.getElementById('track-search-filter').value) {
+                        renderTracksTable(globalTrackCache);
                     }
-                }).catch(() => {});
+                }).catch(e => console.error("Metrics framework pull failure", e));
         }
 
-        // Deep Metadata Explorer Rendering Engine
-        function renderMetadataTable(tracks) {
-            const tbody = document.getElementById('metadata-rows');
-            if (!tbody) return;
-
-            if (tracks.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#71717A;">No tracks found matching current filter parameters.</td></tr>`;
+        // Search & Filter Algorithms
+        function renderTracksTable(tracks) {
+            const tbody = document.getElementById('tracks-table-body');
+            if (!tracks || tracks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #71717A;">Zero matching file structures tracked in target paths.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = tracks.map(track => {
-                const lrcBadge = track.hasLrc ? `<span class="badge badge-lrc">LRC Sync</span>` : `<span class="badge badge-missing">Missing</span>`;
-                
-                // Build the Instrumental pill tag component if flag is verified true
-                const instBadge = track.isInstrumental ? `<span class="badge-inst" style="background: rgba(189, 147, 249, 0.2); color: #BD93F9; border: 1px solid #BD93F9; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 4px; margin-left: 8px; display: inline-block; vertical-align: middle; letter-spacing: 0.5px;">INST</span>` : '';
-
+            tbody.innerHTML = tracks.map(t => {
+                let badgeClass = `badge-${t.type.toLowerCase()}`;
+                let lrcBadge = t.hasLrc ? `<span class="badge badge-lrc">LRC</span>` : '';
+                let instBadge = t.isInstrumental ? `<span class="badge badge-inst">INST</span>` : '';
                 return `
                     <tr>
-                        <td style="font-weight:600; color:#FFF; display: flex; align-items: center; justify-content: flex-start;">
-                            <span class="track-title-string">${track.title}</span>
+                        <td style="font-weight: 600; color: #F4F4F5;">${t.title}</td>
+                        <td style="color: #A1A1AA;">${t.artist}</td>
+                        <td style="color: #71717A; font-style: italic;">${t.album}</td>
+                        <td>${t.sizeMb} MB</td>
+                        <td>
+                            <span class="badge ${badgeClass}">${t.type}</span>
+                            ${lrcBadge}
                             ${instBadge}
                         </td>
-                        <td style="color:#E2E8F0;">${track.artist || '-'}</td>
-                        <td style="color:#A1A1AA; font-style: italic;">${track.album || '-'}</td>
-                        <td style="font-family:monospace; color:#00ADB5;">${track.type}</td>
-                        <td style="color:#71717A; font-family:monospace;">${track.sizeMb} MB</td>
-                        <td style="text-align: center;">${lrcBadge}</td>
                     </tr>
                 `;
             }).join('');
         }
 
-        function filterDatabase() {
-            const searchVal = document.getElementById('search-input').value.toLowerCase();
-            const lrcFilter = document.getElementById('filter-lrc').value;
+        function evaluateTrackFilters() {
+            let query = document.getElementById('track-search-filter').value.toLowerCase();
+            let format = document.getElementById('track-format-filter').value;
+            let sort = document.getElementById('track-sort-order').value;
 
-            const filtered = globalTracksCache.filter(track => {
-                const matchesSearch = !searchVal || 
-                    (track.title && track.title.toLowerCase().includes(searchVal)) ||
-                    (track.artist && track.artist.toLowerCase().includes(searchVal)) ||
-                    (track.album && track.album.toLowerCase().includes(searchVal));
-  
-                const matchesLrc = lrcFilter === 'ALL' ||
-                    (lrcFilter === 'LRC' && track.hasLrc) ||
-                    (lrcFilter === 'MISSING' && !track.hasLrc);
+            let filtered = globalTrackCache.filter(t => {
+                let textMatch = t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query) || t.album.toLowerCase().includes(query);
+                if (!textMatch) return false;
 
-                return matchesSearch && matchesLrc;
+                if (format === 'ALL') return true;
+                if (format === 'LRC') return t.hasLrc;
+                if (format === 'INST') return t.isInstrumental;
+                return t.type === format;
             });
 
-            renderMetadataTable(filtered);
+            if (sort === 'TITLE') filtered.sort((a,b) => a.title.localeCompare(b.title));
+            else if (sort === 'ARTIST') filtered.sort((a,b) => a.artist.localeCompare(b.artist));
+            else if (sort === 'SIZE') filtered.sort((a,b) => b.sizeMb - a.sizeMb);
+
+            renderTracksTable(filtered);
         }
 
-        // 3. PIPELINE DISPATCH CONTROLS
-        function triggerPipeline(isSweep) {
-            const url = isSweep ? '/run?sweep=true' : '/run';
-            fetch(url, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if(data.status === 'dispatched') {
-                        switchPage('pane-console', 'link-console');
-                    }
-                });
-        }
-
-        function stopPipeline() {
-            fetch('/stop', { method: 'POST' }).then(() => {
-                const feed = document.getElementById('terminal-feed');
-                if (feed) feed.innerHTML += `\n<span style="color:#FF5555; font-weight:bold;">[System] Termination request broadcasted to engine pipeline execution instance...</span>`;
-            });
-        }
-
-        function triggerClearLogs() {
-            fetch('/clearlogs', { method: 'POST' }).then(() => {
-                localLogsCache = []; // Clear background memory
-                linesRenderedLimit = 1000; // Reset lookback boundaries
-                document.getElementById('terminal-feed').innerHTML = "Logs cleared by console command. Awaiting execution state metrics stream..."; 
-            });
-        }
-
-        function triggerGitPull() {
-            fetch('/pull', { method: 'POST' }).then(() => {
-                alert("Server structural hot-reload issued.");
-                setTimeout(() => location.reload(), 3000);
-            });
-        }
-
-        // 4. ANSI ESCAPE TO HTML TRANSLATOR
-        function parseAnsiToHtml(text) {
-            if (!text) return '';
-            let clean = text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;");
-            const ansiMap = {
-                "1;31": "color: #FF5555; font-weight: bold;",
-                "1;32": "color: #39FF14; font-weight: bold;",
-                "1;33": "color: #FFB86C; font-weight: bold;",
-                "1;35": "color: #BD93F9; font-weight: bold;",
-                "1;36": "color: #8BE9FD; font-weight: bold;",
-                "33":   "color: #F1FA8C;",
-                "35":   "color: #FF79C6;",
-                "36":   "color: #8BE9FD;",
-                "90":   "color: #6272A4;"
-            };
-            const ansiRegex = /(?:\x1B|\\e| )?\[([0-9;]+)m/g;
-            let openSpan = false;
-            let result = clean.replace(ansiRegex, (match, code) => {
-                if (code === "0") {
-                    if (openSpan) { openSpan = false; return "</span>"; }
-                    return "";
-                }
-        
-                if (ansiMap[code]) {
-                    let prefix = openSpan ? "</span>" : "";
-                    openSpan = true;
-                    return `${prefix}<span style="${ansiMap[code]}">`;
-                }
-   
-                return ""; 
-            });
-            if (openSpan) { result += "</span>"; }
-
-            if (result.includes("[Playlist 1]")) {
-                return `<span style="color: #8BE9FD;">${result}</span>`;
-            } else if (result.includes("[Playlist 2]")) {
-                return `<span style="color: #FF79C6;">${result}</span>`;
-            } else if (result.includes("[Playlist 3]")) {
-                return `<span style="color: #F1FA8C;">${result}</span>`;
-            } else if (result.toLowerCase().includes("error") || result.toLowerCase().includes("failed")) {
-                return `<span style="color: #FF5555; font-weight: bold;">${result}</span>`;
-            }
-
-            return result;
-        }
-
-        // Global memory cache to hold full strings without bogging down the DOM
-        let localLogsCache = [];
-        let linesRenderedLimit = 1000; 
-
-        function runLogStreamer() {
-            fetch('/stream')
-                .then(res => res.json())
-                .then(data => {
-                    isPipelineActive = data.running; 
-        
-                    if (document.getElementById('run-btn')) { 
-                        document.getElementById('run-btn').disabled = isPipelineActive; 
-                        document.getElementById('sweep-btn').disabled = isPipelineActive; 
-                    }
-      
-                    const stopBtn = document.getElementById('stop-btn'); 
-                    if (stopBtn) { 
-                        stopBtn.disabled = !isPipelineActive; 
-                        stopBtn.innerText = isPipelineActive ? "🛑 Terminate Pipeline" : "Pipeline Inactive"; 
-                    }
-                    
-                    if(data.logs && data.logs.length > 0) { 
-                        const consoleBox = document.getElementById('terminal-feed'); 
-                        if (consoleBox) { 
-                            const userSelection = window.getSelection().toString(); 
-                            if (!userSelection) { 
-                                
-                                // Update background memory cache with raw data strings
-                                localLogsCache = data.logs;
-
-                                // Check if user is near the bottom before rendering changes
-                                const isScrolledToBottom = (consoleBox.scrollHeight - consoleBox.clientHeight - consoleBox.scrollTop) < 70; 
-
-                                // If scrolled to the bottom, keep the window stuck to the latest lines
-                                if (isScrolledToBottom) {
-                                    linesRenderedLimit = 1000;
-                                    const targetChunks = localLogsCache.slice(-linesRenderedLimit);
-                                    consoleBox.innerHTML = targetChunks.map(line => parseAnsiToHtml(String(line))).join('\n');
-                                    consoleBox.scrollTop = consoleBox.scrollHeight; 
-                                } else {
-                                    // If user scrolled up to read, update the existing slice in place without forcing a jump
-                                    const currentScrollPos = consoleBox.scrollTop;
-                                    const targetChunks = localLogsCache.slice(-linesRenderedLimit);
-                                    consoleBox.innerHTML = targetChunks.map(line => parseAnsiToHtml(String(line))).join('\n');
-                                    consoleBox.scrollTop = currentScrollPos;
-                                }
-                            }
-                        }
-                    }
-                    setTimeout(runLogStreamer, isPipelineActive ? 1000 : 4000); 
-                }).catch(() => { setTimeout(runLogStreamer, 4000); }); 
-        }
-
-        // Setup scroll pagination hooks after the DOM content initializes
-        document.addEventListener("DOMContentLoaded", () => {
-            const consoleBox = document.getElementById('terminal-feed');
-            if (consoleBox) {
-                consoleBox.addEventListener('scroll', () => {
-                    // Trigger expansion when scrolling close to the top of the container
-                    if (consoleBox.scrollTop < 100 && localLogsCache.length > linesRenderedLimit) {
-                        
-                        const oldHeight = consoleBox.scrollHeight;
-                        const oldScrollTop = consoleBox.scrollTop;
-
-                        // Expand window allocation step size
-                        linesRenderedLimit = Math.min(linesRenderedLimit + 1000, localLogsCache.length);
-                        
-                        // Re-render expanded slice chunk
-                        const targetChunks = localLogsCache.slice(-linesRenderedLimit);
-                        consoleBox.innerHTML = targetChunks.map(line => parseAnsiToHtml(String(line))).join('\n');
-
-                        // Adjust scroll top to prevent browser jump artifacts
-                        consoleBox.scrollTop = oldScrollTop + (consoleBox.scrollHeight - oldHeight);
-                    }
-                });
-            }
-        });
-
-
-        // 6. PERFORMANCE ANALYTICS CHARTING
-        function loadAnalytics() {
-            fetch('/analytics')
-                .then(res => res.json())
-                .then(data => {
-                    if (!data || data.length === 0) return;
-                    
-                    const labels = data.map(r => r.timestamp.split(' ')[1] || r.timestamp);
-                    const totals = data.map(r => {
-                        const parts = r.total.split(':');
-                        return (parseInt(parts[0]) * 60) + parseInt(parts[1]) + (parseFloat(parts[2]) / 60);
-                    });
-
-                    const step1Data = data.map(r => r.steps && r.steps[0] ? parseFloat(r.steps[0]) : 0);
-                    const step2Data = data.map(r => r.steps && r.steps[1] ? parseFloat(r.steps[1]) : 0);
-                    const step3Data = data.map(r => r.steps && r.steps[2] ? parseFloat(r.steps[2]) : 0);
-                    const step4Data = data.map(r => r.steps && r.steps[3] ? parseFloat(r.steps[3]) : 0);
-                    const historyBody = document.getElementById('timing-history-rows');
-                    if (historyBody) {
-                        historyBody.innerHTML = data.map(row => {
-                            const badgeClass = row.trigger === 'sweep' ? 'badge-sweep' : 'badge-auto';
-                            let barsHtml = `<div class="seg seg-fallback" style="width: 100%;"></div>`;
-                            
-                            if (row.steps && row.steps.length > 0) {
-                                const sum = row.steps.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
-                                barsHtml = row.steps.map((val, idx) => {
-                                    const pct = sum > 0 ? (parseFloat(val) / sum) * 100 : 0;
-                                    return `<div class="seg seg-s${idx + 1}" style="width: ${pct}%;" title="Step ${idx + 1}: ${val} mins"></div>`;
-                                }).join('');
-                            }
-
-                            return `
-                                <tr class="${row.trigger === 'sweep' ? 'row-clean-sweep' : ''}">
-                                    <td style="font-family: monospace; color:#A1A1AA;">${row.timestamp}</td>
-                                    <td><span class="badge ${badgeClass}">${row.trigger.toUpperCase()}</span></td>
-                                    <td style="font-weight: bold; color: #00ADB5; font-family: monospace;">${row.total}</td>
-                                    <td>
-                                        <div class="timeline-graph-wrapper">
-                                            <div class="timeline-bar">${barsHtml}</div>
-                                            <div class="graph-legend">
-                                                <span style="color:#3B82F6;">■ Scan</span>
-                                                <span style="color:#EF4444;">■ Compare</span>
-                                                <span style="color:#F59E0B;">■ Transfer</span>
-                                                <span style="color:#10B981;">■ Purge</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('');
-                    }
-
-                    const ctxTotal = document.getElementById('chartTrendTotal');
-                    if (ctxTotal) {
-                        if (chartTotalInstance) {
-                            chartTotalInstance.data.labels = labels;
-                            chartTotalInstance.data.datasets[0].data = totals;
-                            chartTotalInstance.update();
-                        } else {
-                            chartTotalInstance = new Chart(ctxTotal, {
-                                type: 'line',
-                                data: {
-                                    labels: labels,
-                                    datasets: [{
-                                        label: 'Total Wall Time Duration (Minutes)',
-                                        data: totals,
-                                        borderColor: '#00ADB5',
-                                        backgroundColor: 'rgba(0, 173, 181, 0.1)',
-                                        borderWidth: 2,
-                                        tension: 0.3
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    scales: {
-                                        y: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } },
-                                        x: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } }
-                                    },
-                                    plugins: { legend: { labels: { color: '#E2E8F0' } } }
-                                }
-                            });
-                        }
-                    }
-
-                    const ctxSteps = document.getElementById('chartTrendSteps');
-                    if (ctxSteps) {
-                        if (chartStepsInstance) {
-                            chartStepsInstance.data.labels = labels;
-                            chartStepsInstance.data.datasets[0].data = step1Data;
-                            chartStepsInstance.data.datasets[1].data = step2Data;
-                            chartStepsInstance.data.datasets[2].data = step3Data;
-                            chartStepsInstance.data.datasets[3].data = step4Data;
-                            chartStepsInstance.update();
-                        } else {
-                            chartStepsInstance = new Chart(ctxSteps, {
-                                type: 'line',
-                                data: {
-                                    labels: labels,
-                                    datasets: [
-                                        { label: 'Scanner', data: step1Data, borderColor: '#3B82F6', tension: 0.2, borderWidth: 1.5 },
-                                        { label: 'Diffing Engine', data: step2Data, borderColor: '#EF4444', tension: 0.2, borderWidth: 1.5 },
-                                        { label: 'I/O Sync', data: step3Data, borderColor: '#F59E0B', tension: 0.2, borderWidth: 1.5 },
-                                        { label: 'Housekeeping', data: step4Data, borderColor: '#10B981', tension: 0.2, borderWidth: 1.5 }
-                                    ],
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    scales: {
-                                        y: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } },
-                                        x: { grid: { color: '#222226' }, ticks: { color: '#A1A1AA' } }
-                                    },
-                                    plugins: { legend: { labels: { color: '#E2E8F0' } } }
-                                }
-                            });
-                        }
-                    }
-                });
-        }
-
-        // 7. BROKEN SONGS FIXER LOGIC
+        // Error Anomaly Resolution Routines
         function loadBrokenSongs() {
-            const tbody = document.getElementById('fixer-rows');
-            if (!tbody) return;
-
             fetch('/broken-songs')
                 .then(res => res.json())
                 .then(data => {
+                    const tbody = document.getElementById('errors-table-body');
                     if (!data || data.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#39FF14; font-weight:600;">✨ No broken songs found! Queue is clean.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #50FA7B;">✨ Analysis complete. Zero anomalous tracks registered.</td></tr>`;
                         return;
                     }
 
-                    tbody.innerHTML = data.map(item => {
-                        // Check if the error reason indicates a geo-block/regional restriction
-                        const isGeoBlocked = item.reason && (
-                            item.reason.toLowerCase().includes('geo') || 
-                            item.reason.toLowerCase().includes('available in your country') ||
-                            item.reason.toLowerCase().includes('sign in to confirm')
-                        );
-
-                        // Dynamic row styling to highlight geo-blocked tracks
-                        const rowStyle = isGeoBlocked ? 'background: rgba(139, 92, 246, 0.05); border-left: 3px solid #8B5CF6;' : '';
-                        const errorColor = isGeoBlocked ? '#BD93F9' : '#F87171'; // Purple accent for geo-restricted items
-
+                    tbody.innerHTML = data.map(song => {
                         return `
-                            <tr style="${rowStyle}">
-                                <td style="font-weight:600; color:#FFF;">${item.query || 'Unknown Track Query'}</td>
-                                <td style="color:${errorColor}; font-family:monospace;">
-                                    ${isGeoBlocked ? '🌍 [Geo-Blocked] ' : ''}${item.reason || 'Extraction failed'}
+                            <tr>
+                                <td style="font-family: monospace; color: #FF79C6;">${song.timestamp || "N/A"}</td>
+                                <td>
+                                    <div style="font-weight:600; color:#F4F4F5;">${song.title || "Unknown Extraction Target"}</div>
+                                    <div style="font-size:12px; color:#71717A; margin-top:3px;">Video ID Link Anchor: <a href="https://youtube.com/watch?v=${song.videoId}" target="_blank" style="color:#8BE9FD; text-decoration:none;">${song.videoId}</a></div>
                                 </td>
-                                <td style="color:#A1A1AA;">${item.playlist || '-'}</td>
-                                <td style="text-align: center;">
-                                    <div style="display:flex; gap:8px; justify-content:center;">
-                                        ${isGeoBlocked ? `
-                                            <button class="btn" style="padding:6px 12px; font-size:0.85em; background: #8B5CF6;" onclick="triggerGeoRecovery('${item.id}')">
-                                                🔌 VPN Fix
-                                            </button>
-                                        ` : ''}
-                                        <button class="btn" style="padding:6px 12px; font-size:0.85em;" onclick="resolveSong('${item.id}', 'mark_fixed')">✅ Fixed</button>
-                                        <button class="btn btn-warn" style="padding:6px 12px; font-size:0.85em;" onclick="resolveSong('${item.id}', 'write_history', '${item.videoId || ''}')">⏭️ Skip</button>
+                                <td style="color:#FF5555; font-size:13px; font-family:sans-serif; max-width:350px; white-space:normal; word-wrap:break-word;">${song.reason}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick="resolveAnomalousTrack('${song.id}', 'geo_vpn_fix', '${song.videoId}')">🌐 Direct VPN Extract</button>
+                                        <button class="btn-accent" style="padding:6px 12px; font-size:12px;" onclick="resolveAnomalousTrack('${song.id}', 'write_history', '${song.videoId}')">📝 Ignore & Archive</button>
+                                        <button class="btn-danger" style="padding:6px 12px; font-size:12px;" onclick="resolveAnomalousTrack('${song.id}', 'discard', '')">🗑️ Purge Entry</button>
                                     </div>
                                 </td>
                             </tr>
                         `;
                     }).join('');
-                })
-                .catch(() => {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#B91C1C;">Failed to load the error archive from backend server.</td></tr>`;
-                });
+                }).catch(e => console.error("Broken songs compilation trace failure", e));
         }
 
-        function resolveSong(songId, action, videoId = '') {
+        function resolveAnomalousTrack(id, action, videoId) {
             fetch('/resolve-song', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: songId, action: action, videoId: videoId })
-            })
-            .then(res => res.json())
-            .then(data => {
+                body: JSON.stringify({ id: id, action: action, videoId: videoId })
+            }).then(res => res.json()).then(data => {
                 if (data.status === 'success') {
-                    loadBrokenSongs();
-                    loadMetrics();
-                } else {
-                    alert("Error updating track status: " + (data.message || "Unknown error"));
-                }
-            });
-        }
-
-        // Trigger VPN recovery for a specific track ID
-        function triggerGeoRecovery(songId) {
-            if (!confirm("This will connect to ProtonVPN (US Exit Node) to re-download this track. Continue?")) return;
-            
-            switchPage('pane-console', 'link-console');
-            const feed = document.getElementById('terminal-feed');
-            if (feed) feed.innerHTML += `\n<span style="color:#BD93F9; font-weight:bold;">[System] Initiating targeted VPN recovery for Track ID: ${songId}...</span>`;
-
-            fetch('/resolve-song', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: songId, action: 'geo_vpn_fix' })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success' || data.status === 'dispatched') {
+                    if(action === 'geo_vpn_fix') {
+                        switchPage('pane-console', 'link-console');
+                    }
                     loadBrokenSongs();
                     loadMetrics();
                 } else {
@@ -889,7 +744,6 @@
             });
         }
 
-        // Trigger the full automated headless ProtonVPN loop
         function triggerGlobalGeoRecovery() {
             const btn = document.getElementById('geo-recovery-btn');
             if (btn) btn.disabled = true;
@@ -911,13 +765,359 @@
                 });
         }
 
-        // Core Loops & Initialization
+        // Live Log Buffer Streaming Logic
+        function runLogStreamer() {
+            fetch(`/stream?skip=${activeLogLinePointer}`)
+                .then(res => res.json())
+                .then(data => {
+                    const feed = document.getElementById('terminal-feed');
+                    const badge = document.getElementById('pipeline-status-badge');
+
+                    if (data.running) {
+                        badge.innerText = "Pipeline Active";
+                        badge.className = "status-pill status-active";
+                    } else {
+                        badge.innerText = "System Idle";
+                        badge.className = "status-pill status-idle";
+                    }
+
+                    if (data.logs && data.logs.length > 0) {
+                        if (activeLogLinePointer === 0) feed.innerHTML = '';
+                        
+                        data.logs.forEach(line => {
+                            let formattedLine = line
+                                .replace(/\\e\[1;33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
+                                .replace(/\\e\[1;36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')
+                                .replace(/\\e\[1;32m/g, '<span style="color:#50FA7B; font-weight:bold;">')
+                                .replace(/\\e\[1;31m/g, '<span style="color:#FF5555; font-weight:bold;">')
+                                .replace(/\\e\[1;35m/g, '<span style="color:#FF79C6; font-weight:bold;">')
+                                .replace(/\\e\[90m/g, '<span style="color:#6272A4;">')
+                                .replace(/\\e\[0m/g, '</span>');
+
+                            feed.innerHTML += formattedLine + "\n";
+                        });
+
+                        activeLogLinePointer = data.totalLines;
+                        feed.scrollTop = feed.scrollHeight;
+                    }
+                    setTimeout(runLogStreamer, 1200);
+                }).catch(() => setTimeout(runLogStreamer, 4000));
+        }
+
+        // Performance Chronography Visualization Subsystems
+        function loadAnalytics() {
+            fetch('/analytics')
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('analytics-table-body');
+                    if (!data || data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #71717A;">Zero historical sync data points verified.</td></tr>`;
+                        return;
+                    }
+
+                    tbody.innerHTML = data.slice().reverse().map(run => {
+                        return `
+                            <tr>
+                                <td style="font-weight:600;">${run.timestamp}</td>
+                                <td><span class="badge badge-m4a">${run.type || "Manual"}</span></td>
+                                <td style="font-family:monospace;">${run.step1}</td>
+                                <td style="font-family:monospace;">${run.step2}</td>
+                                <td style="font-family:monospace;">${run.step3}</td>
+                                <td style="font-family:monospace;">${run.step4}</td>
+                                <td style="font-family:monospace;">${run.step5}</td>
+                                <td style="font-family:monospace; font-weight:bold; color:#BD93F9;">${run.total}</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    window.historicalPerformanceRawDataset = data;
+                    if (document.getElementById('pane-analytics').classList.contains('active')) {
+                        renderPerformanceChart();
+                    }
+                }).catch(e => console.error("Chronography mapping compilation crash", e));
+        }
+
+        function convertTimeToSeconds(timeStr) {
+            if(!timeStr) return 0;
+            let parts = timeStr.split(':');
+            if (parts.length === 3) {
+                return (parseInt(parts[0]) * 3600) + (parseInt(parts[1]) * 60) + parseInt(parts[2]);
+            }
+            return 0;
+        }
+
+        function renderPerformanceChart() {
+            const ctx = document.getElementById('performanceChart');
+            if (!ctx || !window.historicalPerformanceRawDataset) return;
+
+            const dataset = window.historicalPerformanceRawDataset.slice(-12);
+            const labels = dataset.map(d => d.timestamp.split(' ')[1] || d.timestamp);
+            
+            const step1Data = dataset.map(d => convertTimeToSeconds(d.step1));
+            const step2Data = dataset.map(d => convertTimeToSeconds(d.step2));
+            const step3Data = dataset.map(d => convertTimeToSeconds(d.step3));
+            const step4Data = dataset.map(d => convertTimeToSeconds(d.step4));
+            const step5Data = dataset.map(d => convertTimeToSeconds(d.step5));
+
+            if (performanceChartInstance) {
+                performanceChartInstance.destroy();
+            }
+
+            performanceChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'S1: Cookie Auth', data: step1Data, backgroundColor: '#6272A4' },
+                        { label: 'S2: YTDLP Extract', data: step2Data, backgroundColor: '#BD93F9' },
+                        { label: 'S3: Error Fix', data: step3Data, backgroundColor: '#FF5555' },
+                        { label: 'S4: Lyric Sync', data: step4Data, backgroundColor: '#FF79C6' },
+                        { label: 'S5: Transcoding', data: step5Data, backgroundColor: '#8BE9FD' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: { color: '#1E1E22' }, ticks: { color: '#A1A1AA' } },
+                        y: { stacked: true, grid: { color: '#1E1E22' }, ticks: { color: '#A1A1AA' }, title: { display: true, text: 'Execution Runtime (Seconds)', color: '#A1A1AA' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#E2E8F0', font: { family: 'Segoe UI' } } }
+                    }
+                }
+            });
+        }
+
+        // Structural Form Trigger Pipelines
+        function dispatchPipeline(endpoint) {
+            activeLogLinePointer = 0;
+            switchPage('pane-console', 'link-console');
+            fetch(endpoint, { method: 'POST' })
+                .then(res => res.json())
+                .then(() => console.log(`Dispatched engine sequence: ${endpoint}`));
+        }
+
+        function dispatchStopPipeline() {
+            fetch('/stop', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.status === 'stopped') {
+                        alert("Pipeline execution stack and parallel downstream binaries halted.");
+                    }
+                });
+        }
+
+        function dispatchClearLogs() {
+            fetch('/clear-logs', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'cleared') {
+                        activeLogLinePointer = 0;
+                        document.getElementById('terminal-feed').innerHTML = '';
+                    }
+                });
+        }
+
+        function triggerHotPull() {
+            activeLogLinePointer = 0;
+            switchPage('pane-console', 'link-console');
+            fetch('/pull', { method: 'POST' })
+                .then(res => res.json())
+                .then(() => {
+                    console.log("Hot pull initialization dispatched.");
+                });
+        }
+
+        // ================================================================= -->
+        // CONFIGURATION PROFILE INTERACTIVE LOGIC (NEW ENGINE IMPLEMENTATION)
+        // ================================================================= -->
+        function loadProfilesFrameworkSystem() {
+            fetch('/profiles')
+                .then(res => res.json())
+                .then(data => {
+                    fullProfilesObjectContainer = data.profiles;
+                    const dropdown = document.getElementById('profile-selection-dropdown');
+                    
+                    // Cache the layout position reference selection
+                    const currentSelection = dropdown.value || data.activeProfile;
+                    dropdown.innerHTML = '';
+
+                    Object.keys(fullProfilesObjectContainer).forEach(pName => {
+                        const option = document.createElement('option');
+                        option.value = pName;
+                        option.innerText = pName + (pName === data.activeProfile ? " (Currently Active Workspace)" : "");
+                        dropdown.appendChild(option);
+                    });
+
+                    dropdown.value = currentSelection;
+                    loadTargetProfileToForm();
+                }).catch(e => console.error("Could not fetch user dynamic context profiles database", e));
+        }
+
+        function loadTargetProfileToForm() {
+            const selectedProfileName = document.getElementById('profile-selection-dropdown').value;
+            if (!selectedProfileName || !fullProfilesObjectContainer[selectedProfileName]) return;
+
+            const config = fullProfilesObjectContainer[selectedProfileName];
+
+            // Auto-populate all form parameters sequentially matching core PowerShell keys
+            const keysToMap = [
+                'BackupDir', 'MobileDir', 'BrokenSongsFile', 'DiagLogFile', 'CacheFile',
+                'TimingFile', 'CookieFile', 'HistoryFile', 'YTDLPExe', 'FFmpegExe',
+                'FirefoxExe', 'CheckURL', 'SleepInterval', 'MaxSleepInterval',
+                'SleepRequests', 'MaxCompressThreads', 'ScannerSleepIntervalSec', 'ChronDaemonSleepSec'
+            ];
+
+            keysToMap.forEach(key => {
+                const element = document.getElementById(`cfg-${key}`);
+                if (element) {
+                    element.value = config[key] !== undefined ? config[key] : '';
+                }
+            });
+
+            // Process array values inside text-area entries elegantly
+            const playlistsArea = document.getElementById('cfg-Playlists');
+            if (playlistsArea && config.Playlists) {
+                playlistsArea.value = Array.isArray(config.Playlists) ? config.Playlists.join('\n') : config.Playlists;
+            }
+        }
+
+        function switchActiveProfileBackend() {
+            const targetProfile = document.getElementById('profile-selection-dropdown').value;
+            if (!targetProfile) return;
+
+            fetch('/profiles/switch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profileName: targetProfile })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'switched') {
+                    alert(`Active execution context cleanly bounced into Profile Workspace: "${targetProfile}"`);
+                    loadProfilesFrameworkSystem();
+                    loadMetrics();
+                } else {
+                    alert(`Context bounce routine rejected: ${data.message}`);
+                }
+            });
+        }
+
+        function saveProfileDataChanges() {
+            const targetProfile = document.getElementById('profile-selection-dropdown').value;
+            if (!targetProfile) return;
+
+            // Bundle complete active object context fields dynamically
+            const playlistsRaw = document.getElementById('cfg-Playlists').value;
+            const playlistsArray = playlistsRaw.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+            const compiledConfigObject = {
+                BackupDir: document.getElementById('cfg-BackupDir').value,
+                MobileDir: document.getElementById('cfg-MobileDir').value,
+                BrokenSongsFile: document.getElementById('cfg-BrokenSongsFile').value,
+                DiagLogFile: document.getElementById('cfg-DiagLogFile').value,
+                CacheFile: document.getElementById('cfg-CacheFile').value,
+                TimingFile: document.getElementById('cfg-TimingFile').value,
+                CookieFile: document.getElementById('cfg-CookieFile').value,
+                HistoryFile: document.getElementById('cfg-HistoryFile').value,
+                YTDLPExe: document.getElementById('cfg-YTDLPExe').value,
+                FFmpegExe: document.getElementById('cfg-FFmpegExe').value,
+                FirefoxExe: document.getElementById('cfg-FirefoxExe').value,
+                CheckURL: document.getElementById('cfg-CheckURL').value,
+                SleepInterval: parseInt(document.getElementById('cfg-SleepInterval').value) || 4,
+                MaxSleepInterval: parseInt(document.getElementById('cfg-MaxSleepInterval').value) || 12,
+                SleepRequests: parseInt(document.getElementById('cfg-SleepRequests').value) || 3,
+                MaxCompressThreads: parseInt(document.getElementById('cfg-MaxCompressThreads').value) || 3,
+                ScannerSleepIntervalSec: parseInt(document.getElementById('cfg-ScannerSleepIntervalSec').value) || 60,
+                ChronDaemonSleepSec: parseInt(document.getElementById('cfg-ChronDaemonSleepSec').value) || 1800,
+                Playlists: playlistsArray
+            };
+
+            fetch('/profiles/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    profileName: targetProfile,
+                    config: compiledConfigObject
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'saved') {
+                    alert(`Successfully committed variable block changes to metadata records under configuration profile: "${targetProfile}"`);
+                    loadProfilesFrameworkSystem();
+                    loadMetrics();
+                } else {
+                    alert(`Failed to save configuration modifications: ${data.message}`);
+                }
+            });
+        }
+
+        function createNewProfile() {
+            const newName = prompt("Enter unique key string descriptor identification for new target profile context:");
+            if (!newName || newName.trim().length === 0) return;
+            
+            fetch('/profiles/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profileName: newName.trim() })
+            })
+            .then(res => {
+                if (res.status === 400) {
+                    alert("Execution dropped: Chosen profile identification matches an explicit existing structure container.");
+                    return null;
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data && data.status === 'created') {
+                    alert(`Spawned configuration profile container metadata tracking baseline for layout: "${newName}"`);
+                    document.getElementById('profile-selection-dropdown').value = newName.trim();
+                    loadProfilesFrameworkSystem();
+                }
+            });
+        }
+
+        function deleteTargetProfile() {
+            const targetProfile = document.getElementById('profile-selection-dropdown').value;
+            if (!targetProfile) return;
+
+            if (targetProfile === 'Default') {
+                alert("Core System Safety Guard: Deletion request rejected. The protected baseline global runtime structure layout configuration 'Default' cannot be removed.");
+                return;
+            }
+
+            if (!confirm(`Are you completely sure you want to permanently delete the profile workspace configuration context map for: "${targetProfile}"?`)) return;
+
+            fetch('/profiles/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profileName: targetProfile })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'deleted') {
+                    alert(`Removed layout workspace parameters context cleanly. Active system fallback context redirected to workspace: "${data.activeProfile}"`);
+                    document.getElementById('profile-selection-dropdown').value = 'Default';
+                    loadProfilesFrameworkSystem();
+                    loadMetrics();
+                } else {
+                    alert(`Deletion transaction failed: ${data.message}`);
+                }
+            });
+        }
+
+        // Core Loops & System Initialization
         setInterval(loadMetrics, 3000);
         setInterval(loadAnalytics, 10000);
         setTimeout(runLogStreamer, 1000);
         
+        // Context Initialization Sequences
         loadMetrics();
         loadAnalytics();
+        loadBrokenSongs();
+        loadProfilesFrameworkSystem();
     </script>
 </body>
 </html>
