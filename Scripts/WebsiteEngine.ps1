@@ -130,6 +130,7 @@ function Start-AsyncLibraryScanner {
                 }
 
                 if ($TrackDatabase.Count % 150 -eq 0) { 
+                    $TempFile = "$CFile.tmp"
                     @{
                         masterCount  = $MasterFiles.Count 
                         mobileCount  = $MobileFiles.Count 
@@ -139,7 +140,10 @@ function Start-AsyncLibraryScanner {
                         alerts       = @() 
                         loadingState = "scanning" 
                         tracks       = $TrackDatabase 
-                    } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force 
+                    } | ConvertTo-Json -Depth 4 | Out-File -FilePath $TempFile -Encoding utf8 -Force 
+                    
+                    # Atomic swap: Rename temp to actual file
+                    Move-Item -Path $TempFile -Destination $CFile -Force
                 }
             }
 
@@ -168,6 +172,7 @@ function Start-AsyncLibraryScanner {
                 $Alerts += @{ type = "danger"; message = "Synchronization Gap: Master backup has $(($MasterFiles.Count - $MobileFiles.Count)) more track(s) than Mobile."; fixAction = "sync" } 
             }
 
+            $TempFile = "$CFile.tmp"
             @{
                 masterCount  = $MasterFiles.Count 
                 mobileCount  = $MobileFiles.Count 
@@ -177,7 +182,10 @@ function Start-AsyncLibraryScanner {
                 alerts       = $Alerts 
                 loadingState = "idle" 
                 tracks       = $TrackDatabase 
-            } | ConvertTo-Json -Depth 4 | Out-File -FilePath $CFile -Encoding utf8 -Force 
+            } | ConvertTo-Json -Depth 4 | Out-File -FilePath $TempFile -Encoding utf8 -Force 
+
+            # Atomic swap: Rename temp to actual file
+            Move-Item -Path $TempFile -Destination $CFile -Force
 
             Start-Sleep -Seconds $ScanDelay
         }
