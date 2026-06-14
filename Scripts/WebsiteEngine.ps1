@@ -452,6 +452,11 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
+            elseif ($UrlPath -eq "favicon.ico") {
+                $Response.StatusCode = 404
+                $Response.OutputStream.Close()
+                continue
+            }
             elseif ($UrlPath -eq "/broken-songs" -and $Method -eq "GET") {
                 $RawData = "[]"
                 if (Test-Path $Global:Profile.BrokenSongsFile) { 
@@ -696,41 +701,21 @@ try {
                 $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
-                $DataPayload = '{"status":"error","message":"Data not initialized"}'
+                $Response.ContentType = "application/json"
                 
-                try {
-                    if (Test-Path $Global:CacheFile) {
-                        # Robust read
-                        $FileStream = [System.IO.File]::Open($Global:CacheFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-                        $Reader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
-                        $RawJson = $Reader.ReadToEnd()
-                        $Reader.Close()
-                        $FileStream.Close()
-
-                        if (-not [string]::IsNullOrWhiteSpace($RawJson)) {
-                            $JSONObj = $RawJson | ConvertFrom-Json
-                            $JSONObj | Add-Member -Type NoteProperty -Name "activeProfile" -Value $Global:ActiveProfileName -Force
-                            $DataPayload = $JSONObj | ConvertTo-Json -Depth 4 -Compress
-                        }
-                    }
-                    $Response.StatusCode = 200
-                } catch {
-                    # Catch logic errors (e.g. malformed JSON)
-                    Write-Host "DEBUG: Metrics block failed: $($_.Exception.Message)" -ForegroundColor Red
-                    $Response.StatusCode = 500
-                    $DataPayload = '{"status":"error","message":"' + $_.Exception.Message + '"}'
-                } finally {
-                    # This executes REGARDLESS of success or failure
-                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
-                    $Response.ContentType = "application/json"
-                    
-                    try {
-                        $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-                    } catch {
-                        # Handle potential stream writing errors
-                    }
-                    $Response.OutputStream.Close()
+                # Check if the cache file even exists
+                if (Test-Path $Global:CacheFile) {
+                    # READ SPEED TEST: 
+                    # If this is still slow, the disk itself is busy. 
+                    # If it's fast, the JSON conversion was the bottleneck.
+                    $DataPayload = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
+                } else {
+                    $DataPayload = '{"status":"no_cache"}'
                 }
+
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
                 $CurrentLogs = @()
