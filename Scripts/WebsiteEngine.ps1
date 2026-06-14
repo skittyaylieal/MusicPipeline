@@ -614,24 +614,30 @@ try {
                 $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
-                $DataPayload = ($Global:CachedMetrics | ConvertTo-Json -Depth 4 -Compress)
-                if (Test-Path $Global:CacheFile) { 
-                    try {
-                        $RawJson = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue 
-                        if (-not [string]::IsNullOrWhiteSpace($RawJson)) { $DataPayload = $RawJson } 
-                    } catch {}
+                $DataPayload = '{"status":"loading","activeProfile":"' + $Global:ActiveProfileName + '"}'
+                
+                try {
+                    if (Test-Path $Global:CacheFile) { 
+                        # Open with FileShare.ReadWrite to prevent file-locking crashes
+                        $FileStream = [System.IO.File]::Open($Global:CacheFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                        $Reader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
+                        $RawJson = $Reader.ReadToEnd()
+                        $Reader.Close()
+                        $FileStream.Close()
+
+                        if (-not [string]::IsNullOrWhiteSpace($RawJson)) { 
+                            $DataPayload = $RawJson 
+                        }
+                    }
+                    
+                    # Parse and inject active profile
+                    $JSONObj = $DataPayload | ConvertFrom-Json
+                    $JSONObj | Add-Member -Type NoteProperty -Name "activeProfile" -Value $Global:ActiveProfileName -Force
+                    $DataPayload = $JSONObj | ConvertTo-Json -Depth 4 -Compress
+                } catch {
+                    # Silent fail: keep the fallback payload if parsing fails
                 }
 
-                # Add profile safely
-                try {
-                    if (-not [string]::IsNullOrWhiteSpace($DataPayload)) {
-                        $JSONObj = $DataPayload | ConvertFrom-Json
-                        $JSONObj | Add-Member -Type NoteProperty -Name "activeProfile" -Value $Global:ActiveProfileName -Force
-                        $DataPayload = $JSONObj | ConvertTo-Json -Depth 4 -Compress
-                    }
-                } catch {}
-
-                if ([string]::IsNullOrWhiteSpace($DataPayload)) { $DataPayload = "{}" }
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
                 $Response.ContentType = "application/json" 
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 

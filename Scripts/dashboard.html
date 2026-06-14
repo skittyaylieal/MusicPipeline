@@ -793,7 +793,7 @@
 
         // Live Log Buffer Streaming Logic
         function runLogStreamer() {
-            if (errorCount > 5) return; // Circuit Breaker stops the recursive loop
+            if (errorCount > 5) return; 
 
             fetch(`/stream?skip=${activeLogLinePointer}`)
                 .then(res => {
@@ -801,7 +801,7 @@
                     return res.json();
                 })
                 .then(data => {
-                    errorCount = 0; // Reset breaker on success
+                    errorCount = 0; 
                     const feed = document.getElementById('terminal-feed');
                     const badge = document.getElementById('pipeline-status-badge');
 
@@ -818,13 +818,13 @@
                         
                         data.logs.forEach(line => {
                             let formattedLine = line
-                                .replace(/\\e\[1;33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
-                                .replace(/\\e\[1;36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')
-                                .replace(/\\e\[1;32m/g, '<span style="color:#50FA7B; font-weight:bold;">')
-                                .replace(/\\e\[1;31m/g, '<span style="color:#FF5555; font-weight:bold;">')
-                                .replace(/\\e\[1;35m/g, '<span style="color:#FF79C6; font-weight:bold;">')
-                                .replace(/\\e\[90m/g, '<span style="color:#6272A4;">')
-                                .replace(/\\e\[0m/g, '</span>');
+                                .replace(/\x1b\[1;33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
+                                .replace(/\x1b\[1;36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')
+                                .replace(/\x1b\[1;32m/g, '<span style="color:#50FA7B; font-weight:bold;">')
+                                .replace(/\x1b\[1;31m/g, '<span style="color:#FF5555; font-weight:bold;">')
+                                .replace(/\x1b\[1;35m/g, '<span style="color:#FF79C6; font-weight:bold;">')
+                                .replace(/\x1b\[90m/g, '<span style="color:#6272A4;">')
+                                .replace(/\x1b\[0m/g, '</span>');
 
                             feed.innerHTML += formattedLine + "\n";
                         });
@@ -836,7 +836,6 @@
                 })
                 .catch(e => {
                     errorCount++;
-                    // Backoff delay before failing or retrying
                     setTimeout(runLogStreamer, 4000); 
                 });
         }
