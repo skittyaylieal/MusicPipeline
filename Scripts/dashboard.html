@@ -620,6 +620,7 @@
                 .then(data => {
                     errorCount = 0; // Reset breaker on success
                     
+                    // Update counts and sizes safely
                     document.getElementById('m-master-count').innerText = data.masterCount || 0;
                     document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
                     
@@ -630,40 +631,39 @@
                     let coverage = data.masterCount ? Math.round((data.lrcCount / data.masterCount) * 100) : 0;
                     document.getElementById('m-lrc-coverage').innerText = `${coverage}% Coverage Rate Across Local Repository`;
 
+                    // Display active profile state safely
                     if (data.activeProfile) {
                         document.getElementById('active-profile-tag').innerText = `Profile: ${data.activeProfile}`;
+                    } else if (data.loadingState) {
+                        // Fallback visual cue if engine is syncing/scanning paths
+                        document.getElementById('active-profile-tag').innerText = `Status: ${data.loadingState.toUpperCase()}`;
                     }
 
                     // Manage Global System Application Pipeline Alerts
                     const alertsZone = document.getElementById('alerts-injection-zone');
-                    alertsZone.innerHTML = '';
-                    if (data.alerts && data.alerts.length > 0) {
-                        data.alerts.forEach(alert => {
-                            let alertClass = alert.type === 'danger' ? 'alert-danger' : 'alert-warning';
-                            let fixButton = '';
-                            if (alert.fixAction === 'sync') {
-                                fixButton = `<button class="btn-primary" style="padding:4px 10px; font-size:11px;" onclick="dispatchPipeline('/run')">Fix Sync</button>`;
-                            } else if (alert.fixAction === 'gitpull') {
-                                fixButton = `<button class="btn-accent" style="padding:4px 10px; font-size:11px;" onclick="triggerHotPull()">Pull Updates</button>`;
-                            }
-                            alertsZone.innerHTML += `
-                                <div class="alert-box ${alertClass}">
-                                    <span>⚠️ <strong>System Notice:</strong> ${alert.message}</span>
-                                    ${fixButton}
-                                </div>
-                            `;
-                        });
+                    if (alertsZone) {
+                        alertsZone.innerHTML = '';
+                        if (data.alerts && data.alerts.length > 0) {
+                            data.alerts.forEach(alert => {
+                                let alertClass = alert.type === 'danger' ? 'alert-danger' : 'alert-warning';
+                                let fixButton = '';
+                                if (alert.fixAction === 'sync') {
+                                    fixButton = `<button class="btn-primary" style="padding:4px 10px; font-size:11px;" onclick="dispatchPipeline('/run')">Fix Sync</button>`;
+                                } else if (alert.fixAction === 'gitpull') {
+                                    fixButton = `<button class="btn-accent" style="padding:4px 10px; font-size:11px;" onclick="triggerHotPull()">Pull Updates</button>`;
+                                }
+                                alertsZone.innerHTML += `
+                                    <div class="alert-box ${alertClass}">
+                                        <span>⚠️ <strong>System Notice:</strong> ${alert.message}</span>
+                                        ${fixButton}
+                                    </div>
+                                `;
+                            });
+                        }
                     }
 
-                    // Setup Global Trace State Machines
-                    globalTrackCache = data.tracks || [];
-            
-                if (document.getElementById('pane-tracks').classList.contains('active')) {
-                    renderTracksTable(globalTrackCache);
-                }
-
-                // Explicitly delete references
-                data = null;
+                    // --- FIXED: CRITICAL REMOVAL ---
+                    // Removed the old lines that were clearing out window.globalTrackCache!
                 })
                 .catch(e => {
                     errorCount++;
@@ -705,12 +705,15 @@
 
 
         function evaluateTrackFilters() {
-            let query = document.getElementById('track-search-filter').value.toLowerCase();
+            let query = document.getElementById('track-search-filter').value.toLowerCase().trim();
             let format = document.getElementById('track-format-filter').value;
             let sort = document.getElementById('track-sort-order').value;
 
+            // FIXED: Now reads from the standard globalTrackCache variable safely guarded against null tags
             let filtered = globalTrackCache.filter(t => {
-                let textMatch = t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query) || t.album.toLowerCase().includes(query);
+                let textMatch = (t.title && t.title.toLowerCase().includes(query)) || 
+                                (t.artist && t.artist.toLowerCase().includes(query)) || 
+                                (t.album && t.album.toLowerCase().includes(query));
                 if (!textMatch) return false;
 
                 if (format === 'ALL') return true;
@@ -719,8 +722,8 @@
                 return t.type === format;
             });
 
-            if (sort === 'TITLE') filtered.sort((a,b) => a.title.localeCompare(b.title));
-            else if (sort === 'ARTIST') filtered.sort((a,b) => a.artist.localeCompare(b.artist));
+            if (sort === 'TITLE') filtered.sort((a,b) => (a.title || "").localeCompare(b.title || ""));
+            else if (sort === 'ARTIST') filtered.sort((a,b) => (a.artist || "").localeCompare(b.artist || ""));
             else if (sort === 'SIZE') filtered.sort((a,b) => b.sizeMb - a.sizeMb);
 
             renderTracksTable(filtered);
@@ -729,13 +732,12 @@
         function loadLibraryTracksOnDemand(forceRefresh = false) {
             const tbody = document.getElementById('tracks-table-body');
             
-            // If we already have the tracks data and aren't forcing a refresh, just render from cache
-            if (window.globalTrackCache && window.globalTrackCache.length > 0 && !forceRefresh) {
-                renderTracksTable(window.globalTrackCache);
+            // FIXED: Stripped window. references to match top-level lexical declaration
+            if (globalTrackCache && globalTrackCache.length > 0 && !forceRefresh) {
+                renderTracksTable(globalTrackCache);
                 return;
             }
 
-            // Show a quick, clean loading state inside the table
             tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #A1A1AA;">
                 <span class="spinner" style="display:inline-block; margin-right:8px; animation: spin 1s linear infinite;">⏳</span> 
                 Streaming track structure tables from local cache registry...
@@ -747,8 +749,9 @@
                     return res.json();
                 })
                 .then(data => {
-                    window.globalTrackCache = data.tracks || [];
-                    renderTracksTable(window.globalTrackCache);
+                    // FIXED: Directly targets the unified array
+                    globalTrackCache = data.tracks || [];
+                    renderTracksTable(globalTrackCache);
                 })
                 .catch(e => {
                     console.error("Failed to fetch on-demand tracks:", e);

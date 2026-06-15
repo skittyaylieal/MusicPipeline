@@ -701,28 +701,46 @@ try {
                 $Response.OutputStream.Close()
             }
             # -----------------------------
-            # FIXED: Memory-Optimized Lightweight Metrics Heartbeat
+            # BULLETPROOF: Hybrid Metrics Heartbeat (Guarantees Profile & State Delivery)
             # -----------------------------
             elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
                 $Response.ContentType = "application/json"
                 
-                if (Test-Path $Global:CacheFile) {
-                    $RawPayload = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
-                    try {
-                        # Convert to object to safely prune the track database out of the heartbeat broadcast
-                        $CacheObj = $RawPayload | ConvertFrom-Json
-                        if ($CacheObj.tracks) {
-                            # Strip out the massive track list to save network/browser RAM
-                            $CacheObj.psobject.properties.Remove("tracks")
-                        }
-                        $DataPayload = $CacheObj | ConvertTo-Json -Depth 4 -Compress
-                    } catch {
-                        $DataPayload = '{"status":"error","message":"Cache structural serialization failure"}'
-                    }
-                } else {
-                    $DataPayload = '{"status":"no_cache"}'
+                # 1. Create a safe baseline object populated with live server states
+                $MetricsObj = [ordered]@{
+                    activeProfile = if ($Global:ActiveProfile) { $Global:ActiveProfile } else { "Default" }
+                    masterCount   = 0
+                    masterSize    = "0.00"
+                    mobileCount   = 0
+                    mobileSize    = "0.00"
+                    lrcCount      = 0
+                    alerts        = @()
                 }
 
+                # 2. If the cache file exists, safely merge its data metrics
+                if (Test-Path $Global:CacheFile) {
+                    $RawPayload = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
+                    if (-not [string]::IsNullOrWhiteSpace($RawPayload)) {
+                        try {
+                            $CacheObj = $RawPayload | ConvertFrom-Json
+                            # Merge cache attributes into our engine baseline, omitting the heavy track list
+                            foreach ($Prop in $CacheObj.psobject.Properties) {
+                                if ($Prop.Name -ne "tracks" -and $null -ne $Prop.Value) {
+                                    $MetricsObj[$Prop.Name] = $Prop.Value
+                                }
+                            }
+                        } catch {
+                            # If the cache file is corrupted or half-written, logging continues silently
+                            # The baseline states are preserved so the UI doesn't freeze
+                        }
+                    }
+                }
+
+                # 3. Explicitly lock down the live active profile tag
+                $MetricsObj["activeProfile"] = if ($Global:ActiveProfile) { $Global:ActiveProfile } else { "Default" }
+
+                # 4. Compress and ship the safe payload
+                $DataPayload = $MetricsObj | ConvertTo-Json -Depth 4 -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
