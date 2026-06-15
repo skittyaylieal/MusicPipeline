@@ -339,6 +339,10 @@
             <h1>Local Repository Track Ledger</h1>
         </div>
 
+        <button class="btn-primary" onclick="loadLibraryTracksOnDemand(true)" style="padding: 6px 12px; font-size: 12px; margin-bottom: 15px;">
+    🔄 Sync View Data
+        </button>
+
         <div class="control-panel">
             <div class="search-bar-wrap">
                 <input type="text" id="track-search-filter" placeholder="Filter records by Title, Artist, or Album details..." oninput="evaluateTrackFilters()">
@@ -593,6 +597,12 @@
                 overlay.classList.remove('show');
             }
 
+            // New On-Demand Check for Tracks Tab
+            if (paneId === 'pane-tracks') {
+                // Run a lightweight rendering check
+                loadLibraryTracksOnDemand();
+            }
+
             if (paneId === 'pane-analytics') {
                 setTimeout(renderPerformanceChart, 100);
             }
@@ -692,7 +702,7 @@
                 `;
             }).join('');
         }
-        
+
 
         function evaluateTrackFilters() {
             let query = document.getElementById('track-search-filter').value.toLowerCase();
@@ -715,6 +725,37 @@
 
             renderTracksTable(filtered);
         }
+
+        function loadLibraryTracksOnDemand(forceRefresh = false) {
+            const tbody = document.getElementById('tracks-table-body');
+            
+            // If we already have the tracks data and aren't forcing a refresh, just render from cache
+            if (window.globalTrackCache && window.globalTrackCache.length > 0 && !forceRefresh) {
+                renderTracksTable(window.globalTrackCache);
+                return;
+            }
+
+            // Show a quick, clean loading state inside the table
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #A1A1AA;">
+                <span class="spinner" style="display:inline-block; margin-right:8px; animation: spin 1s linear infinite;">⏳</span> 
+                Streaming track structure tables from local cache registry...
+            </td></tr>`;
+
+            fetch('/tracks')
+                .then(res => {
+                    if (!res.ok) throw new Error("Server returned status " + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    window.globalTrackCache = data.tracks || [];
+                    renderTracksTable(window.globalTrackCache);
+                })
+                .catch(e => {
+                    console.error("Failed to fetch on-demand tracks:", e);
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #FF5555;">⚠️ Failed to load library data: ${e.message}</td></tr>`;
+                });
+        }
+
 
         // Error Anomaly Resolution Routines
         function loadBrokenSongs() {
@@ -799,13 +840,13 @@
                 });
         }
 
-        // Live Log Buffer Streaming Logic
+        // Memory-leak resistant console log engine
         function runLogStreamer() {
             if (errorCount > 5) return; 
 
             fetch(`/stream?skip=${activeLogLinePointer}`)
                 .then(res => {
-                    if (!res.ok) throw new Error("Server returned " + res.status);
+                    if (!res.ok) throw new Error("Server returned status " + res.status);
                     return res.json();
                 })
                 .then(data => {
@@ -824,6 +865,8 @@
                     if (data.logs && data.logs.length > 0) {
                         if (activeLogLinePointer === 0) feed.innerHTML = '';
                         
+                        // Fix: Accumulate all string modifications locally to prevent DOM thrashing
+                        let batchedHTML = '';
                         data.logs.forEach(line => {
                             let formattedLine = line
                                 .replace(/\x1b\[1;33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
@@ -834,10 +877,20 @@
                                 .replace(/\x1b\[90m/g, '<span style="color:#6272A4;">')
                                 .replace(/\x1b\[0m/g, '</span>');
 
-                            feed.innerHTML += formattedLine + "\n";
+                            batchedHTML += formattedLine + "\n";
                         });
 
+                        // Inject instantly at the end of the container
+                        feed.insertAdjacentHTML('beforeend', batchedHTML);
                         activeLogLinePointer = data.totalLines;
+
+                        // Fix: Cap the console history to 500 lines to keep memory usage locked down flat
+                        const maxLinesAllowed = 500;
+                        let currentLines = feed.innerHTML.split('\n');
+                        if (currentLines.length > maxLinesAllowed) {
+                            feed.innerHTML = currentLines.slice(-maxLinesAllowed).join('\n');
+                        }
+
                         feed.scrollTop = feed.scrollHeight;
                     }
                     setTimeout(runLogStreamer, 1200);
@@ -944,15 +997,26 @@
             });
         }
 
-        // Structural Form Trigger Pipelines
+        // Safer pipeline execution handling
         function dispatchPipeline(endpoint) {
             activeLogLinePointer = 0;
             switchPage('pane-console', 'link-console');
+            
             fetch(endpoint, { method: 'POST' })
-                .then(res => res.json())
-                .then(() => console.log(`Dispatched engine sequence: ${endpoint}`))
-                .catch(e => console.error("Failed pipeline dispatch", e));
+                .then(res => {
+                    if (!res.ok) throw new Error("Pipeline trigger endpoint rejected command.");
+                    // Read as text first to handle both plain text or structural JSON safely
+                    return res.text(); 
+                })
+                .then(text => console.log("Pipeline successfully initiated:", text))
+                .catch(e => {
+                    console.error("Failed pipeline dispatch:", e);
+                    const feed = document.getElementById('terminal-feed');
+                    if (feed) feed.innerHTML += `\n<span style="color:#FF5555;">[UI Error] Failed to dispatch control sequence: ${e.message}</span>`;
+                });
         }
+
+
 
         function dispatchStopPipeline() {
             fetch('/stop', { method: 'POST' })

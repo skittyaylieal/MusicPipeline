@@ -700,15 +700,25 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
                 $Response.OutputStream.Close()
             }
+            # -----------------------------
+            # FIXED: Memory-Optimized Lightweight Metrics Heartbeat
+            # -----------------------------
             elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
                 $Response.ContentType = "application/json"
                 
-                # Check if the cache file even exists
                 if (Test-Path $Global:CacheFile) {
-                    # READ SPEED TEST: 
-                    # If this is still slow, the disk itself is busy. 
-                    # If it's fast, the JSON conversion was the bottleneck.
-                    $DataPayload = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
+                    $RawPayload = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
+                    try {
+                        # Convert to object to safely prune the track database out of the heartbeat broadcast
+                        $CacheObj = $RawPayload | ConvertFrom-Json
+                        if ($CacheObj.tracks) {
+                            # Strip out the massive track list to save network/browser RAM
+                            $CacheObj.psobject.properties.Remove("tracks")
+                        }
+                        $DataPayload = $CacheObj | ConvertTo-Json -Depth 4 -Compress
+                    } catch {
+                        $DataPayload = '{"status":"error","message":"Cache structural serialization failure"}'
+                    }
                 } else {
                     $DataPayload = '{"status":"no_cache"}'
                 }
@@ -717,6 +727,27 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
+            # -----------------------------
+            # NEW: Dedicated On-Demand Tracks Dataset Endpoint
+            # -----------------------------
+            elseif ($UrlPath -eq "/tracks" -and $Method -eq "GET") {
+                $Response.ContentType = "application/json"
+                $DataPayload = "{}"
+                if (Test-Path $Global:CacheFile) {
+                    $RawPayload = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
+                    try {
+                        $CacheObj = $RawPayload | ConvertFrom-Json
+                        # Isolate and return only the track database structures
+                        $DataPayload = @{ tracks = $CacheObj.tracks } | ConvertTo-Json -Depth 4 -Compress
+                    } catch { $DataPayload = "{}" }
+                }
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
+            }
+            # -----------------------------
+            # FIXED: Secure Pipeline Stream Tracker (Stops the Autoclean Trap)
+            # -----------------------------
             elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
                 $CurrentLogs = @()
                 $AllLines = @()
@@ -738,8 +769,17 @@ try {
                 
                 $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue 
                 if ($DownloadJob) {
-                    if ($DownloadJob.State -ne "Running") { $Global:IsPipelineRunning = $false; Remove-Job -Job $DownloadJob -Force } 
-                } else { $Global:IsPipelineRunning = $false } 
+                    # FIX: Do NOT terminate or clear jobs that are in a 'NotStarted' state!
+                    if ($DownloadJob.State -in @("Completed", "Failed", "Stopped")) { 
+                        $Global:IsPipelineRunning = $false
+                        Remove-Job -Job $DownloadJob -Force 
+                    } else {
+                        # The job is actively initializing or running
+                        $Global:IsPipelineRunning = $true
+                    }
+                } else { 
+                    $Global:IsPipelineRunning = $false 
+                } 
 
                 $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs; totalLines = $AllLines.Count } | ConvertTo-Json -Compress 
                 if ([string]::IsNullOrWhiteSpace($JsonPayload)) { $JsonPayload = "{}" }
