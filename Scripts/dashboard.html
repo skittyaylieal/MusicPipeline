@@ -620,7 +620,7 @@
                 .then(data => {
                     errorCount = 0; // Reset breaker on success
                     
-                    // Update counts and sizes safely
+                    // Update counts and sizes safely using exact repository metrics styling
                     document.getElementById('m-master-count').innerText = data.masterCount || 0;
                     document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
                     
@@ -662,14 +662,9 @@
                         }
                     }
 
-                    // --- FIXED: SAFELY UPDATE TRACK CACHE AND RETAIN SCROLL POSITION ---
-                    const isCacheEmpty = globalTrackCache.length === 0;
-                    globalTrackCache = data.tracks || [];
-
-                    // Only perform a full UI layout paint on the initial application payload bootstrap
-                    if (document.getElementById('pane-tracks').classList.contains('active') && isCacheEmpty) {
-                        evaluateTrackFilters();
-                    }
+                    // --- REMOVED THE DESTRUCTIVE TRACK MEMORY OVERWRITE ---
+                    // Heavy track arrays are now handled completely on-demand via your /tracks endpoint.
+                    // This prevents your 3-second heartbeat poll from corrupting or blanking your library data.
 
                     // Explicitly delete references to free memory references
                     data = null;
