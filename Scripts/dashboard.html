@@ -568,14 +568,14 @@
 
     <script>
         let globalTrackCache = [];
-        let filteredTracks = [];        // Tracks the filtered/sorted active dataset
-        let tracksRenderedCount = 0;    // Number of tracks currently appended to the table DOM
-        const BATCH_SIZE = 100;         // Size of chunks to render incrementally
-        
+        let filteredTracks = [];        // Holds the active filtered subset of tracks
+        let tracksRenderedCount = 0;    // Tracks how many rows are currently drawn
+        const BATCH_SIZE = 100;         // Number of tracks to load per scroll step
+
         let performanceChartInstance = null;
         let activeLogLinePointer = 0;
         let fullProfilesObjectContainer = {};
-        let errorCount = 0; // Global Circuit Breaker to prevent 25GB RAM memory leaks
+        let errorCount = 0;
 
         // Sidebar Navigation Animations & Display Routines
         function toggleDrawer() {
@@ -602,8 +602,7 @@
             if (paneId === 'pane-analytics') {
                 setTimeout(renderPerformanceChart, 100);
             }
-            
-            // Re-evaluate filters and load initial batch when explicitly opening the tracks tab
+            // INITIALIZE TRACKS VIEW ON NAVIGATION
             if (paneId === 'pane-tracks') {
                 evaluateTrackFilters();
             }
@@ -621,6 +620,7 @@
                 .then(data => {
                     errorCount = 0; // Reset breaker on success
                     
+                    // Update counts and sizes safely
                     document.getElementById('m-master-count').innerText = data.masterCount || 0;
                     document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
                     
@@ -631,9 +631,11 @@
                     let coverage = data.masterCount ? Math.round((data.lrcCount / data.masterCount) * 100) : 0;
                     document.getElementById('m-lrc-coverage').innerText = `${coverage}% Coverage Rate Across Local Repository`;
 
+                    // Display active profile state safely
                     if (data.activeProfile) {
                         document.getElementById('active-profile-tag').innerText = `Profile: ${data.activeProfile}`;
                     } else if (data.loadingState) {
+                        // Fallback visual cue if engine is syncing/scanning paths
                         document.getElementById('active-profile-tag').innerText = `Status: ${data.loadingState.toUpperCase()}`;
                     }
 
@@ -660,17 +662,8 @@
                         }
                     }
 
-                    // Setup Global Trace State Machines safely without clearing cache
-                    const isCacheEmpty = globalTrackCache.length === 0;
-                    globalTrackCache = data.tracks || [];
-            
-                    // Only force a full data rewrite if this is the very first bootstrap fetch
-                    if (document.getElementById('pane-tracks').classList.contains('active') && isCacheEmpty) {
-                        evaluateTrackFilters();
-                    }
-
-                    // Explicitly delete references
-                    data = null;
+                    // --- FIXED: CRITICAL REMOVAL ---
+                    // Removed the old lines that were clearing out window.globalTrackCache!
                 })
                 .catch(e => {
                     errorCount++;
@@ -688,10 +681,10 @@
                 return;
             }
 
-            // Halt execution if all matching items have been painted
+            // Halt execution if all matching items have been cleanly painted
             if (tracksRenderedCount >= filteredTracks.length) return;
 
-            // Slice out the next chunk of tracks
+            // Slice out the next chunk of track payloads
             const nextBatch = filteredTracks.slice(tracksRenderedCount, tracksRenderedCount + BATCH_SIZE);
             
             const rowsHtml = nextBatch.map(t => {
@@ -716,13 +709,13 @@
             if (tracksRenderedCount === 0) {
                 tbody.innerHTML = rowsHtml;
             } else {
-                // Inject new row segments cleanly without completely wiping or rebuilding the DOM tree
+                // Efficiently inject nodes at the bottom without recalculating the existing DOM tree
                 tbody.insertAdjacentHTML('beforeend', rowsHtml);
             }
 
             tracksRenderedCount += nextBatch.length;
         }
-        
+
         function evaluateTrackFilters() {
             let query = document.getElementById('track-search-filter').value.toLowerCase();
             let format = document.getElementById('track-format-filter').value;
@@ -742,25 +735,56 @@
             else if (sort === 'ARTIST') filteredTracks.sort((a,b) => a.artist.localeCompare(b.artist));
             else if (sort === 'SIZE') filteredTracks.sort((a,b) => b.sizeMb - a.sizeMb);
 
-            // Reset incremental counters and paint the baseline view
+            // Reset pagination boundaries and repaint target framework
             tracksRenderedCount = 0;
             appendNextTrackBatch();
         }
 
-        // Global Scroll Boundary Listener for Dynamic Asset Intersections
-        window.addEventListener('scroll', () => {
-            // Drop tracking routines if the user is working inside other panels
-            if (!document.getElementById('pane-tracks').classList.contains('active')) return;
+        // Window scroll intersection layer monitoring for lazy-loaded assets
+    window.addEventListener('scroll', () => {
+        // Only intercept events if the user is actively working inside the track list view
+        if (!document.getElementById('pane-tracks').classList.contains('active')) return;
 
-            // Trigger rendering when user scrolls within 400px of the page floor boundary
-            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) {
-                appendNextTrackBatch();
+        // Trigger appending when you scroll within 350px of the page bottom boundary
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 350) {
+            appendNextTrackBatch();
+        }
+    });
+
+        function loadLibraryTracksOnDemand(forceRefresh = false) {
+            const tbody = document.getElementById('tracks-table-body');
+            
+            // FIXED: Stripped window. references to match top-level lexical declaration
+            if (globalTrackCache && globalTrackCache.length > 0 && !forceRefresh) {
+                renderTracksTable(globalTrackCache);
+                return;
             }
-        });
+
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #A1A1AA;">
+                <span class="spinner" style="display:inline-block; margin-right:8px; animation: spin 1s linear infinite;">⏳</span> 
+                Streaming track structure tables from local cache registry...
+            </td></tr>`;
+
+            fetch('/tracks')
+                .then(res => {
+                    if (!res.ok) throw new Error("Server returned status " + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    // FIXED: Directly targets the unified array
+                    globalTrackCache = data.tracks || [];
+                    renderTracksTable(globalTrackCache);
+                })
+                .catch(e => {
+                    console.error("Failed to fetch on-demand tracks:", e);
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #FF5555;">⚠️ Failed to load library data: ${e.message}</td></tr>`;
+                });
+        }
+
 
         // Error Anomaly Resolution Routines
         function loadBrokenSongs() {
-            if (errorCount > 5) return; 
+            if (errorCount > 5) return; // Circuit Breaker
             
             fetch('/broken-songs')
                 .then(res => {
@@ -768,7 +792,7 @@
                     return res.json();
                 })
                 .then(data => {
-                    errorCount = 0; 
+                    errorCount = 0; // Reset breaker on success
                     const tbody = document.getElementById('errors-table-body');
                     
                     if (!data || data.length === 0) {
@@ -841,13 +865,13 @@
                 });
         }
 
-        // Live Log Buffer Streaming Logic
+        // Memory-leak resistant console log engine
         function runLogStreamer() {
             if (errorCount > 5) return; 
 
             fetch(`/stream?skip=${activeLogLinePointer}`)
                 .then(res => {
-                    if (!res.ok) throw new Error("Server returned " + res.status);
+                    if (!res.ok) throw new Error("Server returned status " + res.status);
                     return res.json();
                 })
                 .then(data => {
@@ -866,6 +890,8 @@
                     if (data.logs && data.logs.length > 0) {
                         if (activeLogLinePointer === 0) feed.innerHTML = '';
                         
+                        // Fix: Accumulate all string modifications locally to prevent DOM thrashing
+                        let batchedHTML = '';
                         data.logs.forEach(line => {
                             let formattedLine = line
                                 .replace(/\x1b\[1;33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
@@ -876,10 +902,20 @@
                                 .replace(/\x1b\[90m/g, '<span style="color:#6272A4;">')
                                 .replace(/\x1b\[0m/g, '</span>');
 
-                            feed.innerHTML += formattedLine + "\n";
+                            batchedHTML += formattedLine + "\n";
                         });
 
+                        // Inject instantly at the end of the container
+                        feed.insertAdjacentHTML('beforeend', batchedHTML);
                         activeLogLinePointer = data.totalLines;
+
+                        // Fix: Cap the console history to 500 lines to keep memory usage locked down flat
+                        const maxLinesAllowed = 500;
+                        let currentLines = feed.innerHTML.split('\n');
+                        if (currentLines.length > maxLinesAllowed) {
+                            feed.innerHTML = currentLines.slice(-maxLinesAllowed).join('\n');
+                        }
+
                         feed.scrollTop = feed.scrollHeight;
                     }
                     setTimeout(runLogStreamer, 1200);
@@ -892,7 +928,7 @@
 
         // Performance Chronography Visualization Subsystems
         function loadAnalytics() {
-            if (errorCount > 5) return; 
+            if (errorCount > 5) return; // Circuit Breaker
             
             fetch('/analytics')
                 .then(res => {
@@ -900,7 +936,7 @@
                     return res.json();
                 })
                 .then(data => {
-                    errorCount = 0; 
+                    errorCount = 0; // Reset breaker on success
                     const tbody = document.getElementById('analytics-table-body');
                     
                     if (!data || data.length === 0) {
@@ -986,15 +1022,26 @@
             });
         }
 
-        // Structural Form Trigger Pipelines
+        // Safer pipeline execution handling
         function dispatchPipeline(endpoint) {
             activeLogLinePointer = 0;
             switchPage('pane-console', 'link-console');
+            
             fetch(endpoint, { method: 'POST' })
-                .then(res => res.json())
-                .then(() => console.log(`Dispatched engine sequence: ${endpoint}`))
-                .catch(e => console.error("Failed pipeline dispatch", e));
+                .then(res => {
+                    if (!res.ok) throw new Error("Pipeline trigger endpoint rejected command.");
+                    // Read as text first to handle both plain text or structural JSON safely
+                    return res.text(); 
+                })
+                .then(text => console.log("Pipeline successfully initiated:", text))
+                .catch(e => {
+                    console.error("Failed pipeline dispatch:", e);
+                    const feed = document.getElementById('terminal-feed');
+                    if (feed) feed.innerHTML += `\n<span style="color:#FF5555;">[UI Error] Failed to dispatch control sequence: ${e.message}</span>`;
+                });
         }
+
+
 
         function dispatchStopPipeline() {
             fetch('/stop', { method: 'POST' })
@@ -1030,9 +1077,11 @@
                 .catch(e => console.error("Failed hot pull", e));
         }
 
-        // CONFIGURATION PROFILE INTERACTIVE LOGIC
+        // ================================================================= -->
+        // CONFIGURATION PROFILE INTERACTIVE LOGIC (NEW ENGINE IMPLEMENTATION)
+        // ================================================================= -->
         function loadProfilesFrameworkSystem() {
-            if (errorCount > 5) return; 
+            if (errorCount > 5) return; // Circuit Breaker
             
             fetch('/profiles')
                 .then(res => {
@@ -1040,10 +1089,11 @@
                     return res.json();
                 })
                 .then(data => {
-                    errorCount = 0; 
+                    errorCount = 0; // Reset breaker on success
                     fullProfilesObjectContainer = data.profiles;
                     const dropdown = document.getElementById('profile-selection-dropdown');
                     
+                    // Cache the layout position reference selection
                     const currentSelection = dropdown.value || data.activeProfile;
                     dropdown.innerHTML = '';
 
@@ -1069,6 +1119,7 @@
 
             const config = fullProfilesObjectContainer[selectedProfileName];
 
+            // Auto-populate all form parameters sequentially matching core PowerShell keys
             const keysToMap = [
                 'BackupDir', 'MobileDir', 'BrokenSongsFile', 'DiagLogFile', 'CacheFile',
                 'TimingFile', 'CookieFile', 'HistoryFile', 'YTDLPExe', 'FFmpegExe',
@@ -1083,6 +1134,7 @@
                 }
             });
 
+            // Process array values inside text-area entries elegantly
             const playlistsArea = document.getElementById('cfg-Playlists');
             if (playlistsArea && config.Playlists) {
                 playlistsArea.value = Array.isArray(config.Playlists) ? config.Playlists.join('\n') : config.Playlists;
@@ -1115,6 +1167,7 @@
             const targetProfile = document.getElementById('profile-selection-dropdown').value;
             if (!targetProfile) return;
 
+            // Bundle complete active object context fields dynamically
             const playlistsRaw = document.getElementById('cfg-Playlists').value;
             const playlistsArray = playlistsRaw.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
@@ -1192,7 +1245,7 @@
             if (!targetProfile) return;
 
             if (targetProfile === 'Default') {
-                alert("Core System Safety Guard: Deletion request rejected. Protected global layout context 'Default' cannot be removed.");
+                alert("Core System Safety Guard: Deletion request rejected. The protected baseline global runtime structure layout configuration 'Default' cannot be removed.");
                 return;
             }
 
@@ -1206,7 +1259,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'deleted') {
-                    alert(`Removed layout workspace parameters context cleanly. Fallback context redirected to workspace: "${data.activeProfile}"`);
+                    alert(`Removed layout workspace parameters context cleanly. Active system fallback context redirected to workspace: "${data.activeProfile}"`);
                     document.getElementById('profile-selection-dropdown').value = 'Default';
                     loadProfilesFrameworkSystem();
                     loadMetrics();
@@ -1219,18 +1272,22 @@
 
         // --- Core Initialization ---
         window.addEventListener('load', () => {
+            // Stagger the initial load to prevent "Thundering Herd" socket abortion
             setTimeout(loadMetrics, 100);
             setTimeout(loadAnalytics, 400);
             setTimeout(loadBrokenSongs, 700);
             setTimeout(loadProfilesFrameworkSystem, 1000);
 
+            // Start background loops only after the initial surge has settled
             setTimeout(() => {
                 setInterval(loadMetrics, 3000);
                 setInterval(loadAnalytics, 10000);
             }, 2000);
 
+            // Streamer has its own built-in recursion, so just kick it off once
             setTimeout(runLogStreamer, 1500);
         }); 
+
     </script>
 </body>
 </html>
