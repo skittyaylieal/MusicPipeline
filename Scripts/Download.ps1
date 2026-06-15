@@ -13,14 +13,7 @@ Param (
     [int]$Index
 )
 
-# Dynamic Architecture Rule for Clean Sweep
-$ActiveHistoryLog = if ($CleanSweep) {
-    Join-Path $env:TEMP "pipeline_null_history_$([Guid]::NewGuid().Guid).txt"
-} else {
-    $HistoryPath
-}
-
-# THREADING SAFETIES
+# THREADING SAFETIES (Root Context Map)
 $LocalYTDLPPath        = $YTDLPPath
 $LocalBackupDir        = $BackupDir
 $LocalCookiePath       = $CookiePath
@@ -29,7 +22,6 @@ $LocalCacheDir         = $CacheDir
 $LocalSleepInterval    = $SleepInterval
 $LocalMaxSleepInterval = $MaxSleepInterval
 $LocalSleepRequests    = $SleepRequests
-$LocalActiveHistoryLog = $ActiveHistoryLog
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
@@ -63,18 +55,25 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $LocalList = $using:GlobalURLsCopy
     $LoopIndex = $LocalList.IndexOf($PlaylistURL) + 1
     
-    $script:ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
-    if (Test-Path -LiteralPath $script:ErrorLogPath) { Remove-Item -LiteralPath $script:ErrorLogPath -Force -ErrorAction SilentlyContinue }
+    # Move History File allocation inside the runspace to prevent thread collisions
+    $LocalActiveHistoryLog = if ($using:CleanSweep) {
+        Join-Path $env:TEMP "pipeline_null_history_$([Guid]::NewGuid().Guid)_$LoopIndex.txt"
+    } else {
+        $using:HistoryPath
+    }
 
-    # Core Thread-Safe Logger Matrix
-    function Invoke-LogMsg([string]$Text) {
+    $ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
+    if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
+
+    # Core Thread-Safe Logger Matrix - FIXED: Explicitly scoped $LoopIndex access
+    function Invoke-LogMsg([string]$Text, [int]$Idx) {
         if ([string]::IsNullOrWhiteSpace($Text)) { return }
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
         
         $ESC = [char]27
         $Reset = "$ESC[0m"
         
-        $ColorCode = switch ($LoopIndex) {
+        $ColorCode = switch ($Idx) {
             1 { "36" }  # Cyan
             2 { "35" }  # Magenta
             3 { "33" }  # Yellow
@@ -85,7 +84,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             $ColorCode = "1;31"
         }
 
-        $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Playlist $LoopIndex]$Reset"
+        $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Playlist $Idx]$Reset"
         $FormattedLine = "$ColorPrefix $Text"
         
         Write-Output $FormattedLine
@@ -111,7 +110,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
     try {
         if ([string]::IsNullOrWhiteSpace($PlaylistURL)) { return }
 
-        Invoke-LogMsg "Processing Playlist URL: $PlaylistURL"
+        Invoke-LogMsg "Processing Playlist URL: $PlaylistURL" $LoopIndex
 
         $YTDLArgs = @(
             "--no-colors",
@@ -134,7 +133,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--js-runtime", "deno",
             "--extractor-args", "youtube:player_js_variant=tv",
             "-f", "ba[ext=m4a]/ba",
-            "--download-archive", $using:LocalActiveHistoryLog, 
+            "--download-archive", $LocalActiveHistoryLog, 
             "--ignore-errors",
             "--no-abort-on-error",
             "--legacy-server-connect",
@@ -169,7 +168,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
         $proc = [System.Diagnostics.Process]::Start($psi)
 
-        $script:Capture = $false
+        $Capture = $false
         $LastLineCount = 0
 
         # LIVE AGGREGATOR LOOP: Continuously streams text from disk as yt-dlp flushes it
@@ -192,11 +191,11 @@ $SanitizedURLs | ForEach-Object -Parallel {
                     if ($Lines.Count -gt $LastLineCount) {
                         for ($i = $LastLineCount; $i -lt $Lines.Count; $i++) {
                             $CurrentLine = $Lines[$i]
-                            Invoke-LogMsg $CurrentLine
+                            Invoke-LogMsg $CurrentLine $LoopIndex
 
-                            if ($CurrentLine -match "Finished downloading playlist:") { $script:Capture = $true }
-                            if ($script:Capture) {
-                                [System.IO.File]::AppendAllText($script:ErrorLogPath, ($CurrentLine + [System.Environment]::NewLine))
+                            if ($CurrentLine -match "Finished downloading playlist:") { $Capture = $true }
+                            if ($Capture) {
+                                [System.IO.File]::AppendAllText($ErrorLogPath, ($CurrentLine + [System.Environment]::NewLine))
                             }
                         }
                         $LastLineCount = $Lines.Count
@@ -213,7 +212,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
                 $Lines = Get-Content -LiteralPath $OutFile -ErrorAction SilentlyContinue
                 if ($Lines -and $Lines.Count -gt $LastLineCount) {
                     for ($i = $LastLineCount; $i -lt $Lines.Count; $i++) {
-                        Invoke-LogMsg $Lines[$i]
+                        Invoke-LogMsg $Lines[$i] $LoopIndex
                     }
                 }
                 Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
@@ -221,24 +220,25 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
 
         if ($proc.ExitCode -eq 0) {
-            Invoke-LogMsg "Sync completed successfully!"
+            Invoke-LogMsg "Sync completed successfully!" $LoopIndex
         } else {
-            Invoke-LogMsg "Finished with warnings/errors. Exit Code: $($proc.ExitCode)"
+            Invoke-LogMsg "Finished with warnings/errors. Exit Code: $($proc.ExitCode)" $LoopIndex
         }
 
     } catch {
         $InternalErrMsg = $_.Exception.Message
         $FailedLineNum  = $_.InvocationInfo.ScriptLineNumber
-        Invoke-LogMsg "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg"
+        Invoke-LogMsg "[🛑 THREAD DEBUG ALERT] Runspace collapsed on script line $FailedLineNum. Error: $InternalErrMsg" $LoopIndex
+    } finally {
+        # Secure Clean Sweep File Removal directly inside the individual runspace loop
+        if ($using:CleanSweep -and (Test-Path -LiteralPath $LocalActiveHistoryLog)) {
+            Remove-Item -LiteralPath $LocalActiveHistoryLog -Force -ErrorAction SilentlyContinue
+        }
     }
 } -ThrottleLimit 1
 
-if ($CleanSweep -and (Test-Path -LiteralPath $ActiveHistoryLog)) {
-    Remove-Item -LiteralPath $ActiveHistoryLog -Force -ErrorAction SilentlyContinue
-}
-
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Write-Output "[METRIC] $Elapsed"
+Write-Output "[METRIC] Total Run Duration: $Elapsed"
 Write-Output "`n============================================="
 Exit 0
