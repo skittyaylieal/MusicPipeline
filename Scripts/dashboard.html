@@ -895,14 +895,21 @@
                         // Fix: Accumulate all string modifications locally to prevent DOM thrashing
                         let batchedHTML = '';
                         data.logs.forEach(line => {
-                            let formattedLine = line
-                                .replace(/\x1b\[1;33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
-                                .replace(/\x1b\[1;36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')
-                                .replace(/\x1b\[1;32m/g, '<span style="color:#50FA7B; font-weight:bold;">')
-                                .replace(/\x1b\[1;31m/g, '<span style="color:#FF5555; font-weight:bold;">')
-                                .replace(/\x1b\[1;35m/g, '<span style="color:#FF79C6; font-weight:bold;">')
-                                .replace(/\x1b\[90m/g, '<span style="color:#6272A4;">')
-                                .replace(/\x1b\[0m/g, '</span>');
+                            // 1. Fallback: Catch any stripped literal '[36m' leaks slipping through before processing
+                            let cleanedLine = line;
+                            if (cleanedLine.includes('[36m') && !cleanedLine.includes('\x1b')) {
+                                cleanedLine = cleanedLine.replace(/\[36m/g, '\x1b[36m');
+                            }
+
+                            // 2. Parse ANSI colors dynamically (handles standard, bold, and edge cases)
+                            let formattedLine = cleanedLine
+                                .replace(/\x1b\[(1;)?33m/g, '<span style="color:#FFB86C; font-weight:bold;">') // Yellow/Orange
+                                .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">') // Cyan (Matches [36m and [1;36m)
+                                .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">') // Green
+                                .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">') // Red
+                                .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">') // Magenta
+                                .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')                  // Comment Grey
+                                .replace(/\x1b\[0m/g, '</span>');                                             // Reset Toggle
 
                             batchedHTML += formattedLine + "\n";
                         });

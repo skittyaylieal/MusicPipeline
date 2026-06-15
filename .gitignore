@@ -3,6 +3,7 @@ Config/cookies.txt
 Config/*.txt
 Config/.env
 Config/*.json
+Config/*.tmp
 
 # Ignore local test data caches
 Sandbox_Backup/
