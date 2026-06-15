@@ -648,12 +648,12 @@
                     // Setup Global Trace State Machines
                     globalTrackCache = data.tracks || [];
             
-                    if (document.getElementById('pane-tracks').classList.contains('active')) {
-                        renderTracksTable(globalTrackCache);
-                    }
+                if (document.getElementById('pane-tracks').classList.contains('active')) {
+                    renderTracksTable(globalTrackCache);
+                }
 
-                    // Explicitly delete references
-                    data = null;
+                // Explicitly delete references
+                data = null;
                 })
                 .catch(e => {
                     errorCount++;
@@ -662,18 +662,18 @@
                 });
         }
 
-        // Optimized Search & Filter
+        // Search & Filter Algorithms
         function renderTracksTable(tracks) {
             const tbody = document.getElementById('tracks-table-body');
-            const MAX_ROWS = 100; // Cap the display to prevent 30GB bloat
-
             if (!tracks || tracks.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #71717A;">Zero matching files.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #71717A;">Zero matching file structures tracked in target paths.</td></tr>`;
                 return;
             }
 
-            // Only map the first 100 items to keep DOM nodes low
-            const html = tracks.slice(0, MAX_ROWS).map(t => {
+            // MEMORY FIX: Only render the first 100 items to prevent the 30GB crash
+            const visibleTracks = tracks.slice(0, 100);
+
+            tbody.innerHTML = visibleTracks.map(t => {
                 let badgeClass = `badge-${t.type.toLowerCase()}`;
                 let lrcBadge = t.hasLrc ? `<span class="badge badge-lrc">LRC</span>` : '';
                 let instBadge = t.isInstrumental ? `<span class="badge badge-inst">INST</span>` : '';
@@ -691,10 +691,8 @@
                     </tr>
                 `;
             }).join('');
-
-            // Update DOM in a single operation
-            tbody.innerHTML = html;
         }
+        
 
         function evaluateTrackFilters() {
             let query = document.getElementById('track-search-filter').value.toLowerCase();
@@ -1200,7 +1198,7 @@
             // Streamer has its own built-in recursion, so just kick it off once
             setTimeout(runLogStreamer, 1500);
         }); 
-        
+
     </script>
 </body>
 </html>
