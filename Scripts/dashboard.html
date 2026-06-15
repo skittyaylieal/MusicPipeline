@@ -339,10 +339,6 @@
             <h1>Local Repository Track Ledger</h1>
         </div>
 
-        <button class="btn-primary" onclick="loadLibraryTracksOnDemand(true)" style="padding: 6px 12px; font-size: 12px; margin-bottom: 15px;">
-    🔄 Sync View Data
-        </button>
-
         <div class="control-panel">
             <div class="search-bar-wrap">
                 <input type="text" id="track-search-filter" placeholder="Filter records by Title, Artist, or Album details..." oninput="evaluateTrackFilters()">
@@ -568,13 +564,11 @@
 
     <script>
         let globalTrackCache = [];
-        let filteredTracks = [];        // Holds the active filtered subset of tracks
-        let tracksRenderedCount = 0;    // Tracks how many rows are currently drawn
-        const BATCH_SIZE = 100;         // Number of tracks to load per scroll step
-
         let performanceChartInstance = null;
         let activeLogLinePointer = 0;
         let fullProfilesObjectContainer = {};
+        
+        // Global Circuit Breaker to prevent 25GB RAM memory leaks
         let errorCount = 0;
 
         // Sidebar Navigation Animations & Display Routines
@@ -602,10 +596,6 @@
             if (paneId === 'pane-analytics') {
                 setTimeout(renderPerformanceChart, 100);
             }
-            // INITIALIZE TRACKS VIEW ON NAVIGATION
-            if (paneId === 'pane-tracks') {
-                evaluateTrackFilters();
-            }
         }
 
         // Global Metrics Parsing and Synchronization Loops
@@ -620,7 +610,6 @@
                 .then(data => {
                     errorCount = 0; // Reset breaker on success
                     
-                    // Update counts and sizes safely
                     document.getElementById('m-master-count').innerText = data.masterCount || 0;
                     document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
                     
@@ -631,12 +620,8 @@
                     let coverage = data.masterCount ? Math.round((data.lrcCount / data.masterCount) * 100) : 0;
                     document.getElementById('m-lrc-coverage').innerText = `${coverage}% Coverage Rate Across Local Repository`;
 
-                    // Display active profile state safely
                     if (data.activeProfile) {
                         document.getElementById('active-profile-tag').innerText = `Profile: ${data.activeProfile}`;
-                    } else if (data.loadingState) {
-                        // Fallback visual cue if engine is syncing/scanning paths
-                        document.getElementById('active-profile-tag').innerText = `Status: ${data.loadingState.toUpperCase()}`;
                     }
 
                     // Manage Global System Application Pipeline Alerts
@@ -662,16 +647,16 @@
                         }
                     }
 
-                    // --- FIXED: SAFELY UPDATE TRACK CACHE AND RETAIN SCROLL POSITION ---
+                    // Setup Global Trace State Machines
                     const isCacheEmpty = globalTrackCache.length === 0;
                     globalTrackCache = data.tracks || [];
-
-                    // Only perform a full UI layout paint on the initial application payload bootstrap
+            
+                    // Only perform a full UI reset on the initial application payload bootstrap
                     if (document.getElementById('pane-tracks').classList.contains('active') && isCacheEmpty) {
                         evaluateTrackFilters();
                     }
 
-                    // Explicitly delete references to free memory references
+                    // Explicitly delete references
                     data = null;
                 })
                 .catch(e => {
@@ -681,22 +666,18 @@
                 });
         }
 
-        // Search & Filter Algorithms with Progressive Infinite Scroll Batching
-        function appendNextTrackBatch() {
+        // Search & Filter Algorithms
+        function renderTracksTable(tracks) {
             const tbody = document.getElementById('tracks-table-body');
-            
-            if (!filteredTracks || filteredTracks.length === 0) {
+            if (!tracks || tracks.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #71717A;">Zero matching file structures tracked in target paths.</td></tr>`;
                 return;
             }
 
-            // Halt execution if all matching items have been cleanly painted
-            if (tracksRenderedCount >= filteredTracks.length) return;
+            // MEMORY FIX: Only render the first 100 items to prevent the 30GB crash
+            const visibleTracks = tracks.slice(0, 100);
 
-            // Slice out the next chunk of track payloads
-            const nextBatch = filteredTracks.slice(tracksRenderedCount, tracksRenderedCount + BATCH_SIZE);
-            
-            const rowsHtml = nextBatch.map(t => {
+            tbody.innerHTML = visibleTracks.map(t => {
                 let badgeClass = `badge-${t.type.toLowerCase()}`;
                 let lrcBadge = t.hasLrc ? `<span class="badge badge-lrc">LRC</span>` : '';
                 let instBadge = t.isInstrumental ? `<span class="badge badge-inst">INST</span>` : '';
@@ -714,23 +695,15 @@
                     </tr>
                 `;
             }).join('');
-
-            if (tracksRenderedCount === 0) {
-                tbody.innerHTML = rowsHtml;
-            } else {
-                // Efficiently inject nodes at the bottom without recalculating the existing DOM tree
-                tbody.insertAdjacentHTML('beforeend', rowsHtml);
-            }
-
-            tracksRenderedCount += nextBatch.length;
         }
+        
 
         function evaluateTrackFilters() {
             let query = document.getElementById('track-search-filter').value.toLowerCase();
             let format = document.getElementById('track-format-filter').value;
             let sort = document.getElementById('track-sort-order').value;
 
-            filteredTracks = globalTrackCache.filter(t => {
+            let filtered = globalTrackCache.filter(t => {
                 let textMatch = t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query) || t.album.toLowerCase().includes(query);
                 if (!textMatch) return false;
 
@@ -740,56 +713,12 @@
                 return t.type === format;
             });
 
-            if (sort === 'TITLE') filteredTracks.sort((a,b) => a.title.localeCompare(b.title));
-            else if (sort === 'ARTIST') filteredTracks.sort((a,b) => a.artist.localeCompare(b.artist));
-            else if (sort === 'SIZE') filteredTracks.sort((a,b) => b.sizeMb - a.sizeMb);
+            if (sort === 'TITLE') filtered.sort((a,b) => a.title.localeCompare(b.title));
+            else if (sort === 'ARTIST') filtered.sort((a,b) => a.artist.localeCompare(b.artist));
+            else if (sort === 'SIZE') filtered.sort((a,b) => b.sizeMb - a.sizeMb);
 
-            // Reset pagination boundaries and repaint target framework
-            tracksRenderedCount = 0;
-            appendNextTrackBatch();
+            renderTracksTable(filtered);
         }
-
-        // Window scroll intersection layer monitoring for lazy-loaded assets
-    window.addEventListener('scroll', () => {
-        // Only intercept events if the user is actively working inside the track list view
-        if (!document.getElementById('pane-tracks').classList.contains('active')) return;
-
-        // Trigger appending when you scroll within 350px of the page bottom boundary
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 350) {
-            appendNextTrackBatch();
-        }
-    });
-
-        function loadLibraryTracksOnDemand(forceRefresh = false) {
-            const tbody = document.getElementById('tracks-table-body');
-            
-            // FIXED: Stripped window. references to match top-level lexical declaration
-            if (globalTrackCache && globalTrackCache.length > 0 && !forceRefresh) {
-                renderTracksTable(globalTrackCache);
-                return;
-            }
-
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #A1A1AA;">
-                <span class="spinner" style="display:inline-block; margin-right:8px; animation: spin 1s linear infinite;">⏳</span> 
-                Streaming track structure tables from local cache registry...
-            </td></tr>`;
-
-            fetch('/tracks')
-                .then(res => {
-                    if (!res.ok) throw new Error("Server returned status " + res.status);
-                    return res.json();
-                })
-                .then(data => {
-                    // FIXED: Directly targets the unified array
-                    globalTrackCache = data.tracks || [];
-                    renderTracksTable(globalTrackCache);
-                })
-                .catch(e => {
-                    console.error("Failed to fetch on-demand tracks:", e);
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #FF5555;">⚠️ Failed to load library data: ${e.message}</td></tr>`;
-                });
-        }
-
 
         // Error Anomaly Resolution Routines
         function loadBrokenSongs() {
@@ -874,13 +803,13 @@
                 });
         }
 
-        // Memory-leak resistant console log engine
+        // Live Log Buffer Streaming Logic
         function runLogStreamer() {
             if (errorCount > 5) return; 
 
             fetch(`/stream?skip=${activeLogLinePointer}`)
                 .then(res => {
-                    if (!res.ok) throw new Error("Server returned status " + res.status);
+                    if (!res.ok) throw new Error("Server returned " + res.status);
                     return res.json();
                 })
                 .then(data => {
@@ -899,8 +828,6 @@
                     if (data.logs && data.logs.length > 0) {
                         if (activeLogLinePointer === 0) feed.innerHTML = '';
                         
-                        // Fix: Accumulate all string modifications locally to prevent DOM thrashing
-                        let batchedHTML = '';
                         data.logs.forEach(line => {
                             let formattedLine = line
                                 .replace(/\x1b\[1;33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
@@ -911,20 +838,10 @@
                                 .replace(/\x1b\[90m/g, '<span style="color:#6272A4;">')
                                 .replace(/\x1b\[0m/g, '</span>');
 
-                            batchedHTML += formattedLine + "\n";
+                            feed.innerHTML += formattedLine + "\n";
                         });
 
-                        // Inject instantly at the end of the container
-                        feed.insertAdjacentHTML('beforeend', batchedHTML);
                         activeLogLinePointer = data.totalLines;
-
-                        // Fix: Cap the console history to 500 lines to keep memory usage locked down flat
-                        const maxLinesAllowed = 500;
-                        let currentLines = feed.innerHTML.split('\n');
-                        if (currentLines.length > maxLinesAllowed) {
-                            feed.innerHTML = currentLines.slice(-maxLinesAllowed).join('\n');
-                        }
-
                         feed.scrollTop = feed.scrollHeight;
                     }
                     setTimeout(runLogStreamer, 1200);
@@ -1031,26 +948,15 @@
             });
         }
 
-        // Safer pipeline execution handling
+        // Structural Form Trigger Pipelines
         function dispatchPipeline(endpoint) {
             activeLogLinePointer = 0;
             switchPage('pane-console', 'link-console');
-            
             fetch(endpoint, { method: 'POST' })
-                .then(res => {
-                    if (!res.ok) throw new Error("Pipeline trigger endpoint rejected command.");
-                    // Read as text first to handle both plain text or structural JSON safely
-                    return res.text(); 
-                })
-                .then(text => console.log("Pipeline successfully initiated:", text))
-                .catch(e => {
-                    console.error("Failed pipeline dispatch:", e);
-                    const feed = document.getElementById('terminal-feed');
-                    if (feed) feed.innerHTML += `\n<span style="color:#FF5555;">[UI Error] Failed to dispatch control sequence: ${e.message}</span>`;
-                });
+                .then(res => res.json())
+                .then(() => console.log(`Dispatched engine sequence: ${endpoint}`))
+                .catch(e => console.error("Failed pipeline dispatch", e));
         }
-
-
 
         function dispatchStopPipeline() {
             fetch('/stop', { method: 'POST' })
@@ -1086,9 +992,9 @@
                 .catch(e => console.error("Failed hot pull", e));
         }
 
-        // ================================================================= -->
+        // ================================================================= */
         // CONFIGURATION PROFILE INTERACTIVE LOGIC (NEW ENGINE IMPLEMENTATION)
-        // ================================================================= -->
+        // ================================================================= */
         function loadProfilesFrameworkSystem() {
             if (errorCount > 5) return; // Circuit Breaker
             
