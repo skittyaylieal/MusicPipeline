@@ -662,8 +662,17 @@
                         }
                     }
 
-                    // --- FIXED: CRITICAL REMOVAL ---
-                    // Removed the old lines that were clearing out window.globalTrackCache!
+                    // --- FIXED: SAFELY UPDATE TRACK CACHE AND RETAIN SCROLL POSITION ---
+                    const isCacheEmpty = globalTrackCache.length === 0;
+                    globalTrackCache = data.tracks || [];
+
+                    // Only perform a full UI layout paint on the initial application payload bootstrap
+                    if (document.getElementById('pane-tracks').classList.contains('active') && isCacheEmpty) {
+                        evaluateTrackFilters();
+                    }
+
+                    // Explicitly delete references to free memory references
+                    data = null;
                 })
                 .catch(e => {
                     errorCount++;
