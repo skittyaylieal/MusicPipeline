@@ -20,144 +20,72 @@
         /* NAVIGATION SIDEBAR DRAWER STYLING                                 */
         /* ================================================================= */
         #menu-trigger {
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            background: #18181C;
-            border: 1px solid #27272A;
-            color: #E2E8F0;
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            z-index: 1000;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            position: fixed; top: 15px; left: 15px; background: #18181C;
+            border: 1px solid #27272A; color: #E2E8F0; padding: 10px 16px;
+            border-radius: 6px; cursor: pointer; font-weight: 600;
+            z-index: 1000; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
-        #menu-trigger:hover {
-            background: #27272A;
-            border-color: #3F3F46;
-        }
+        #menu-trigger:hover { background: #27272A; border-color: #3F3F46; }
         #sidebar-drawer {
-            position: fixed;
-            top: 0;
-            left: -300px;
-            width: 260px;
-            height: 100%;
-            background: #121215;
-            border-right: 1px solid #1E1E22;
-            box-shadow: 5px 0 25px rgba(0,0,0,0.6);
-            z-index: 999;
+            position: fixed; top: 0; left: -300px; width: 260px; height: 100%;
+            background: #121215; border-right: 1px solid #1E1E22;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.6); z-index: 999;
             transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            padding: 30px 20px;
-            padding-top: 80px;
+            padding: 30px 20px; padding-top: 80px;
         }
-        #sidebar-drawer.open {
-            left: 0;
-        }
+        #sidebar-drawer.open { left: 0; }
         .drawer-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(3px);
-            z-index: 998;
-            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
+            z-index: 998; display: none;
         }
-        .drawer-overlay.show {
-            display: block;
-        }
+        .drawer-overlay.show { display: block; }
         .menu-item {
-            padding: 14px 18px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            color: #A1A1AA;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            padding: 14px 18px; margin-bottom: 8px; border-radius: 8px;
+            cursor: pointer; font-weight: 500; color: #A1A1AA;
+            transition: all 0.2s ease; display: flex; align-items: center; gap: 12px;
         }
-        .menu-item:hover {
-            background: #1A1A1E;
-            color: #F4F4F5;
-        }
-        .menu-item.active {
-            background: #27272A;
-            color: #BD93F9;
-            font-weight: 600;
-            box-shadow: inset 3px 0 0 #BD93F9;
-        }
+        .menu-item:hover { background: #1A1A1E; color: #F4F4F5; }
+        .menu-item.active { background: #27272A; color: #BD93F9; font-weight: 600; box-shadow: inset 3px 0 0 #BD93F9; }
 
         /* ================================================================= */
         /* LAYOUT ARCHITECTURE & CORE MECHANICS                              */
         /* ================================================================= */
-        .app-pane {
-            display: none;
-            animation: fadeIn 0.25s ease-out;
-        }
-        .app-pane.active {
-            display: block;
-        }
+        .app-pane { display: none; animation: fadeIn 0.25s ease-out; }
+        .app-pane.active { display: block; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         .header-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            border-bottom: 1px solid #1E1E22;
-            padding-bottom: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 25px; border-bottom: 1px solid #1E1E22; padding-bottom: 15px;
         }
         .header-section h1 {
-            margin: 0;
-            font-size: 26px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+            margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;
             background: linear-gradient(135deg, #E2E8F0 0%, #A1A1AA 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
         
         /* Status Banner Badges */
         .status-pill {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+            padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;
         }
         .status-active { background: rgba(80, 250, 123, 0.15); color: #50FA7B; border: 1px solid rgba(80, 250, 123, 0.3); }
         .status-idle { background: rgba(139, 233, 253, 0.15); color: #8BE9FD; border: 1px solid rgba(139, 233, 253, 0.3); }
 
         /* Metrics Display Grid Tables */
         .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px; margin-bottom: 30px;
         }
         .metric-card {
-            background: #141417;
-            border: 1px solid #1E1E22;
-            border-radius: 12px;
-            padding: 22px;
-            position: relative;
-            overflow: hidden;
+            background: #141417; border: 1px solid #1E1E22; border-radius: 12px;
+            padding: 22px; position: relative; overflow: hidden;
         }
-        .metric-card::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #27272A;
-        }
+        .metric-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #27272A; }
         .metric-card.purple::before { background: #BD93F9; }
         .metric-card.pink::before { background: #FF79C6; }
         .metric-card.cyan::before { background: #8BE9FD; }
@@ -167,17 +95,8 @@
         .metric-sub { font-size: 12px; color: #A1A1AA; }
 
         /* Universal Controls Panels */
-        .control-panel {
-            background: #141417;
-            border: 1px solid #1E1E22;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-        .panel-title {
-            font-size: 16px; font-weight: 600; margin-top: 0; margin-bottom: 15px; color: #E2E8F0;
-            display: flex; align-items: center; gap: 8px;
-        }
+        .control-panel { background: #141417; border: 1px solid #1E1E22; border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .panel-title { font-size: 16px; font-weight: 600; margin-top: 0; margin-bottom: 15px; color: #E2E8F0; display: flex; align-items: center; gap: 8px; }
         .btn-group { display: flex; flex-wrap: wrap; gap: 10px; }
 
         /* Standardized Form Controls & Buttons */
@@ -201,40 +120,20 @@
             padding: 10px 14px; border-radius: 6px; font-size: 14px; outline: none;
             font-family: inherit; width: 100%; box-sizing: border-box;
         }
-        select:focus, input[type="text"]:focus, textarea:focus {
-            border-color: #BD93F9; box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.15);
-        }
+        select:focus, input[type="text"]:focus, textarea:focus { border-color: #BD93F9; box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.15); }
 
         /* Alert Callout Containers */
-        .alert-box {
-            padding: 14px 18px; border-radius: 8px; margin-bottom: 15px;
-            display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-        }
+        .alert-box { padding: 14px 18px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
         .alert-danger { background: rgba(255, 85, 85, 0.12); color: #FF5555; border: 1px solid rgba(255, 85, 85, 0.25); }
         .alert-warning { background: rgba(255, 184, 108, 0.12); color: #FFB86C; border: 1px solid rgba(255, 184, 108, 0.25); }
 
         /* Form Configuration Framework */
-        .config-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        .config-group {
-            margin-bottom: 15px;
-        }
-        .config-group label {
-            display: block;
-            font-size: 13px;
-            color: #A1A1AA;
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .config-group { margin-bottom: 15px; }
+        .config-group label { display: block; font-size: 13px; color: #A1A1AA; margin-bottom: 6px; font-weight: 500; }
 
         /* Interactive Tables UI */
-        .table-container {
-            background: #141417; border: 1px solid #1E1E22; border-radius: 12px; overflow: hidden;
-        }
+        .table-container { background: #141417; border: 1px solid #1E1E22; border-radius: 12px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
         th { background: #1A1A1F; padding: 14px 18px; color: #A1A1AA; font-weight: 600; border-bottom: 1px solid #1E1E22; }
         td { padding: 14px 18px; border-bottom: 1px solid #1A1A1E; color: #E2E8F0; vertical-align: middle; }
@@ -250,30 +149,22 @@
         }
 
         /* Badge Pills Contexts */
-        .badge {
-            padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block;
-        }
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; }
         .badge-flac { background: rgba(80, 250, 123, 0.15); color: #50FA7B; }
         .badge-m4a { background: rgba(139, 233, 253, 0.15); color: #8BE9FD; }
         .badge-mp3 { background: rgba(255, 184, 108, 0.15); color: #FFB86C; }
         .badge-lrc { background: rgba(255, 121, 198, 0.15); color: #FF79C6; }
         .badge-inst { background: rgba(189, 147, 249, 0.15); color: #BD93F9; }
+        .badge-time { background: rgba(241, 250, 140, 0.15); color: #F1FA8C; }
 
         /* Utilities Control Search Options */
-        .search-bar-wrap {
-            display: flex; gap: 12px; margin-bottom: 20px;
-        }
+        .search-bar-wrap { display: flex; gap: 12px; margin-bottom: 20px; }
         .search-bar-wrap input { max-width: 400px; }
 
         /* Active Profile Header Tag */
         #active-profile-tag {
-            font-size: 13px;
-            background: rgba(189, 147, 249, 0.1);
-            color: #BD93F9;
-            border: 1px solid rgba(189, 147, 249, 0.2);
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-weight: 600;
+            font-size: 13px; background: rgba(189, 147, 249, 0.1); color: #BD93F9;
+            border: 1px solid rgba(189, 147, 249, 0.2); padding: 4px 10px; border-radius: 6px; font-weight: 600;
         }
     </style>
 </head>
@@ -370,11 +261,12 @@
                         <th>Primary Artist Mapping</th>
                         <th>Target Album Container</th>
                         <th>Allocation</th>
+                        <th>Avg Process Time</th>
                         <th>Extension Flags</th>
                     </tr>
                 </thead>
                 <tbody id="tracks-table-body">
-                    <tr><td colspan="5" style="text-align: center; color: #71717A;">Executing asynchronous metadata directory crawl sequence...</td></tr>
+                    <tr><td colspan="6" style="text-align: center; color: #71717A;">Executing asynchronous metadata directory crawl sequence...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -415,25 +307,36 @@
         <div class="header-section">
             <h1>Pipeline Performance Chronography</h1>
         </div>
-        <div class="control-panel" style="background: #141417; min-height: 350px;">
-            <canvas id="performanceChart" style="max-height: 400px; width: 100%;"></canvas>
+        
+        <div class="config-grid">
+            <div class="control-panel" style="background: #141417; min-height: 350px;">
+                <h3 class="panel-title" style="margin-bottom: 25px;">⏱️ Master Event Pipeline Lifecycle</h3>
+                <canvas id="performanceChart" style="max-height: 300px; width: 100%;"></canvas>
+            </div>
+            
+            <div class="control-panel" style="background: #141417; min-height: 350px;">
+                <h3 class="panel-title" style="margin-bottom: 25px;">🎯 Target File Size vs Engine Processing Velocity</h3>
+                <canvas id="scatterChart" style="max-height: 300px; width: 100%;"></canvas>
+            </div>
         </div>
+
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th>Execution Timestamp</th>
-                        <th>Trigger Call context</th>
+                        <th>Trigger Context</th>
                         <th>S1: Cookies</th>
-                        <th>S2: Extraction</th>
+                        <th>S2: Extract</th>
                         <th>S3: Verification</th>
                         <th>S4: Metadata</th>
                         <th>S5: Transcode</th>
-                        <th>Net Block Duration</th>
+                        <th>S6: Metrics</th>
+                        <th>Net Total</th>
                     </tr>
                 </thead>
                 <tbody id="analytics-table-body">
-                    <tr><td colspan="8" style="text-align: center; color: #71717A;">Compiling database timing records...</td></tr>
+                    <tr><td colspan="9" style="text-align: center; color: #71717A;">Compiling database timing records...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -461,58 +364,22 @@
             <div class="config-grid">
                 <div>
                     <h4 style="color: #BD93F9; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Target Library System Path Anchors</h4>
-                    <div class="config-group">
-                        <label>Archival Lossless Backup Target Directory (BackupDir)</label>
-                        <input type="text" id="cfg-BackupDir">
-                    </div>
-                    <div class="config-group">
-                        <label>Compressed lossy Target Deployment Directory (MobileDir)</label>
-                        <input type="text" id="cfg-MobileDir">
-                    </div>
-                    <div class="config-group">
-                        <label>Geo-restricted Track Exception Database File Path (BrokenSongsFile)</label>
-                        <input type="text" id="cfg-BrokenSongsFile">
-                    </div>
-                    <div class="config-group">
-                        <label>Diagnostic Console Logging Pipeline Stream Target (DiagLogFile)</label>
-                        <input type="text" id="cfg-DiagLogFile">
-                    </div>
-                    <div class="config-group">
-                        <label>Asynchronous Library Cache Database Ledger Path (CacheFile)</label>
-                        <input type="text" id="cfg-CacheFile">
-                    </div>
-                    <div class="config-group">
-                        <label>Historical Operational Runtime Chronology JSON (TimingFile)</label>
-                        <input type="text" id="cfg-TimingFile">
-                    </div>
+                    <div class="config-group"><label>Archival Lossless Backup Target Directory (BackupDir)</label><input type="text" id="cfg-BackupDir"></div>
+                    <div class="config-group"><label>Compressed lossy Target Deployment Directory (MobileDir)</label><input type="text" id="cfg-MobileDir"></div>
+                    <div class="config-group"><label>Geo-restricted Track Exception Database File Path (BrokenSongsFile)</label><input type="text" id="cfg-BrokenSongsFile"></div>
+                    <div class="config-group"><label>Diagnostic Console Logging Pipeline Stream Target (DiagLogFile)</label><input type="text" id="cfg-DiagLogFile"></div>
+                    <div class="config-group"><label>Asynchronous Library Cache Database Ledger Path (CacheFile)</label><input type="text" id="cfg-CacheFile"></div>
+                    <div class="config-group"><label>Historical Operational Runtime Chronology JSON (TimingFile)</label><input type="text" id="cfg-TimingFile"></div>
                 </div>
 
                 <div>
                     <h4 style="color: #FF79C6; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Process Binaries & Core Engine Dependencies</h4>
-                    <div class="config-group">
-                        <label>Net Cookie Handshake Authentication Payload Path (CookieFile)</label>
-                        <input type="text" id="cfg-CookieFile">
-                    </div>
-                    <div class="config-group">
-                        <label>YTDLP Execution Archive Extraction History Record (HistoryFile)</label>
-                        <input type="text" id="cfg-HistoryFile">
-                    </div>
-                    <div class="config-group">
-                        <label>Absolute Path Location Context for yt-dlp.exe (YTDLPExe)</label>
-                        <input type="text" id="cfg-YTDLPExe">
-                    </div>
-                    <div class="config-group">
-                        <label>Absolute Path Location Context for ffmpeg.exe (FFmpegExe)</label>
-                        <input type="text" id="cfg-FFmpegExe">
-                    </div>
-                    <div class="config-group">
-                        <label>Absolute Path Location Context for firefox.exe Binary (FirefoxExe)</label>
-                        <input type="text" id="cfg-FirefoxExe">
-                    </div>
-                    <div class="config-group">
-                        <label>Downstream Cookie Handshake Validation Target URL (CheckURL)</label>
-                        <input type="text" id="cfg-CheckURL">
-                    </div>
+                    <div class="config-group"><label>Net Cookie Handshake Authentication Payload Path (CookieFile)</label><input type="text" id="cfg-CookieFile"></div>
+                    <div class="config-group"><label>YTDLP Execution Archive Extraction History Record (HistoryFile)</label><input type="text" id="cfg-HistoryFile"></div>
+                    <div class="config-group"><label>Absolute Path Location Context for yt-dlp.exe (YTDLPExe)</label><input type="text" id="cfg-YTDLPExe"></div>
+                    <div class="config-group"><label>Absolute Path Location Context for ffmpeg.exe (FFmpegExe)</label><input type="text" id="cfg-FFmpegExe"></div>
+                    <div class="config-group"><label>Absolute Path Location Context for firefox.exe Binary (FirefoxExe)</label><input type="text" id="cfg-FirefoxExe"></div>
+                    <div class="config-group"><label>Downstream Cookie Handshake Validation Target URL (CheckURL)</label><input type="text" id="cfg-CheckURL"></div>
                 </div>
             </div>
 
@@ -520,34 +387,16 @@
                 <div>
                     <h4 style="color: #8BE9FD; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Throttling, Automation & Performance Loops</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div class="config-group">
-                            <label>Base Extraction Delay (SleepInterval)</label>
-                            <input type="text" id="cfg-SleepInterval">
-                        </div>
-                        <div class="config-group">
-                            <label>Max Extraction Delay (MaxSleepInterval)</label>
-                            <input type="text" id="cfg-MaxSleepInterval">
-                        </div>
+                        <div class="config-group"><label>Base Extraction Delay (SleepInterval)</label><input type="text" id="cfg-SleepInterval"></div>
+                        <div class="config-group"><label>Max Extraction Delay (MaxSleepInterval)</label><input type="text" id="cfg-MaxSleepInterval"></div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div class="config-group">
-                            <label>Throttling Burst Limit (SleepRequests)</label>
-                            <input type="text" id="cfg-SleepRequests">
-                        </div>
-                        <div class="config-group">
-                            <label>FFmpeg Transcode Worker Limit (MaxCompressThreads)</label>
-                            <input type="text" id="cfg-MaxCompressThreads">
-                        </div>
+                        <div class="config-group"><label>Throttling Burst Limit (SleepRequests)</label><input type="text" id="cfg-SleepRequests"></div>
+                        <div class="config-group"><label>FFmpeg Transcode Worker Limit (MaxCompressThreads)</label><input type="text" id="cfg-MaxCompressThreads"></div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div class="config-group">
-                            <label>Folder Scanner Loop (Sec)</label>
-                            <input type="text" id="cfg-ScannerSleepIntervalSec">
-                        </div>
-                        <div class="config-group">
-                            <label>Automated Cron Cycle (Sec)</label>
-                            <input type="text" id="cfg-ChronDaemonSleepSec">
-                        </div>
+                        <div class="config-group"><label>Folder Scanner Loop (Sec)</label><input type="text" id="cfg-ScannerSleepIntervalSec"></div>
+                        <div class="config-group"><label>Automated Cron Cycle (Sec)</label><input type="text" id="cfg-ChronDaemonSleepSec"></div>
                     </div>
                 </div>
 
@@ -568,11 +417,13 @@
 
     <script>
         let globalTrackCache = [];
-        let filteredTracks = [];        // Holds the active filtered subset of tracks
-        let tracksRenderedCount = 0;    // Tracks how many rows are currently drawn
-        const BATCH_SIZE = 100;         // Number of tracks to load per scroll step
+        let globalTrackMetrics = [];    // NEW: Houses historical track executions
+        let filteredTracks = [];        
+        let tracksRenderedCount = 0;    
+        const BATCH_SIZE = 100;         
 
         let performanceChartInstance = null;
+        let scatterChartInstance = null; // NEW: Scatter plot instance
         let activeLogLinePointer = 0;
         let fullProfilesObjectContainer = {};
         let errorCount = 0;
@@ -600,17 +451,33 @@
             }
 
             if (paneId === 'pane-analytics') {
-                setTimeout(renderPerformanceChart, 100);
+                setTimeout(() => {
+                    renderPerformanceChart();
+                    renderScatterChart();
+                }, 100);
             }
-            // INITIALIZE TRACKS VIEW ON NAVIGATION
             if (paneId === 'pane-tracks') {
                 evaluateTrackFilters();
             }
         }
 
+        // --- NEW: Track Analytics Data Sync ---
+        function loadTrackMetrics() {
+            if (errorCount > 5) return;
+            fetch('/track-metrics')
+                .then(res => res.ok ? res.json() : [])
+                .then(data => {
+                    globalTrackMetrics = data || [];
+                    if (document.getElementById('pane-analytics').classList.contains('active')) {
+                        renderScatterChart();
+                    }
+                })
+                .catch(e => console.error("Failed to load individual track telemetry.", e));
+        }
+
         // Global Metrics Parsing and Synchronization Loops
         function loadMetrics() {
-            if (errorCount > 5) return; // Circuit Breaker
+            if (errorCount > 5) return; 
             
             fetch('/metrics')
                 .then(res => {
@@ -618,9 +485,8 @@
                     return res.json();
                 })
                 .then(data => {
-                    errorCount = 0; // Reset breaker on success
+                    errorCount = 0; 
                     
-                    // Update counts and sizes safely using exact repository metrics styling
                     document.getElementById('m-master-count').innerText = data.masterCount || 0;
                     document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
                     
@@ -631,15 +497,12 @@
                     let coverage = data.masterCount ? Math.round((data.lrcCount / data.masterCount) * 100) : 0;
                     document.getElementById('m-lrc-coverage').innerText = `${coverage}% Coverage Rate Across Local Repository`;
 
-                    // Display active profile state safely
                     if (data.activeProfile) {
                         document.getElementById('active-profile-tag').innerText = `Profile: ${data.activeProfile}`;
                     } else if (data.loadingState) {
-                        // Fallback visual cue if engine is syncing/scanning paths
                         document.getElementById('active-profile-tag').innerText = `Status: ${data.loadingState.toUpperCase()}`;
                     }
 
-                    // Manage Global System Application Pipeline Alerts
                     const alertsZone = document.getElementById('alerts-injection-zone');
                     if (alertsZone) {
                         alertsZone.innerHTML = '';
@@ -661,46 +524,45 @@
                             });
                         }
                     }
-
-                    // --- REMOVED THE DESTRUCTIVE TRACK MEMORY OVERWRITE ---
-                    // Heavy track arrays are now handled completely on-demand via your /tracks endpoint.
-                    // This prevents your 3-second heartbeat poll from corrupting or blanking your library data.
-
-                    // Explicitly delete references to free memory references
                     data = null;
                 })
                 .catch(e => {
                     errorCount++;
-                    console.error("Metrics framework pull failure", e);
-                    if (errorCount === 6) console.warn("Too many errors. Pausing background refreshes to protect memory.");
+                    if (errorCount === 6) console.warn("Too many errors. Pausing background refreshes.");
                 });
         }
 
-        // Search & Filter Algorithms with Progressive Infinite Scroll Batching
         function appendNextTrackBatch() {
             const tbody = document.getElementById('tracks-table-body');
             
             if (!filteredTracks || filteredTracks.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #71717A;">Zero matching file structures tracked in target paths.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #71717A;">Zero matching file structures tracked in target paths.</td></tr>`;
                 return;
             }
-
-            // Halt execution if all matching items have been cleanly painted
             if (tracksRenderedCount >= filteredTracks.length) return;
 
-            // Slice out the next chunk of track payloads
             const nextBatch = filteredTracks.slice(tracksRenderedCount, tracksRenderedCount + BATCH_SIZE);
             
             const rowsHtml = nextBatch.map(t => {
                 let badgeClass = `badge-${t.type.toLowerCase()}`;
                 let lrcBadge = t.hasLrc ? `<span class="badge badge-lrc">LRC</span>` : '';
                 let instBadge = t.isInstrumental ? `<span class="badge badge-inst">INST</span>` : '';
+                
+                // NEW: Lookup processing time from individual track telemetry
+                let trackHistory = globalTrackMetrics.filter(m => m.id === t.id);
+                let timeBadge = `<span class="badge" style="background:rgba(255,255,255,0.05); color:#71717A;">Cached</span>`;
+                if (trackHistory.length > 0) {
+                    let avg = trackHistory.reduce((a, b) => a + b.duration, 0) / trackHistory.length;
+                    timeBadge = `<span class="badge badge-time">${avg.toFixed(1)}s</span>`;
+                }
+
                 return `
                     <tr>
                         <td style="font-weight: 600; color: #F4F4F5;">${t.title}</td>
                         <td style="color: #A1A1AA;">${t.artist}</td>
                         <td style="color: #71717A; font-style: italic;">${t.album}</td>
                         <td>${t.sizeMb} MB</td>
+                        <td>${timeBadge}</td>
                         <td>
                             <span class="badge ${badgeClass}">${t.type}</span>
                             ${lrcBadge}
@@ -713,7 +575,6 @@
             if (tracksRenderedCount === 0) {
                 tbody.innerHTML = rowsHtml;
             } else {
-                // Efficiently inject nodes at the bottom without recalculating the existing DOM tree
                 tbody.insertAdjacentHTML('beforeend', rowsHtml);
             }
 
@@ -739,17 +600,12 @@
             else if (sort === 'ARTIST') filteredTracks.sort((a,b) => a.artist.localeCompare(b.artist));
             else if (sort === 'SIZE') filteredTracks.sort((a,b) => b.sizeMb - a.sizeMb);
 
-            // Reset pagination boundaries and repaint target framework
             tracksRenderedCount = 0;
             appendNextTrackBatch();
         }
 
-        // Window scroll intersection layer monitoring for lazy-loaded assets
         window.addEventListener('scroll', () => {
-            // Only intercept events if the user is actively working inside the track list view
             if (!document.getElementById('pane-tracks').classList.contains('active')) return;
-
-            // Trigger appending when you scroll within 350px of the page bottom boundary
             if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 350) {
                 appendNextTrackBatch();
             }
@@ -763,7 +619,7 @@
                 return;
             }
 
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #A1A1AA;">
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #A1A1AA;">
                 <span class="spinner" style="display:inline-block; margin-right:8px; animation: spin 1s linear infinite;">⏳</span>  
                 Streaming track structure tables from local cache registry...
             </td></tr>`;
@@ -778,23 +634,21 @@
                     evaluateTrackFilters();
                 })
                 .catch(e => {
-                    console.error("Failed to fetch on-demand tracks:", e);
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #FF5555;">⚠️ Failed to load library data: ${e.message}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #FF5555;">⚠️ Failed to load library data: ${e.message}</td></tr>`;
                 });
         }
 
 
         // Error Anomaly Resolution Routines
         function loadBrokenSongs() {
-            if (errorCount > 5) return; // Circuit Breaker
-            
+            if (errorCount > 5) return; 
             fetch('/broken-songs')
                 .then(res => {
                     if (!res.ok) throw new Error("Server returned " + res.status);
                     return res.json();
                 })
                 .then(data => {
-                    errorCount = 0; // Reset breaker on success
+                    errorCount = 0; 
                     const tbody = document.getElementById('errors-table-body');
                     
                     if (!data || data.length === 0) {
@@ -824,7 +678,6 @@
                 })
                 .catch(e => {
                     errorCount++;
-                    console.error("Broken songs compilation trace failure", e);
                 });
         }
 
@@ -835,9 +688,7 @@
                 body: JSON.stringify({ id: id, action: action, videoId: videoId })
             }).then(res => res.json()).then(data => {
                 if (data.status === 'success') {
-                    if(action === 'geo_vpn_fix') {
-                        switchPage('pane-console', 'link-console');
-                    }
+                    if(action === 'geo_vpn_fix') switchPage('pane-console', 'link-console');
                     loadBrokenSongs();
                     loadMetrics();
                 } else {
@@ -859,12 +710,8 @@
                         if (feed) feed.innerHTML += `\n<span style="color:#BD93F9; font-weight:bold;">[System] Headless ProtonVPN Recovery Loop dispatched successfully. Monitoring stream logs...</span>`;
                     }
                 })
-                .catch(() => {
-                    alert("Failed to contact geo-recovery server endpoint.");
-                })
-                .finally(() => {
-                    if (btn) btn.disabled = false;
-                });
+                .catch(() => alert("Failed to contact geo-recovery server endpoint."))
+                .finally(() => { if (btn) btn.disabled = false; });
         }
 
         // Memory-leak resistant console log engine
@@ -892,33 +739,28 @@
                     if (data.logs && data.logs.length > 0) {
                         if (activeLogLinePointer === 0) feed.innerHTML = '';
                         
-                        // Fix: Accumulate all string modifications locally to prevent DOM thrashing
                         let batchedHTML = '';
                         data.logs.forEach(line => {
-                            // 1. Fallback: Catch any stripped literal '[36m' leaks slipping through before processing
                             let cleanedLine = line;
                             if (cleanedLine.includes('[36m') && !cleanedLine.includes('\x1b')) {
                                 cleanedLine = cleanedLine.replace(/\[36m/g, '\x1b[36m');
                             }
 
-                            // 2. Parse ANSI colors dynamically (handles standard, bold, and edge cases)
                             let formattedLine = cleanedLine
-                                .replace(/\x1b\[(1;)?33m/g, '<span style="color:#FFB86C; font-weight:bold;">') // Yellow/Orange
-                                .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">') // Cyan (Matches [36m and [1;36m)
-                                .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">') // Green
-                                .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">') // Red
-                                .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">') // Magenta
-                                .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')                  // Comment Grey
-                                .replace(/\x1b\[0m/g, '</span>');                                             // Reset Toggle
+                                .replace(/\x1b\[(1;)?33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
+                                .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')
+                                .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">')
+                                .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">')
+                                .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">')
+                                .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')
+                                .replace(/\x1b\[0m/g, '</span>');
 
                             batchedHTML += formattedLine + "\n";
                         });
 
-                        // Inject instantly at the end of the container
                         feed.insertAdjacentHTML('beforeend', batchedHTML);
                         activeLogLinePointer = data.totalLines;
 
-                        // Fix: Cap the console history to 500 lines to keep memory usage locked down flat
                         const maxLinesAllowed = 500;
                         let currentLines = feed.innerHTML.split('\n');
                         if (currentLines.length > maxLinesAllowed) {
@@ -937,7 +779,7 @@
 
         // Performance Chronography Visualization Subsystems
         function loadAnalytics() {
-            if (errorCount > 5) return; // Circuit Breaker
+            if (errorCount > 5) return; 
             
             fetch('/analytics')
                 .then(res => {
@@ -945,11 +787,11 @@
                     return res.json();
                 })
                 .then(data => {
-                    errorCount = 0; // Reset breaker on success
+                    errorCount = 0; 
                     const tbody = document.getElementById('analytics-table-body');
                     
                     if (!data || data.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #71717A;">Zero historical sync data points verified.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #71717A;">Zero historical sync data points verified.</td></tr>`;
                         return;
                     }
 
@@ -958,12 +800,13 @@
                             <tr>
                                 <td style="font-weight:600;">${run.timestamp}</td>
                                 <td><span class="badge badge-m4a">${run.type || "Manual"}</span></td>
-                                <td style="font-family:monospace;">${run.step1}</td>
-                                <td style="font-family:monospace;">${run.step2}</td>
-                                <td style="font-family:monospace;">${run.step3}</td>
-                                <td style="font-family:monospace;">${run.step4}</td>
-                                <td style="font-family:monospace;">${run.step5}</td>
-                                <td style="font-family:monospace; font-weight:bold; color:#BD93F9;">${run.total}</td>
+                                <td style="font-family:monospace;">${run.step1 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step2 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step3 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step4 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step5 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step6 || "00:00"}</td>
+                                <td style="font-family:monospace; font-weight:bold; color:#BD93F9;">${run.total || "00:00"}</td>
                             </tr>
                         `;
                     }).join('');
@@ -975,7 +818,6 @@
                 })
                 .catch(e => {
                     errorCount++;
-                    console.error("Chronography mapping compilation crash", e);
                 });
         }
 
@@ -1000,10 +842,9 @@
             const step3Data = dataset.map(d => convertTimeToSeconds(d.step3));
             const step4Data = dataset.map(d => convertTimeToSeconds(d.step4));
             const step5Data = dataset.map(d => convertTimeToSeconds(d.step5));
+            const step6Data = dataset.map(d => convertTimeToSeconds(d.step6));
 
-            if (performanceChartInstance) {
-                performanceChartInstance.destroy();
-            }
+            if (performanceChartInstance) performanceChartInstance.destroy();
 
             performanceChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -1014,7 +855,8 @@
                         { label: 'S2: YTDLP Extract', data: step2Data, backgroundColor: '#BD93F9' },
                         { label: 'S3: Error Fix', data: step3Data, backgroundColor: '#FF5555' },
                         { label: 'S4: Lyric Sync', data: step4Data, backgroundColor: '#FF79C6' },
-                        { label: 'S5: Transcoding', data: step5Data, backgroundColor: '#8BE9FD' }
+                        { label: 'S5: Transcode', data: step5Data, backgroundColor: '#8BE9FD' },
+                        { label: 'S6: Metrics', data: step6Data, backgroundColor: '#50FA7B' }
                     ]
                 },
                 options: {
@@ -1024,12 +866,70 @@
                         x: { stacked: true, grid: { color: '#1E1E22' }, ticks: { color: '#A1A1AA' } },
                         y: { stacked: true, grid: { color: '#1E1E22' }, ticks: { color: '#A1A1AA' }, title: { display: true, text: 'Execution Runtime (Seconds)', color: '#A1A1AA' } }
                     },
+                    plugins: { legend: { labels: { color: '#E2E8F0', font: { family: 'Segoe UI' } } } }
+                }
+            });
+        }
+
+        // --- NEW: Render Interactive Scatter Plot Engine ---
+        function renderScatterChart() {
+            const ctx = document.getElementById('scatterChart');
+            if (!ctx || !globalTrackMetrics || !globalTrackCache || globalTrackMetrics.length === 0) return;
+
+            // Generate an instant lookup mapping to prevent deeply nested O(N^2) loops
+            let sizeMap = {};
+            globalTrackCache.forEach(t => sizeMap[t.id] = t.sizeMb);
+
+            let dataPoints = [];
+            globalTrackMetrics.forEach(m => {
+                // If it successfully cross-references with a verified tracked file in the database
+                if (sizeMap[m.id]) {
+                    dataPoints.push({
+                        x: sizeMap[m.id],
+                        y: m.duration,
+                        title: m.name
+                    });
+                }
+            });
+
+            if (scatterChartInstance) scatterChartInstance.destroy();
+
+            scatterChartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Track Processing Vectors',
+                        data: dataPoints,
+                        backgroundColor: 'rgba(189, 147, 249, 0.4)',
+                        borderColor: '#BD93F9',
+                        pointHoverBackgroundColor: '#FF79C6',
+                        pointHoverBorderColor: '#FFF',
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: '#1E1E22' }, ticks: { color: '#A1A1AA' }, title: { display: true, text: 'Master Source Component File Size (MB)', color: '#A1A1AA' } },
+                        y: { grid: { color: '#1E1E22' }, ticks: { color: '#A1A1AA' }, title: { display: true, text: 'Total Loop Lifecycle Extraction Time (Seconds)', color: '#A1A1AA' } }
+                    },
                     plugins: {
-                        legend: { labels: { color: '#E2E8F0', font: { family: 'Segoe UI' } } }
+                        legend: { labels: { color: '#E2E8F0' } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.raw.title || 'Track';
+                                    return `${label}: Processing Speed ${context.raw.y}s (Weight: ${context.raw.x}MB)`;
+                                }
+                            }
+                        }
                     }
                 }
             });
         }
+
 
         // Safer pipeline execution handling
         function dispatchPipeline(endpoint) {
@@ -1039,18 +939,14 @@
             fetch(endpoint, { method: 'POST' })
                 .then(res => {
                     if (!res.ok) throw new Error("Pipeline trigger endpoint rejected command.");
-                    // Read as text first to handle both plain text or structural JSON safely
                     return res.text(); 
                 })
                 .then(text => console.log("Pipeline successfully initiated:", text))
                 .catch(e => {
-                    console.error("Failed pipeline dispatch:", e);
                     const feed = document.getElementById('terminal-feed');
                     if (feed) feed.innerHTML += `\n<span style="color:#FF5555;">[UI Error] Failed to dispatch control sequence: ${e.message}</span>`;
                 });
         }
-
-
 
         function dispatchStopPipeline() {
             fetch('/stop', { method: 'POST' })
@@ -1080,9 +976,7 @@
             switchPage('pane-console', 'link-console');
             fetch('/pull', { method: 'POST' })
                 .then(res => res.json())
-                .then(() => {
-                    console.log("Hot pull initialization dispatched.");
-                })
+                .then(() => console.log("Hot pull initialization dispatched."))
                 .catch(e => console.error("Failed hot pull", e));
         }
 
@@ -1090,19 +984,17 @@
         // CONFIGURATION PROFILE INTERACTIVE LOGIC (NEW ENGINE IMPLEMENTATION)
         // ================================================================= -->
         function loadProfilesFrameworkSystem() {
-            if (errorCount > 5) return; // Circuit Breaker
-            
+            if (errorCount > 5) return; 
             fetch('/profiles')
                 .then(res => {
                     if (!res.ok) throw new Error("Server returned " + res.status);
                     return res.json();
                 })
                 .then(data => {
-                    errorCount = 0; // Reset breaker on success
+                    errorCount = 0; 
                     fullProfilesObjectContainer = data.profiles;
                     const dropdown = document.getElementById('profile-selection-dropdown');
                     
-                    // Cache the layout position reference selection
                     const currentSelection = dropdown.value || data.activeProfile;
                     dropdown.innerHTML = '';
 
@@ -1118,7 +1010,6 @@
                 })
                 .catch(e => {
                     errorCount++;
-                    console.error("Could not fetch user dynamic context profiles database", e);
                 });
         }
 
@@ -1128,7 +1019,6 @@
 
             const config = fullProfilesObjectContainer[selectedProfileName];
 
-            // Auto-populate all form parameters sequentially matching core PowerShell keys
             const keysToMap = [
                 'BackupDir', 'MobileDir', 'BrokenSongsFile', 'DiagLogFile', 'CacheFile',
                 'TimingFile', 'CookieFile', 'HistoryFile', 'YTDLPExe', 'FFmpegExe',
@@ -1143,7 +1033,6 @@
                 }
             });
 
-            // Process array values inside text-area entries elegantly
             const playlistsArea = document.getElementById('cfg-Playlists');
             if (playlistsArea && config.Playlists) {
                 playlistsArea.value = Array.isArray(config.Playlists) ? config.Playlists.join('\n') : config.Playlists;
@@ -1176,7 +1065,6 @@
             const targetProfile = document.getElementById('profile-selection-dropdown').value;
             if (!targetProfile) return;
 
-            // Bundle complete active object context fields dynamically
             const playlistsRaw = document.getElementById('cfg-Playlists').value;
             const playlistsArray = playlistsRaw.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
@@ -1281,19 +1169,18 @@
 
         // --- Core Initialization ---
         window.addEventListener('load', () => {
-            // Stagger the initial load to prevent "Thundering Herd" socket abortion
             setTimeout(loadMetrics, 100);
-            setTimeout(loadAnalytics, 400);
+            setTimeout(loadTrackMetrics, 300); // Trigger the new payload pipeline!
+            setTimeout(loadAnalytics, 500);
             setTimeout(loadBrokenSongs, 700);
             setTimeout(loadProfilesFrameworkSystem, 1000);
 
-            // Start background loops only after the initial surge has settled
             setTimeout(() => {
                 setInterval(loadMetrics, 3000);
                 setInterval(loadAnalytics, 10000);
+                setInterval(loadTrackMetrics, 15000); 
             }, 2000);
 
-            // Streamer has its own built-in recursion, so just kick it off once
             setTimeout(runLogStreamer, 1500);
         }); 
 

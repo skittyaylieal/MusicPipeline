@@ -9,6 +9,17 @@ Param (
     [bool]$AutoRecover = $false
 )
 
+# -----------------------------------------------------------------
+# CORE DETERMINISTIC SHA-256 UUID GENERATOR
+# -----------------------------------------------------------------
+function Get-TrackUUID([string]$Artist, [string]$Album, [string]$Title) {
+    $RawIdentity = "$Artist-$Album-$Title".ToLower().Trim()
+    $Hasher = [System.Security.Cryptography.SHA256]::Create()
+    $HashBytes = $Hasher.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($RawIdentity))
+    $FullHash = [System.BitConverter]::ToString($HashBytes).Replace("-", "").ToLower()
+    return $FullHash.Substring(0, 32)
+}
+
 $ErrorDbPath  = Join-Path $ConfigDir "broken_songs.json"
 $BrokenTracks = [System.Collections.Generic.List[PSCustomObject]]::new()
 
@@ -36,11 +47,12 @@ foreach ($Log in $ErrorLogs) {
             }
 
             # Avoid duplication across thread sweeps
-            if (-not ($BrokenTracks.VideoID -contains $VideoID)) {
+            if (-not ($BrokenTracks.videoId -contains $VideoID)) {
                 $BrokenTracks.Add([PSCustomObject]@{
-                    id         = [string][Guid]::NewGuid().Guid.Substring(0,8) # Unique element handle for UI
+                    # Use deterministic ID (Placeholder 'Unknown' for artist/album due to log constraints)
+                    id         = Get-TrackUUID "Unknown" "Playlist $CurrentPlaylistIndex" $VideoID
                     videoId    = $VideoID
-                    title      = "Track ID: $VideoID" # yt-dlp fallback title when extraction fails
+                    title      = "Track ID: $VideoID"
                     playlist   = "Playlist $CurrentPlaylistIndex"
                     reason     = $Reason
                     detectedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -50,11 +62,15 @@ foreach ($Log in $ErrorLogs) {
     }
 }
 
-# Preserve existing un-resolved manual records if fix.ps1 reruns
+# Preserve existing un-resolved manual records and update IDs if missing
 if (Test-Path $ErrorDbPath) {
     $ExistingDb = Get-Content -LiteralPath $ErrorDbPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
     foreach ($Item in $ExistingDb) {
         if (-not ($BrokenTracks.videoId -contains $Item.videoId)) {
+            # Migrate legacy IDs to the new deterministic standard if absent
+            if (-not $Item.id -or $Item.id.Length -ne 32) {
+                $Item.id = Get-TrackUUID "Unknown" $Item.playlist $Item.videoId
+            }
             $BrokenTracks.Add($Item)
         }
     }

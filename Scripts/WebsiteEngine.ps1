@@ -71,14 +71,32 @@ $Global:CachedMetrics = @{
     loadingState = "scanning"; tracks = @() 
 }
 
+# Universal Global Hashing Function
+function Get-TrackUUID([string]$Artist, [string]$Album, [string]$Title) {
+    $RawIdentity = "$Artist-$Album-$Title".ToLower().Trim()
+    $Hasher = [System.Security.Cryptography.SHA256]::Create()
+    $HashBytes = $Hasher.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($RawIdentity))
+    $FullHash = [System.BitConverter]::ToString($HashBytes).Replace("-", "").ToLower()
+    return $FullHash.Substring(0, 32)
+}
+
 # -----------------------------------------------------------------
-# 1. ROBUST BACKGROUND SCANNER & AUTOMATION ENGINE
+# 1. ROBUST BACKGROUND SCANNER & AUTOMATION ENGINE (SHA-2 COMPLIANT)
 # -----------------------------------------------------------------
 function Start-AsyncLibraryScanner {
     Get-Job -Name "MusicFolderScanner" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
 
     $JobScript = {
         param($BDir, $MDir, $RDir, $CFile, $ScanDelay)
+        
+        # Core deterministic hashing engine injected directly into local thread runspace
+        function Get-TrackUUID([string]$Artist, [string]$Album, [string]$Title) {
+            $RawIdentity = "$Artist-$Album-$Title".ToLower().Trim()
+            $Hasher = [System.Security.Cryptography.SHA256]::Create()
+            $HashBytes = $Hasher.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($RawIdentity))
+            $FullHash = [System.BitConverter]::ToString($HashBytes).Replace("-", "").ToLower()
+            return $FullHash.Substring(0, 32)
+        }
         
         Start-Sleep -Seconds 2 
         while ($true) { 
@@ -119,7 +137,10 @@ function Start-AsyncLibraryScanner {
                     }
                 }
 
+                $PermanentUUID = Get-TrackUUID -Artist $Artist -Album $Album -Title $File.BaseName
+
                 $TrackDatabase += @{ 
+                    id             = [string]$PermanentUUID
                     title          = [string]$File.BaseName 
                     artist         = [string]$Artist 
                     album          = [string]$Album 
@@ -142,7 +163,6 @@ function Start-AsyncLibraryScanner {
                         tracks       = $TrackDatabase 
                     } | ConvertTo-Json -Depth 4 | Out-File -FilePath $TempFile -Encoding utf8 -Force 
                     
-                    # Atomic swap: Rename temp to actual file
                     Move-Item -Path $TempFile -Destination $CFile -Force
                 }
             }
@@ -184,9 +204,7 @@ function Start-AsyncLibraryScanner {
                 tracks       = $TrackDatabase 
             } | ConvertTo-Json -Depth 4 | Out-File -FilePath $TempFile -Encoding utf8 -Force 
 
-            # Atomic swap: Rename temp to actual file
             Move-Item -Path $TempFile -Destination $CFile -Force
-
             Start-Sleep -Seconds $ScanDelay
         }
     }
@@ -223,7 +241,6 @@ function Invoke-PipelineExecution {
     if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force } 
     "`e[1;36m[SYSTEM] ($TriggerType Run) Initializing Master Pipeline...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
 
-    # Bundle compiled entirely out of variable profile options
     $ContextBundle = @{
         ScriptDir        = $ScriptDir 
         ConfigDir        = $ConfigDir 
@@ -261,7 +278,7 @@ function Invoke-PipelineExecution {
         $OverallStopwatch = [System.Diagnostics.Stopwatch]::StartNew() 
 
         try {
-            Log-Progress "`e[1;33m[STEP 1/5]`e[0m Running Cookie Validation..." 
+            Log-Progress "`e[1;33m[STEP 1/6]`e[0m Running Cookie Validation..." 
             $S1Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1" 
             if (Test-Path $S1ScriptPath) {
@@ -269,10 +286,10 @@ function Invoke-PipelineExecution {
                 $Step1Result = & $S1ScriptPath @S1Params 2>&1 
                 $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ CookieCheck.ps1 missing. Skipping." }
-            $S1Watch.Stop();
+            $S1Watch.Stop()
             $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
 
-            Log-Progress "`e[1;33m[STEP 2/5]`e[0m Running Native Pipeline Downloader..." 
+            Log-Progress "`e[1;33m[STEP 2/6]`e[0m Running Native Pipeline Downloader..." 
             $S2Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1" 
             if (Test-Path $S2ScriptPath) {
@@ -292,10 +309,10 @@ function Invoke-PipelineExecution {
                 $Step2Result = & $S2ScriptPath @S2Params 2>&1 
                 $Step2Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
-            $S2Watch.Stop();
+            $S2Watch.Stop()
             $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
 
-            Log-Progress "`e[1;33m[STEP 3/5]`e[0m Running Error Log Analysis..." 
+            Log-Progress "`e[1;33m[STEP 3/6]`e[0m Running Error Log Analysis..." 
             $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
             if (Test-Path $S3ScriptPath) {
@@ -303,10 +320,10 @@ function Invoke-PipelineExecution {
                 $Step3Result = & $S3ScriptPath @S3Params 2>&1 
                 $Step3Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ Fix.ps1 missing. Skipping." }
-            $S3Watch.Stop();
+            $S3Watch.Stop()
             $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
 
-            Log-Progress "`e[1;33m[STEP 4/5]`e[0m Syncing Local Lyrics Databases..." 
+            Log-Progress "`e[1;33m[STEP 4/6]`e[0m Syncing Local Lyrics Databases..." 
             $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
             if (Test-Path $S4ScriptPath) {
@@ -314,10 +331,10 @@ function Invoke-PipelineExecution {
                 $Step4Result = & $S4ScriptPath @S4Params 2>&1 
                 $Step4Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
-            $S4Watch.Stop();
+            $S4Watch.Stop()
             $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
 
-            Log-Progress "`e[1;33m[STEP 5/5]`e[0m Executing Lossy Mobile Deployment Transcoding..." 
+            Log-Progress "`e[1;33m[STEP 5/6]`e[0m Executing Lossy Mobile Deployment Transcoding..." 
             $S5Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
             if (Test-Path $S5ScriptPath) {
@@ -325,8 +342,19 @@ function Invoke-PipelineExecution {
                 $Step5Result = & $S5ScriptPath @S5Params 2>&1 
                 $Step5Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
             } else { Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping." }
-            $S5Watch.Stop();
+            $S5Watch.Stop()
             $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
+
+            Log-Progress "`e[1;33m[STEP 6/6]`e[0m Compiling Track Telemetry & Analytics..." 
+            $S6Watch = [System.Diagnostics.Stopwatch]::StartNew() 
+            $S6ScriptPath = Join-Path $EnvMap.ScriptDir "Metrics.ps1" 
+            if (Test-Path $S6ScriptPath) {
+                $S6Params = @{ LogPath = $EnvMap.LogFile; DatabasePath = Join-Path $EnvMap.ConfigDir "track_history.json"; RunId = (Get-Date).ToString("yyyyMMdd_HHmmss") } 
+                $Step6Result = & $S6ScriptPath @S6Params 2>&1 
+                $Step6Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+            } else { Log-Progress "⚠️ Metrics.ps1 missing. Skipping." }
+            $S6Watch.Stop()
+            $S6Time = [string]::Format("{0:hh\:mm\:ss}", $S6Watch.Elapsed)
 
             $OverallStopwatch.Stop() 
             $TotalTime = [string]::Format("{0:hh\:mm\:ss}", $OverallStopwatch.Elapsed) 
@@ -342,7 +370,7 @@ function Invoke-PipelineExecution {
             $NewMetricRecord = @{
                 timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") 
                 type      = $EnvMap.RunType 
-                step1     = $S1Time; step2 = $S2Time; step3 = $S3Time; step4 = $S4Time; step5 = $S5Time 
+                step1     = $S1Time; step2 = $S2Time; step3 = $S3Time; step4 = $S4Time; step5 = $S5Time; step6 = $S6Time
                 total     = $TotalTime 
             }
             $HistoryDB += $NewMetricRecord 
@@ -572,7 +600,6 @@ try {
             }
             # -----------------------------
             elseif ($UrlPath -eq "/resolve-song" -and $Method -eq "POST") {
-                # (Logic remains same, JSON response is hardcoded so it is safe)
                 $Reader = New-Object System.IO.StreamReader($Request.InputStream)
                 $Payload = $Reader.ReadToEnd() | ConvertFrom-Json
                 $SongId  = $Payload.id; $Action  = $Payload.action; $VideoID = $Payload.videoId
@@ -701,12 +728,24 @@ try {
                 $Response.OutputStream.Close()
             }
             # -----------------------------
-            # BULLETPROOF: Hybrid Metrics Heartbeat (Guarantees Profile & State Delivery)
+            # NEW: Individual Track Execution Telemetry Engine 
+            # -----------------------------
+            elseif ($UrlPath -eq "/track-metrics" -and $Method -eq "GET") { 
+                $RawData = "[]"
+                $MetricsFile = Join-Path $ConfigDir "track_history.json"
+                if (Test-Path $MetricsFile) { 
+                    try { $RawData = Get-Content -LiteralPath $MetricsFile -Raw -ErrorAction SilentlyContinue } catch {}
+                }
+                if ([string]::IsNullOrWhiteSpace($RawData)) { $RawData = "[]" }
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
+                $Response.ContentType = "application/json"
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
+            }
             # -----------------------------
             elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
                 $Response.ContentType = "application/json"
                 
-                # 1. Create a safe baseline object populated with live server states
                 $MetricsObj = [ordered]@{
                     activeProfile = if ($Global:ActiveProfile) { $Global:ActiveProfile } else { "Default" }
                     masterCount   = 0
@@ -717,37 +756,27 @@ try {
                     alerts        = @()
                 }
 
-                # 2. If the cache file exists, safely merge its data metrics
                 if (Test-Path $Global:CacheFile) {
                     $RawPayload = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
                     if (-not [string]::IsNullOrWhiteSpace($RawPayload)) {
                         try {
                             $CacheObj = $RawPayload | ConvertFrom-Json
-                            # Merge cache attributes into our engine baseline, omitting the heavy track list
                             foreach ($Prop in $CacheObj.psobject.Properties) {
                                 if ($Prop.Name -ne "tracks" -and $null -ne $Prop.Value) {
                                     $MetricsObj[$Prop.Name] = $Prop.Value
                                 }
                             }
-                        } catch {
-                            # If the cache file is corrupted or half-written, logging continues silently
-                            # The baseline states are preserved so the UI doesn't freeze
-                        }
+                        } catch {}
                     }
                 }
 
-                # 3. Explicitly lock down the live active profile tag
                 $MetricsObj["activeProfile"] = if ($Global:ActiveProfile) { $Global:ActiveProfile } else { "Default" }
 
-                # 4. Compress and ship the safe payload
                 $DataPayload = $MetricsObj | ConvertTo-Json -Depth 4 -Compress
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($DataPayload)
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
-            # -----------------------------
-            # NEW: Dedicated On-Demand Tracks Dataset Endpoint
-            # -----------------------------
             elseif ($UrlPath -eq "/tracks" -and $Method -eq "GET") {
                 $Response.ContentType = "application/json"
                 $DataPayload = "{}"
@@ -755,7 +784,6 @@ try {
                     $RawPayload = Get-Content -LiteralPath $Global:CacheFile -Raw -ErrorAction SilentlyContinue
                     try {
                         $CacheObj = $RawPayload | ConvertFrom-Json
-                        # Isolate and return only the track database structures
                         $DataPayload = @{ tracks = $CacheObj.tracks } | ConvertTo-Json -Depth 4 -Compress
                     } catch { $DataPayload = "{}" }
                 }
@@ -763,9 +791,6 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
-            # -----------------------------
-            # FIXED: Secure Pipeline Stream Tracker (Stops the Autoclean Trap)
-            # -----------------------------
             elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
                 $CurrentLogs = @()
                 $AllLines = @()
@@ -787,12 +812,10 @@ try {
                 
                 $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue 
                 if ($DownloadJob) {
-                    # FIX: Do NOT terminate or clear jobs that are in a 'NotStarted' state!
                     if ($DownloadJob.State -in @("Completed", "Failed", "Stopped")) { 
                         $Global:IsPipelineRunning = $false
                         Remove-Job -Job $DownloadJob -Force 
                     } else {
-                        # The job is actively initializing or running
                         $Global:IsPipelineRunning = $true
                     }
                 } else { 
@@ -879,11 +902,9 @@ try {
     }
 }
 catch {
-    # If the Server itself crashes (e.g., port binding failed), kill the script
     Write-Host "🛑 Fatal Server Error: $_" -ForegroundColor Red
 }
 finally {
-    # This always runs, ensuring the listener is closed properly
     if ($null -ne $Listener) { $Listener.Stop(); $Listener.Close() }
     netsh interface portproxy reset
 }
