@@ -62,12 +62,13 @@ function Load-ProfileContext {
 Load-ProfileContext
 $Global:IsPipelineRunning = $false
 
+# Ensure the config directory exists before trying to write logs
 if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force | Out-Null } 
 if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile -Encoding utf8 } 
 
-# Fresh session truncation occurs ONCE on main engine instantiation
-if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
-"`e[1;32m[SYSTEM] Website Engine Core Session Initialized.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+# Append a session initialization marker instead of deleting the file
+"`n`e[1;32m[SYSTEM] Website Engine Core Session Initialized.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+
 
 # -----------------------------------------------------------------
 # CENTRALIZED SERVER LOGGING ROUTINE (Captures framework output)
