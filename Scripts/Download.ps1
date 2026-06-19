@@ -132,7 +132,14 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--geo-bypass",
             "--js-runtime", "deno",
             "--extractor-args", "youtube:player_js_variant=tv",
-            "-f", "ba[ext=m4a]/ba",
+            
+            # --- MAXIMUM QUALITY REMUX ARCHITECTURE ---
+            "-f", "bestaudio/best",              # Capture the absolute highest bitrate track (bypasses 128kbps container restriction)
+            "--extract-audio",                   # Extract audio stream explicitly 
+            "--audio-format", "m4a",             # Instruct ffmpeg to copy/remux the best audio track into clean M4A
+            "--audio-quality", "0",              # Force highest variable/constant audio processing rules
+            # ------------------------------------------
+
             "--download-archive", $LocalActiveHistoryLog, 
             "--ignore-errors",
             "--no-abort-on-error",
