@@ -741,22 +741,28 @@
                         
                         let batchedHTML = '';
                         data.logs.forEach(line => {
-                            let cleanedLine = line;
-                            if (cleanedLine.includes('[36m') && !cleanedLine.includes('\x1b')) {
-                                cleanedLine = cleanedLine.replace(/\[36m/g, '\x1b[36m');
-                            }
+                        let cleanedLine = line;
+                        
+                        // Fix missing escape characters for both cyan and blue codes
+                        if (cleanedLine.includes('[36m') && !cleanedLine.includes('\x1b')) {
+                            cleanedLine = cleanedLine.replace(/\[36m/g, '\x1b[36m');
+                        }
+                        if (cleanedLine.includes('[34m') && !cleanedLine.includes('\x1b')) {
+                            cleanedLine = cleanedLine.replace(/\[34m/g, '\x1b[34m');
+                        }
 
-                            let formattedLine = cleanedLine
-                                .replace(/\x1b\[(1;)?33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">')
-                                .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')
-                                .replace(/\x1b\[0m/g, '</span>');
+                        let formattedLine = cleanedLine
+                            .replace(/\x1b\[(1;)?33m/g, '<span style="color:#FFB86C; font-weight:bold;">') // Yellow
+                            .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">') // Cyan
+                            .replace(/\x1b\[(1;)?34m/g, '<span style="color:#6272A4; font-weight:bold;">') // Blue (Matches LyricsEngine)
+                            .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">') // Green
+                            .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">') // Red
+                            .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">') // Magenta
+                            .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')// Gray
+                            .replace(/\x1b\[0m/g, '</span>');// Reset
 
-                            batchedHTML += formattedLine + "\n";
-                        });
+                        batchedHTML += formattedLine + "\n";
+                    });
 
                         feed.insertAdjacentHTML('beforeend', batchedHTML);
                         activeLogLinePointer = data.totalLines;
