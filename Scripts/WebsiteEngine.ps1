@@ -76,7 +76,12 @@ if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile -E
 function Log-Engine([string]$Message, [string]$AnsiStyle = "37") {
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
     $Payload = "`e[${AnsiStyle}m[$Timestamp] [SERVER] $Message`e[0m"
+    
+    # 1. Keep appending to the file stream for the dashboard UI
     $Payload | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+    
+    # 2. Mirror it to your running terminal session so you see it live
+    Write-Host $Payload
 }
 
 $Global:CachedMetrics = @{
