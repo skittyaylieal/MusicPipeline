@@ -65,6 +65,19 @@ $Global:IsPipelineRunning = $false
 if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force | Out-Null } 
 if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile -Encoding utf8 } 
 
+# Fresh session truncation occurs ONCE on main engine instantiation
+if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
+"`e[1;32m[SYSTEM] Website Engine Core Session Initialized.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+
+# -----------------------------------------------------------------
+# CENTRALIZED SERVER LOGGING ROUTINE (Captures framework output)
+# -----------------------------------------------------------------
+function Log-Engine([string]$Message, [string]$AnsiStyle = "37") {
+    $Timestamp = (Get-Date).ToString("HH:mm:ss")
+    $Payload = "`e[${AnsiStyle}m[$Timestamp] [SERVER] $Message`e[0m"
+    $Payload | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+}
+
 $Global:CachedMetrics = @{
     masterCount  = 0; mobileCount = 0; lrcCount = 0 
     masterSize   = 0; mobileSize  = 0; alerts = @() 
@@ -238,8 +251,8 @@ function Invoke-PipelineExecution {
     if ($Global:IsPipelineRunning) { return } 
     $Global:IsPipelineRunning = $true 
     
-    if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force } 
-    "`e[1;36m[SYSTEM] ($TriggerType Run) Initializing Master Pipeline...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
+    "`n`e[1;35m=================================================================`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
+    "`e[1;36m[SYSTEM] ($TriggerType Run) Initializing Master Pipeline...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
 
     $ContextBundle = @{
         ScriptDir        = $ScriptDir 
@@ -383,8 +396,8 @@ function Invoke-PipelineExecution {
 }
 
 function Invoke-HotReload {
-    if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force } 
-    "`e[1;35m[SYSTEM] Hot-reload triggered. Checking for remote updates...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
+    "`n`e[1;35m=================================================================`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+    "`e[1;35m[SYSTEM] Hot-reload triggered. Checking for remote updates...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
     Push-Location $ScriptRepoDir 
     try {
         $Env:GIT_TERMINAL_PROMPT = "0" 
@@ -423,7 +436,7 @@ function Invoke-HotReload {
 # -----------------------------------------------------------------
 # 3. ADAPTIVE NETWORK ENGINE ROUTER ROUTINE
 # -----------------------------------------------------------------
-Write-Host "🧼 Flushing old proxy tables and cleaning session jobs..." -ForegroundColor Yellow 
+Log-Engine "🧼 Flushing old proxy tables and cleaning session jobs..." "33"
 netsh interface portproxy reset | Out-Null 
 Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
 
@@ -434,7 +447,7 @@ while ($true) {
     $TargetPort++ 
 }
 
-Write-Host "🔗 Aligning fresh Windows port proxy map: 80 ---> $TargetPort" -ForegroundColor Cyan 
+Log-Engine "🔗 Aligning fresh Windows port proxy map: 80 ---> $TargetPort" "36"
 netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1 | Out-Null
 
 $Listener = New-Object System.Net.HttpListener 
@@ -445,11 +458,11 @@ try {
     $LocalIPs = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Wi-Fi','Ethernet' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPAddress 
     $PrimaryIP = if ($LocalIPs) { $LocalIPs[0] } else { "127.0.0.1" } 
 
-    Write-Output "--------------------------------------------------" 
-    Write-Output " SERVER LIVE AND ADAPTIVELY MAPPED!"
-    Write-Output " Internal Endpoint : http://127.0.0.1:$TargetPort/" 
-    Write-Output " Clean Browser URL : http://$PrimaryIP/" 
-    Write-Output "--------------------------------------------------" 
+    Log-Engine "--------------------------------------------------" "32" 
+    Log-Engine " SERVER LIVE AND ADAPTIVELY MAPPED!" "1;32"
+    Log-Engine " Internal Endpoint : http://127.0.0.1:$TargetPort/" "32" 
+    Log-Engine " Clean Browser URL : http://$PrimaryIP/" "32" 
+    Log-Engine "--------------------------------------------------" "32" 
     
     Start-AsyncLibraryScanner 
     Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
@@ -610,7 +623,6 @@ try {
                     
                     if ($Action -eq "geo_vpn_fix" -and $TargetSong) {
                         $Global:IsPipelineRunning = $true
-                        if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
                         
                         $SingleJobBlock = {
                             param($Log, $Backup, $Cfg, $Vid, $Sid, $DbFile, $HistFile, $YTDLP, $Cookies)
@@ -659,8 +671,7 @@ try {
                     $Response.StatusCode = 409
                 } else {
                     $Global:IsPipelineRunning = $true
-                    if (Test-Path $Global:DiagLogFile) { Remove-Item $Global:DiagLogFile -Force }
-                    "`e[1;35m[SYSTEM] Initializing Safe Asynchronous ProtonVPN Geo-Recovery Loop...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8
+                    "`e[1;35m[SYSTEM] Initializing Safe Asynchronous ProtonVPN Geo-Recovery Loop...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
 
                     $RecoveryJobBlock = {
                         param($Log, $Backup, $Cfg, $DbFile, $YTDLP, $Cookies)
@@ -727,9 +738,6 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
                 $Response.OutputStream.Close()
             }
-            # -----------------------------
-            # NEW: Individual Track Execution Telemetry Engine 
-            # -----------------------------
             elseif ($UrlPath -eq "/track-metrics" -and $Method -eq "GET") { 
                 $RawData = "[]"
                 $MetricsFile = Join-Path $ConfigDir "track_history.json"
@@ -742,7 +750,9 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
-            # -----------------------------
+            # =================================================================
+            # PASSTHROUGH LIVE METRICS WITH DYNAMIC FILE CEILING WARNING
+            # =================================================================
             elseif ($UrlPath -eq "/metrics" -and $Method -eq "GET") { 
                 $Response.ContentType = "application/json"
                 
@@ -770,6 +780,26 @@ try {
                     }
                 }
 
+                # Robust Array casting to handle nested property translation safely
+                if ($null -eq $MetricsObj["alerts"]) {
+                    $MetricsObj["alerts"] = @()
+                } else {
+                    $MetricsObj["alerts"] = @($MetricsObj["alerts"])
+                }
+
+                # --- 512MB PASSIVE CONSOLE WARNING CEILING ---
+                if (Test-Path $Global:DiagLogFile) {
+                    $LogSizeBytes = (Get-Item -LiteralPath $Global:DiagLogFile).Length
+                    if ($LogSizeBytes -gt 512MB) {
+                        $LogSizeMb = [Math]::Round(($LogSizeBytes / 1MB), 2)
+                        $MetricsObj["alerts"] += @{
+                            type      = "warning"
+                            message   = "Log Size Alert: web_console_stream.log has reached ${LogSizeMb}MB (Exceeds 512MB baseline)."
+                            fixAction = "clear_logs"
+                        }
+                    }
+                }
+
                 $MetricsObj["activeProfile"] = if ($Global:ActiveProfile) { $Global:ActiveProfile } else { "Default" }
 
                 $DataPayload = $MetricsObj | ConvertTo-Json -Depth 4 -Compress
@@ -777,6 +807,7 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
+            # -----------------------------
             elseif ($UrlPath -eq "/tracks" -and $Method -eq "GET") {
                 $Response.ContentType = "application/json"
                 $DataPayload = "{}"
@@ -896,13 +927,13 @@ try {
             }
         } 
         catch {
-            Write-Host "⚠️ Request Error: $_" -ForegroundColor Yellow
+            Log-Engine "⚠️ Request Parsing Context Exception: $_" "33"
             try { $Response.Abort() } catch {}
         }
     }
 }
 catch {
-    Write-Host "🛑 Fatal Server Error: $_" -ForegroundColor Red
+    Log-Engine "🛑 Fatal HTTP Core Listener Breakdown: $_" "1;31"
 }
 finally {
     if ($null -ne $Listener) { $Listener.Stop(); $Listener.Close() }
