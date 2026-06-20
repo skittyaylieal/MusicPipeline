@@ -6,10 +6,6 @@ $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 $env:PYTHONIOENCODING = "utf-8"
 Clear-Host
 
-Write-Output "============================================="
-Write-Output "    PowerShell Module: Headless Lyric Engine & Tag Embedder"
-Write-Output "============================================="
-
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
 # Unified Thread-Safe Logger matching the Downloader Engine (Fixed local scope tracking)
@@ -31,7 +27,8 @@ function Invoke-LogMsg([string]$Text) {
     $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [LyricsEngine]$Reset"
     $FormattedLine = "$ColorPrefix $Text"
     
-    Write-Output $FormattedLine
+    # Write-Host bypasses standard capture to prevent double-logging
+    Write-Host $FormattedLine
     
     if (Test-Path -LiteralPath $GlobalLogFile) {
         $RetryCount = 0
@@ -51,6 +48,10 @@ function Invoke-LogMsg([string]$Text) {
         }
     }
 }
+
+Invoke-LogMsg "============================================="
+Invoke-LogMsg "    PowerShell Module: Headless Lyric Engine & Tag Embedder"
+Invoke-LogMsg "============================================="
 
 # Real-Time Execution Handler for tracking sub-Python tasks (Fixed asynchronous stream evaluation)
 function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList) {
@@ -352,5 +353,5 @@ except Exception as e:
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Invoke-LogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
-Write-Output "============================================="
+Invoke-LogMsg "============================================="
 Exit 0
