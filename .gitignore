@@ -1,9 +1,11 @@
 # Never push your private YouTube session cookies to GitHub!
 Config/cookies.txt
 Config/*.txt
-Config/.env
 Config/*.json
 Config/*.tmp
+Config/.env
+Config/.cache
+
 
 # Ignore local test data caches
 Sandbox_Backup/
