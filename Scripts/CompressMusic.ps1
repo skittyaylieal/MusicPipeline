@@ -8,12 +8,57 @@ Param (
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
-Write-Output "============================================="
-Write-Output "    PowerShell Module: Parallel Audio Compressor"
-Write-Output "============================================="
+$GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
+
+# Unified Thread-Safe Logger
+function Invoke-LogMsg([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return }
+    $Timestamp = (Get-Date).ToString("HH:mm:ss")
+    $ESC = [char]27
+    $Reset = "$ESC[0m"
+    
+    # Base configuration color for Compressor (Magenta styling)
+    $ColorCode = "35" 
+    
+    if ($Text -match '🛑|CRITICAL|ERROR:|\[!\]') {
+        $ColorCode = "1;31" # Bold Red
+    } elseif ($Text -match '\[\+\]|\[BAKED\]') {
+        $ColorCode = "32" # Green for success
+    } elseif ($Text -match '\[\*\]|================') {
+        $ColorCode = "36" # Cyan for headers/info
+    }
+
+    $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Compressor]$Reset"
+    $FormattedLine = "$ColorPrefix $Text"
+    
+    # Write-Host bypasses standard capture to prevent double-logging
+    Write-Host $FormattedLine
+    
+    if (Test-Path -LiteralPath $GlobalLogFile) {
+        $RetryCount = 0
+        $MaxRetries = 15
+        $Success    = $false
+        
+        while (-not $Success -and $RetryCount -lt $MaxRetries) {
+            try {
+                [System.IO.File]::AppendAllText($GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
+                $Success = $true
+            } catch [System.IO.IOException] {
+                $RetryCount++
+                [System.Threading.Thread]::Sleep(50)
+            } catch {
+                break
+            }
+        }
+    }
+}
+
+Invoke-LogMsg "============================================="
+Invoke-LogMsg "    PowerShell Module: Parallel Audio Compressor"
+Invoke-LogMsg "============================================="
 
 if (-not (Test-Path -LiteralPath $BackupDir)) {
-    Write-Error "CRITICAL: The Source Directory '$BackupDir' does not exist!"
+    Invoke-LogMsg "🛑 CRITICAL: The Source Directory '$BackupDir' does not exist!"
     Exit 1
 }
 
@@ -21,22 +66,22 @@ if (-not (Test-Path -LiteralPath $MobileDir)) {
     New-Item -ItemType Directory -LiteralPath $MobileDir -Force | Out-Null
 }
 
-Write-Output "[*] Purging leftover artwork files..."
+Invoke-LogMsg "[*] Purging leftover artwork files..."
 Get-ChildItem -LiteralPath $BackupDir -Recurse -File | 
     Where-Object { $_.Extension -match '\.(webp|jpg|jpeg|png)$' } | 
     Remove-Item -Force -ErrorAction SilentlyContinue
 
-Write-Output "[*] Scanning source directory for master audio tracks..."
+Invoke-LogMsg "[*] Scanning source directory for master audio tracks..."
 $AllFiles = Get-ChildItem -LiteralPath $BackupDir -Recurse -File | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|ogg)$' }
 
 if ($AllFiles.Count -eq 0) {
-    Write-Output "[+] No source audio tracks found to process!"
+    Invoke-LogMsg "[+] No source audio tracks found to process!"
     $MetricStopwatch.Stop()
-    Write-Output "[METRIC] 00:00:00"
+    Invoke-LogMsg "[METRIC] 00:00:00"
     Exit 0
 }
 
-Write-Output "[*] Syncing timed lyric (.lrc) files..."
+Invoke-LogMsg "[*] Syncing timed lyric (.lrc) files..."
 Get-ChildItem -LiteralPath $BackupDir -Filter *.lrc -Recurse -File | ForEach-Object {
     if ($_.Name -notlike "*cookie*") {
         $RelativePath = $_.FullName.Substring($BackupDir.Length)
@@ -49,7 +94,7 @@ Get-ChildItem -LiteralPath $BackupDir -Filter *.lrc -Recurse -File | ForEach-Obj
     }
 }
 
-Write-Output "[*] Filtering out already compressed files..."
+Invoke-LogMsg "[*] Filtering out already compressed files..."
 $Queue = @()
 foreach ($File in $AllFiles) {
     $RelativePath = $File.FullName.SubString($BackupDir.Length)
@@ -65,21 +110,41 @@ foreach ($File in $AllFiles) {
 }
 
 if ($Queue.Count -eq 0) {
-    Write-Output "[+] Mobile folder completely up to date. 0 tracks queued."
+    Invoke-LogMsg "[+] Mobile folder completely up to date. 0 tracks queued."
     $MetricStopwatch.Stop()
-    Write-Output "[METRIC] $("{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed)"
+    Invoke-LogMsg "[METRIC] $("{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed)"
     Exit 0
 }
 
-Write-Output "[+] Filtering complete! $($Queue.Count) tracks require compression."
-Write-Output "[+] Spawning parallel ffmpeg processing threads (Max Workers: $MaxThreads)`n"
+Invoke-LogMsg "[+] Filtering complete! $($Queue.Count) tracks require compression."
+Invoke-LogMsg "[+] Spawning parallel ffmpeg processing threads (Max Workers: $MaxThreads)`n"
 
 # Optimization: Modern Parallel Multi-threaded Core Architecture
 $Queue | ForEach-Object -Parallel {
     $TargetFolder = [System.IO.Path]::GetDirectoryName($_.Destination)
     if (-not (Test-Path -LiteralPath $TargetFolder)) { New-Item -ItemType Directory -LiteralPath $TargetFolder -Force | Out-Null }
 
-    Write-Output "[LAUNCH] $($_.Name) -> Mobile M4A"
+    # Inline thread-safe logger for parallel workers
+    $Msg = "[LAUNCH] $($_.Name) -> Mobile M4A"
+    $Timestamp = (Get-Date).ToString("HH:mm:ss")
+    $ESC = [char]27
+    $FormattedLine = "$ESC[35m[$Timestamp] [Compressor]$ESC[0m $Msg"
+    
+    Write-Host $FormattedLine
+    
+    if (Test-Path -LiteralPath $using:GlobalLogFile) {
+        $RetryCount = 0
+        $Success    = $false
+        while (-not $Success -and $RetryCount -lt 15) {
+            try {
+                [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
+                $Success = $true
+            } catch {
+                $RetryCount++
+                [System.Threading.Thread]::Sleep(50)
+            }
+        }
+    }
 
     $FFmpegArgs = @(
         "-y", "-loglevel", "quiet",
@@ -95,7 +160,7 @@ $Queue | ForEach-Object -Parallel {
 
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Write-Output "[BAKED] Mobile library is perfectly synced and compressed!"
-Write-Output "[METRIC] $Elapsed"
-Write-Output "============================================="
+Invoke-LogMsg "[BAKED] Mobile library is perfectly synced and compressed!"
+Invoke-LogMsg "[METRIC] $Elapsed"
+Invoke-LogMsg "============================================="
 Exit 0
