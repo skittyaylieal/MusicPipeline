@@ -26,17 +26,9 @@ $LocalSleepRequests    = $SleepRequests
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Clear-Host
 
-$GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
-
-$Banner = @(
-    "=============================================",
-    "    PowerShell Module: Media Downloader",
-    "============================================="
-)
-foreach ($Line in $Banner) {
-    Write-Host $Line -ForegroundColor Cyan
-    [System.IO.File]::AppendAllText($GlobalLogFile, ("`e[36m$Line`e[0m" + [System.Environment]::NewLine))
-}
+Write-Output "============================================="
+Write-Output "    PowerShell Module: Media Downloader"
+Write-Output "============================================="
 
 if (-not (Test-Path -LiteralPath $BackupDir)) {
     New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
@@ -54,6 +46,7 @@ $SanitizedURLs = $(foreach ($URL in $PlaylistURLs) {
 }) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
 [System.Collections.Generic.List[string]]$GlobalURLsCopy = $SanitizedURLs
+$GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
 # Optimization: Parallel Playlist Auditing (Sequenced cleanly via ThrottleLimit 1)
 $SanitizedURLs | ForEach-Object -Parallel {
@@ -72,7 +65,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
     $ErrorLogPath = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_run_errors.txt"
     if (Test-Path -LiteralPath $ErrorLogPath) { Remove-Item -LiteralPath $ErrorLogPath -Force -ErrorAction SilentlyContinue }
 
-    # Core Thread-Safe Logger Matrix - FIXED: Output shifted to Host bypass
+    # Core Thread-Safe Logger Matrix - FIXED: Explicitly scoped $LoopIndex access
     function Invoke-LogMsg([string]$Text, [int]$Idx) {
         if ([string]::IsNullOrWhiteSpace($Text)) { return }
         $Timestamp = (Get-Date).ToString("HH:mm:ss")
@@ -94,8 +87,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Playlist $Idx]$Reset"
         $FormattedLine = "$ColorPrefix $Text"
         
-        # Write-Host bypasses standard capture to prevent double-logging
-        Write-Host $FormattedLine
+        Write-Output $FormattedLine
         
         if (Test-Path -LiteralPath $using:GlobalLogFile) {
             $RetryCount = 0
@@ -254,13 +246,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
 
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-
-$Footer = @(
-    "[METRIC] Total Run Duration: $Elapsed",
-    "============================================="
-)
-foreach ($Line in $Footer) {
-    Write-Host $Line -ForegroundColor Cyan
-    [System.IO.File]::AppendAllText($GlobalLogFile, ("`e[36m$Line`e[0m" + [System.Environment]::NewLine))
-}
+Write-Output "[METRIC] Total Run Duration: $Elapsed"
+Write-Output "`n============================================="
 Exit 0

@@ -34,22 +34,25 @@ foreach ($Log in $ErrorLogs) {
 
     # Parse errors block-by-block
     for ($i = 0; $i -lt $RawLines.Count; $i++) {
-        $Line = $RawLines[$i]
+        # Clean out ANSI escape color codes so the regex matches raw text safely
+        $Line = $RawLines[$i] -replace '\x1b\[[0-9;]*m', ''
 
-        # Extract failed video IDs and failure signatures
+        # Match both the clean text or standard yt-dlp log outputs
         if ($Line -match "ERROR:\s*\[youtube\]\s*([^:]+):\s*(.*)") {
             $VideoID = $Matches[1].Trim()
             $Reason  = $Matches[2].Trim()
             
             # Lookahead logic to catch trailing context warnings
-            if ($i + 1 -lt $RawLines.Count -and $RawLines[$i+1] -match "Sign in to confirm|Video unavailable|private|not made this video available") {
-                $Reason += " ($($RawLines[$i+1].Trim()))"
+            if ($i + 1 -lt $RawLines.Count) {
+                $NextLine = $RawLines[$i+1] -replace '\x1b\[[0-9;]*m', ''
+                if ($NextLine -match "Sign in to confirm|Video unavailable|private|not made this video available") {
+                    $Reason += " ($($NextLine.Trim()))"
+                }
             }
 
             # Avoid duplication across thread sweeps
             if (-not ($BrokenTracks.videoId -contains $VideoID)) {
                 $BrokenTracks.Add([PSCustomObject]@{
-                    # Use deterministic ID (Placeholder 'Unknown' for artist/album due to log constraints)
                     id         = Get-TrackUUID "Unknown" "Playlist $CurrentPlaylistIndex" $VideoID
                     videoId    = $VideoID
                     title      = "Track ID: $VideoID"
@@ -57,6 +60,7 @@ foreach ($Log in $ErrorLogs) {
                     reason     = $Reason
                     detectedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
                 })
+                Invoke-LogMsg "    [!] Flagged broken track: $VideoID ($Reason)"
             }
         }
     }
