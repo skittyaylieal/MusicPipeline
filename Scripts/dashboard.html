@@ -427,6 +427,9 @@
         let activeLogLinePointer = 0;
         let fullProfilesObjectContainer = {};
         let errorCount = 0;
+        let isMetricsActive = false;
+        let isAnalyticsActive = false;
+        let isTrackMetricsActive = false;
 
         // Sidebar Navigation Animations & Display Routines
         function toggleDrawer() {
@@ -461,75 +464,144 @@
             }
         }
 
-        // --- NEW: Track Analytics Data Sync ---
-        function loadTrackMetrics() {
-            if (errorCount > 5) return;
-            fetch('/track-metrics')
-                .then(res => res.ok ? res.json() : [])
-                .then(data => {
-                    globalTrackMetrics = data || [];
-                    if (document.getElementById('pane-analytics').classList.contains('active')) {
-                        renderScatterChart();
-                    }
-                })
-                .catch(e => console.error("Failed to load individual track telemetry.", e));
-        }
+        // --- SAFE METRICS POLLER ---
+        async function loadMetrics() {
+            if (errorCount > 5 || isMetricsActive) return; 
+            isMetricsActive = true;
 
-        // Global Metrics Parsing and Synchronization Loops
-        function loadMetrics() {
-            if (errorCount > 5) return; 
-            
-            fetch('/metrics')
-                .then(res => {
-                    if (!res.ok) throw new Error("Server returned " + res.status);
-                    return res.json();
-                })
-                .then(data => {
-                    errorCount = 0; 
-                    
-                    document.getElementById('m-master-count').innerText = data.masterCount || 0;
-                    document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
-                    
-                    document.getElementById('m-mobile-count').innerText = data.mobileCount || 0;
-                    document.getElementById('m-mobile-size').innerText = `${data.mobileSize || "0.00"} GB Total (Compressed AAC/M4A Architecture)`;
-                    
-                    document.getElementById('m-lrc-count').innerText = data.lrcCount || 0;
-                    let coverage = data.masterCount ? Math.round((data.lrcCount / data.masterCount) * 100) : 0;
-                    document.getElementById('m-lrc-coverage').innerText = `${coverage}% Coverage Rate Across Local Repository`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-                    if (data.activeProfile) {
-                        document.getElementById('active-profile-tag').innerText = `Profile: ${data.activeProfile}`;
-                    } else if (data.loadingState) {
-                        document.getElementById('active-profile-tag').innerText = `Status: ${data.loadingState.toUpperCase()}`;
-                    }
+            try {
+                const res = await fetch('/metrics', { signal: controller.signal });
+                if (!res.ok) throw new Error("Server returned " + res.status);
+                const data = await res.json();
+                
+                errorCount = 0; 
+                
+                document.getElementById('m-master-count').innerText = data.masterCount || 0;
+                document.getElementById('m-master-size').innerText = `${data.masterSize || "0.00"} GB Total (Bitperfect FLAC/Lossless Source)`;
+                
+                document.getElementById('m-mobile-count').innerText = data.mobileCount || 0;
+                document.getElementById('m-mobile-size').innerText = `${data.mobileSize || "0.00"} GB Total (Compressed AAC/M4A Architecture)`;
+                
+                document.getElementById('m-lrc-count').innerText = data.lrcCount || 0;
+                let coverage = data.masterCount ? Math.round((data.lrcCount / data.masterCount) * 100) : 0;
+                document.getElementById('m-lrc-coverage').innerText = `${coverage}% Coverage Rate Across Local Repository`;
 
-                    const alertsZone = document.getElementById('alerts-injection-zone');
-                    if (alertsZone) {
-                        alertsZone.innerHTML = '';
-                        if (data.alerts && data.alerts.length > 0) {
-                            data.alerts.forEach(alert => {
-                                let alertClass = alert.type === 'danger' ? 'alert-danger' : 'alert-warning';
-                                let fixButton = '';
-                                if (alert.fixAction === 'sync') {
-                                    fixButton = `<button class="btn-primary" style="padding:4px 10px; font-size:11px;" onclick="dispatchPipeline('/run')">Fix Sync</button>`;
-                                } else if (alert.fixAction === 'gitpull') {
-                                    fixButton = `<button class="btn-accent" style="padding:4px 10px; font-size:11px;" onclick="triggerHotPull()">Pull Updates</button>`;
-                                }
-                                alertsZone.innerHTML += `
-                                    <div class="alert-box ${alertClass}">
-                                        <span>⚠️ <strong>System Notice:</strong> ${alert.message}</span>
-                                        ${fixButton}
-                                    </div>
-                                `;
-                            });
-                        }
+                if (data.activeProfile) {
+                    document.getElementById('active-profile-tag').innerText = `Profile: ${data.activeProfile}`;
+                } else if (data.loadingState) {
+                    document.getElementById('active-profile-tag').innerText = `Status: ${data.loadingState.toUpperCase()}`;
+                }
+
+                const alertsZone = document.getElementById('alerts-injection-zone');
+                if (alertsZone) {
+                    alertsZone.innerHTML = '';
+                    if (data.alerts && data.alerts.length > 0) {
+                        data.alerts.forEach(alert => {
+                            let alertClass = alert.type === 'danger' ? 'alert-danger' : 'alert-warning';
+                            let fixButton = '';
+                            if (alert.fixAction === 'sync') {
+                                fixButton = `<button class="btn-primary" style="padding:4px 10px; font-size:11px;" onclick="dispatchPipeline('/run')">Fix Sync</button>`;
+                            } else if (alert.fixAction === 'gitpull') {
+                                fixButton = `<button class="btn-accent" style="padding:4px 10px; font-size:11px;" onclick="triggerHotPull()">Pull Updates</button>`;
+                            }
+                            alertsZone.innerHTML += `
+                                <div class="alert-box ${alertClass}">
+                                    <span>⚠️ <strong>System Notice:</strong> ${alert.message}</span>
+                                    ${fixButton}
+                                </div>
+                            `;
+                        });
                     }
-                    data = null;
-                })
-                .catch(e => {
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') {
                     errorCount++;
                     if (errorCount === 6) console.warn("Too many errors. Pausing background refreshes.");
-                });
+                }
+            } finally {
+                clearTimeout(timeoutId);
+                isMetricsActive = false;
+                setTimeout(loadMetrics, 3000); // Wait 3 seconds before next request
+            }
+        }
+
+        // --- SAFE TRACK METRICS POLLER ---
+        async function loadTrackMetrics() {
+            if (errorCount > 5 || isTrackMetricsActive) return;
+            isTrackMetricsActive = true;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            try {
+                const res = await fetch('/track-metrics', { signal: controller.signal });
+                const data = res.ok ? await res.json() : [];
+                
+                globalTrackMetrics = data || [];
+                if (document.getElementById('pane-analytics').classList.contains('active')) {
+                    renderScatterChart();
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') console.error("Failed to load individual track telemetry.", e);
+            } finally {
+                clearTimeout(timeoutId);
+                isTrackMetricsActive = false;
+                setTimeout(loadTrackMetrics, 15000); // Wait 15 seconds before next request
+            }
+        }
+
+        // --- SAFE ANALYTICS POLLER ---
+        async function loadAnalytics() {
+            if (errorCount > 5 || isAnalyticsActive) return; 
+            isAnalyticsActive = true;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            try {
+                const res = await fetch('/analytics', { signal: controller.signal });
+                if (!res.ok) throw new Error("Server returned " + res.status);
+                const data = await res.json();
+                
+                errorCount = 0; 
+                const tbody = document.getElementById('analytics-table-body');
+                
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #71717A;">Zero historical sync data points verified.</td></tr>`;
+                } else {
+                    tbody.innerHTML = data.slice().reverse().map(run => {
+                        return `
+                            <tr>
+                                <td style="font-weight:600;">${run.timestamp}</td>
+                                <td><span class="badge badge-m4a">${run.type || "Manual"}</span></td>
+                                <td style="font-family:monospace;">${run.step1 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step2 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step3 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step4 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step5 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step6 || "00:00"}</td>
+                                <td style="font-family:monospace; font-weight:bold; color:#BD93F9;">${run.total || "00:00"}</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    window.historicalPerformanceRawDataset = data;
+                    if (document.getElementById('pane-analytics').classList.contains('active')) {
+                        renderPerformanceChart();
+                    }
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    errorCount++;
+                }
+            } finally {
+                clearTimeout(timeoutId);
+                isAnalyticsActive = false;
+                setTimeout(loadAnalytics, 10000); // Wait 10 seconds before next request
+            }
         }
 
         function appendNextTrackBatch() {
@@ -785,49 +857,6 @@
                 });
         }
 
-        // Performance Chronography Visualization Subsystems
-        function loadAnalytics() {
-            if (errorCount > 5) return; 
-            
-            fetch('/analytics')
-                .then(res => {
-                    if (!res.ok) throw new Error("Server returned " + res.status);
-                    return res.json();
-                })
-                .then(data => {
-                    errorCount = 0; 
-                    const tbody = document.getElementById('analytics-table-body');
-                    
-                    if (!data || data.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #71717A;">Zero historical sync data points verified.</td></tr>`;
-                        return;
-                    }
-
-                    tbody.innerHTML = data.slice().reverse().map(run => {
-                        return `
-                            <tr>
-                                <td style="font-weight:600;">${run.timestamp}</td>
-                                <td><span class="badge badge-m4a">${run.type || "Manual"}</span></td>
-                                <td style="font-family:monospace;">${run.step1 || "00:00"}</td>
-                                <td style="font-family:monospace;">${run.step2 || "00:00"}</td>
-                                <td style="font-family:monospace;">${run.step3 || "00:00"}</td>
-                                <td style="font-family:monospace;">${run.step4 || "00:00"}</td>
-                                <td style="font-family:monospace;">${run.step5 || "00:00"}</td>
-                                <td style="font-family:monospace;">${run.step6 || "00:00"}</td>
-                                <td style="font-family:monospace; font-weight:bold; color:#BD93F9;">${run.total || "00:00"}</td>
-                            </tr>
-                        `;
-                    }).join('');
-
-                    window.historicalPerformanceRawDataset = data;
-                    if (document.getElementById('pane-analytics').classList.contains('active')) {
-                        renderPerformanceChart();
-                    }
-                })
-                .catch(e => {
-                    errorCount++;
-                });
-        }
 
         function convertTimeToSeconds(timeStr) {
             if(!timeStr) return 0;
@@ -1177,20 +1206,18 @@
 
         // --- Core Initialization ---
         window.addEventListener('load', () => {
+            // Kick off the initial data loads
             setTimeout(loadMetrics, 100);
-            setTimeout(loadTrackMetrics, 300); // Trigger the new payload pipeline!
+            setTimeout(loadTrackMetrics, 300); 
             setTimeout(loadAnalytics, 500);
+            
+            // These don't loop endlessly, so standard delays are fine
             setTimeout(loadBrokenSongs, 700);
             setTimeout(loadProfilesFrameworkSystem, 1000);
 
-            setTimeout(() => {
-                setInterval(loadMetrics, 3000);
-                setInterval(loadAnalytics, 10000);
-                setInterval(loadTrackMetrics, 15000); 
-            }, 2000);
-
+            // Log streamer handles its own recursive setTimeout inside its function
             setTimeout(runLogStreamer, 1500);
-        }); 
+        });
 
     </script>
 </body>
