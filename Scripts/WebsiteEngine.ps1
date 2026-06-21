@@ -473,10 +473,18 @@ try {
     Start-AsyncLibraryScanner 
     Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
     
-
+    # --- MODIFIED: ROBUST ASYNCHRONOUS ENGINE LOOP ---
     while ($true) {
         try {
-            $Context = $Listener.GetContext() 
+            $AsyncResult = $Listener.BeginGetContext($null, $null)
+            
+            # Non-blocking pause: wait up to 1 second for a new request.
+            # If no request falls in, loop drops out and stays responsive to process kills/signals.
+            if (-not $AsyncResult.AsyncWaitHandle.WaitOne(1000)) {
+                continue
+            }
+
+            $Context = $Listener.EndGetContext($AsyncResult) 
             $Request = $Context.Request 
             $Response = $Context.Response 
             $UrlPath = $Request.Url.LocalPath 
@@ -738,7 +746,7 @@ try {
                 if (Test-Path $Global:TimingFile) { 
                     try { $RawData = Get-Content -LiteralPath $Global:TimingFile -Raw } catch {}
                 } 
-                if ([string]::IsNullOrWhiteSpace($RawData)) { $RawData = "[]" }
+                if ($null -eq $RawData -or [string]::IsNullOrWhiteSpace($RawData)) { $RawData = "[]" }
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData) 
                 $Response.ContentType = "application/json" 
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
@@ -750,7 +758,7 @@ try {
                 if (Test-Path $MetricsFile) { 
                     try { $RawData = Get-Content -LiteralPath $MetricsFile -Raw -ErrorAction SilentlyContinue } catch {}
                 }
-                if ([string]::IsNullOrWhiteSpace($RawData)) { $RawData = "[]" }
+                if ($null -eq $RawData -or [string]::IsNullOrWhiteSpace($RawData)) { $RawData = "[]" }
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($RawData)
                 $Response.ContentType = "application/json"
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
@@ -828,22 +836,34 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
+            
+            # --- FIXED: ULTRA HIGH PERFORMANCE INGESTION ENDPOINT ---
             elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
                 $CurrentLogs = @()
-                $AllLines = @()
                 $SkipCount = 0
                 if ($Request.Url.Query -match "skip=(\d+)") { $SkipCount = [int]$Matches[1] }
 
+                $TotalLinesCount = 0
                 if (Test-Path $Global:DiagLogFile) { 
                     try {
+                        # Open via shared file stream to handle parallel background pipeline writes safely
                         $FileStream = [System.IO.File]::Open($Global:DiagLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
                         $StreamReader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
-                        while ($null -ne ($Line = $StreamReader.ReadLine())) { $AllLines += $Line }
+                        
+                        # Optimization: Avoid the O(N^2) line-by-line loop array append operation. Read bulk, split instantly.
+                        $FullStringContent = $StreamReader.ReadToEnd()
                         $StreamReader.Close(); $FileStream.Close()
-                    } catch { $AllLines = @() }
-
-                    if ($AllLines.Count -gt 0 -and $SkipCount -lt $AllLines.Count) {
-                        $CurrentLogs = $AllLines[$SkipCount..($AllLines.Count - 1)]
+                        
+                        if (-not [string]::IsNullOrEmpty($FullStringContent)) {
+                            $AllLines = $FullStringContent -split "`r?`n"
+                            $TotalLinesCount = $AllLines.Count
+                            if ($TotalLinesCount -gt 0 -and $SkipCount -lt $TotalLinesCount) {
+                                $CurrentLogs = $AllLines[$SkipCount..($TotalLinesCount - 1)]
+                            }
+                        }
+                    } catch { 
+                        $CurrentLogs = @() 
+                        $TotalLinesCount = 0
                     }
                 } 
                 
@@ -859,7 +879,7 @@ try {
                     $Global:IsPipelineRunning = $false 
                 } 
 
-                $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs; totalLines = $AllLines.Count } | ConvertTo-Json -Compress 
+                $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs; totalLines = $TotalLinesCount } | ConvertTo-Json -Compress 
                 if ([string]::IsNullOrWhiteSpace($JsonPayload)) { $JsonPayload = "{}" }
                 
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
