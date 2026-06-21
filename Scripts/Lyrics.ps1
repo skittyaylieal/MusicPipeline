@@ -157,13 +157,14 @@ foreach ($FilePath in $AudioFiles) {
     # Python Native Metadata Verification via Real-time Stream (With ID3 & Instrumental Support)
     Invoke-LogMsg "    [*] Querying embedded container tags for unsynced lyrics & instrumental flags..."
     $TmpPyCheck = Join-Path $env:TEMP "mutagen_check.py"
+    # FIXED: Swapped r'$FilePath' to r"""$FilePath""" to prevent name breakout
     $PreCheckPython = @"
 import mutagen, sys
 from mutagen.mp4 import MP4
 from mutagen.flac import FLAC
 from mutagen.id3 import ID3
 try:
-    audio = mutagen.File(r'$FilePath')
+    audio = mutagen.File(r"""$FilePath""")
     if audio is not None:
         # 1. Look for explicit automatic or manual Instrumental markings
         if isinstance(audio, FLAC):
@@ -217,7 +218,7 @@ except Exception as e:
         $LrcExitCode = Invoke-NativeProcess "python" $LrcArgs
         
         if (Test-Path -LiteralPath $LrcFile) {
-            Invoke-LogMsg "    [+] Pristine timed timelines (.lrc) successfully committed via [$Provider]."
+            Invoke-LogMsg "     [+] Pristine timed timelines (.lrc) successfully committed via [$Provider]."
             Invoke-LogMsg "---------------------------------------------"
             if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force }
             $LrcFound = $true
@@ -244,18 +245,19 @@ except Exception as e:
     }
 
     if (Test-Path -LiteralPath $TxtFile) {
-        Invoke-LogMsg "    [+] Flat text lyrics returned by fallback. Constructing Mutagen database encoder..."
+        Invoke-LogMsg "     [+] Flat text lyrics returned by fallback. Constructing Mutagen database encoder..."
         
         $TmpPyEmbed = Join-Path $env:TEMP "mutagen_embed.py"
+        # FIXED: Swapped r'$TxtFile' and r'$FilePath' variables to triple double-quotes r"""..."""
         $PythonCode = @"
 import os, mutagen, sys
 from mutagen.mp4 import MP4
 from mutagen.flac import FLAC
 from mutagen.id3 import ID3, USLT
 try:
-    with open(r'$TxtFile', 'r', encoding='utf-8') as f: lyrics_text = f.read()
+    with open(r"""$TxtFile""", 'r', encoding='utf-8') as f: lyrics_text = f.read()
     
-    audio = mutagen.File(r'$FilePath')
+    audio = mutagen.File(r"""$FilePath""")
     if audio is not None:
         if isinstance(audio, MP4):
             audio['\xa9lyr'] = [lyrics_text]
@@ -267,14 +269,14 @@ try:
             print('    [+] Unsynced text tag written to FLAC container.')
         else:
             try:
-                tags = ID3(r'$FilePath')
+                tags = ID3(r"""$FilePath""")
             except Exception:
                 tags = ID3()
             tags.add(USLT(encoding=3, lang='eng', desc='Lyrics', text=lyrics_text))
-            tags.save(r'$FilePath')
+            tags.save(r"""$FilePath""")
             print('    [+] Unsynced USLT tag written to MP3 container.')
             
-    if os.path.exists(r'$TxtFile'): os.remove(r'$TxtFile')
+    if os.path.exists(r"""$TxtFile"""): os.remove(r"""$TxtFile""")
 except Exception as e: 
     print(f'    [!] Mutagen structural error: {e}')
     sys.exit(1)
@@ -288,6 +290,7 @@ except Exception as e:
         Invoke-LogMsg "    [*] Track unindexed by lyric engines. Running database validation to check for explicit Instrumental classification..."
         
         $TmpPyInstrumentalCheck = Join-Path $env:TEMP "mutagen_is_instrumental.py"
+        # FIXED: Swapped r"$SearchQuery" and r'$FilePath' parameters to triple double-quotes r"""..."""
         $VerifyPython = @"
 import sys, os, urllib.request, json, urllib.parse, mutagen
 from mutagen.mp4 import MP4
@@ -314,11 +317,11 @@ def check_musicbrainz(artist_title):
     return False
 
 try:
-    search_target = r"$SearchQuery"
+    search_target = r"""$SearchQuery"""
     is_confirmed_instrumental = check_musicbrainz(search_target)
     
     if is_confirmed_instrumental:
-        audio = mutagen.File(r'$FilePath')
+        audio = mutagen.File(r"""$FilePath""")
         if audio is not None:
             if isinstance(audio, FLAC):
                 audio['language'] = 'zxx'
@@ -328,11 +331,11 @@ try:
                 audio['\xa9cmt'] = ['Instrumental']
                 audio.save()
             else:
-                try: tags = ID3(r'$FilePath')
+                try: tags = ID3(r"""$FilePath""")
                 except Exception: tags = ID3()
                 tags.append(mutagen.id3.TLAN(encoding=3, text=['zxx']))
                 tags.add(COMM(encoding=3, lang='eng', desc='Comment', text='Instrumental'))
-                tags.save(r'$FilePath')
+                tags.save(r"""$FilePath""")
             print("    [+] Verified Instrumental status via MusicBrainz database. Stamping track tags.")
     else:
         print("    [-] Track could not be verified as a definitive instrumental. Leaving tags untouched.")
