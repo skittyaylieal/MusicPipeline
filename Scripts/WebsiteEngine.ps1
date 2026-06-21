@@ -478,22 +478,31 @@ try {
     Start-AsyncLibraryScanner 
     Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
     
-    # --- MODIFIED: ROBUST ASYNCHRONOUS ENGINE LOOP ---
+    # --- FIXED: STATE-TRACKED INTERRUPTIBLE ENGINE LOOP ---
+    $AsyncResult = $null
     while ($true) {
         try {
-            $AsyncResult = $Listener.BeginGetContext($null, $null)
+            # Only open a new asynchronous listener if we aren't already waiting on one
+            if ($null -eq $AsyncResult) {
+                $AsyncResult = $Listener.BeginGetContext($null, $null)
+            }
             
             # Non-blocking pause: wait up to 1 second for a new request.
             # If no request falls in, loop drops out and stays responsive to process kills/signals.
             if (-not $AsyncResult.AsyncWaitHandle.WaitOne(1000)) {
+                # Timeout occurred. Do NOT clear $AsyncResult so we reuse it in the next iteration.
                 continue
             }
 
+            # A request arrived! Fetch it cleanly using the tracked handle
             $Context = $Listener.EndGetContext($AsyncResult) 
+            $AsyncResult = $null # Clear it so the next loop iteration spins up a fresh context listener
+            
             $Request = $Context.Request 
             $Response = $Context.Response 
             $UrlPath = $Request.Url.LocalPath 
-            $Method  = $Request.HttpMethod 
+            $Method  = $Request.HttpMethod
+
 
             $Response.KeepAlive = $false 
             $Response.Headers.Add("Connection", "close") 
