@@ -77,8 +77,13 @@ function Log-Engine([string]$Message, [string]$AnsiStyle = "37") {
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
     $Payload = "`e[${AnsiStyle}m[$Timestamp] [SERVER] $Message`e[0m"
     
-    # 1. Keep appending to the file stream for the dashboard UI
-    $Payload | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+    # 1. Attempt to append to the log file safely
+    try {
+        $Payload | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 -ErrorAction Stop
+    } catch {
+        # Fallback silently to terminal if the file is transiently locked or busy
+        Write-Host "`e[1;31m[LOG LOCK] Could not write to web stream log file: $_`e[0m"
+    }
     
     # 2. Mirror it to your running terminal session so you see it live
     Write-Host $Payload
@@ -889,8 +894,8 @@ try {
             }
             elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") { 
                 try {
-                    Clear-Content -LiteralPath $Global:DiagLogFile -ErrorAction Stop 
-                    "`e[1;36m[SYSTEM] Console logs manually cleared.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 
+                    # Force overwrite with a clean initialization marker instead of clearing content raw
+                    "`e[1;36m[SYSTEM] Console logs manually cleared.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 -Force -ErrorAction Stop 
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"cleared"}') 
                     $Response.StatusCode = 200 
                 } catch {
