@@ -146,22 +146,36 @@ $Queue | ForEach-Object -Parallel {
         }
     }
 
+    # CHANGE: Swapped "quiet" to "error" so FFmpeg actually outputs problems
     $FFmpegArgs = @(
-        "-y", "-loglevel", "quiet",
+        "-y", "-loglevel", "error",
         "-i", $_.Source,
-        
-        # Explicitly targets the FDK library using your legacy quality target
         "-c:a", "libfdk_aac", "-vbr", "4",
-        
         "-map", "0:a",
         "-map", "0:v?",
-        
         "-c:v", "copy", "-disposition:v", "attached_pic",
         "-map_metadata", "0", "-id3v2_version", "3",
         $_.Destination
     )
 
-    & $using:FFmpegPath @FFmpegArgs
+    # --- DEBUG ENGINE: Capture standard error streams ---
+    # 2>&1 merges FFmpeg's error stream into PowerShell's output stream so we can intercept it
+    $FFmpegOutput = & $using:FFmpegPath @FFmpegArgs 2>&1
+
+    # If FFmpeg exited with a code other than 0, it broke
+    if ($LASTEXITCODE -ne 0) {
+        $AlertTimestamp = (Get-Date).ToString("HH:mm:ss")
+        $CleanedAlert = $FFmpegOutput -join " "
+        $ErrorLine = "$ESC[1;31m[$AlertTimestamp] [Compressor] 🛑 CRASH ON VAL ($($_.Name)): $CleanedAlert$ESC[0m"
+        
+        # Spit it out to the console immediately
+        Write-Host $ErrorLine
+        
+        # Force it into the web log stream so you can read it on your dashboard
+        if (Test-Path -LiteralPath $using:GlobalLogFile) {
+            try { [System.IO.File]::AppendAllText($using:GlobalLogFile, ($ErrorLine + [System.Environment]::NewLine)) } catch {}
+        }
+    }
 } -ThrottleLimit $MaxThreads
 
 $MetricStopwatch.Stop()
