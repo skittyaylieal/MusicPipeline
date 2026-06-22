@@ -812,11 +812,11 @@
                         if (activeLogLinePointer === 0) feed.innerHTML = '';
                         
                         let batchedHTML = '';
-                        // List of color codes used across your PowerShell scripts
                         const colorCodes = ['30', '31', '32', '33', '34', '35', '36', '90'];
 
                         data.logs.forEach(line => {
-                            let cleanedLine = line;
+                            // 1. FIX: Explicitly purge hidden Windows carriage returns (\r) or trailing breaks
+                            let cleanedLine = line.replace(/[\r\n]+$/, '');
 
                             // Automatically fix missing escape characters for any supported color code
                             colorCodes.forEach(code => {
@@ -835,16 +835,19 @@
                                 .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')                      // Gray
                                 .replace(/\x1b\[0m/g, '</span>');                                                // Reset
 
-                            batchedHTML += formattedLine + "\n";
+                            // 2. FIX: Wrap each line in a block container instead of appending loose literal "\n" strings
+                            // min-height keeps legitimate empty lines spaced right, pre-wrap honors code indentation
+                            batchedHTML += `<div style="display:block; min-height:1.2em; white-space:pre-wrap;">${formattedLine}</div>`;
                         });
 
                         feed.insertAdjacentHTML('beforeend', batchedHTML);
                         activeLogLinePointer = data.totalLines;
 
+                        // 3. FIX: High-performance DOM native truncation
+                        // Instead of splitting strings, we just drop old HTML elements off the top
                         const maxLinesAllowed = 500;
-                        let currentLines = feed.innerHTML.split('\n');
-                        if (currentLines.length > maxLinesAllowed) {
-                            feed.innerHTML = currentLines.slice(-maxLinesAllowed).join('\n');
+                        while (feed.children.length > maxLinesAllowed) {
+                            feed.removeChild(feed.firstChild);
                         }
 
                         feed.scrollTop = feed.scrollHeight;
