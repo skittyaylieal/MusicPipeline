@@ -150,7 +150,7 @@ $Queue | ForEach-Object -Parallel {
     $FFmpegArgs = @(
         "-y", "-loglevel", "error",
         "-i", $_.Source,
-        "-c:a", "libfdk_aac", "-vbr", "4",
+        "-c:a", "aac", "-vbr", "4",
         "-map", "0:a",
         "-map", "0:v?",
         "-c:v", "copy", "-disposition:v", "attached_pic",
