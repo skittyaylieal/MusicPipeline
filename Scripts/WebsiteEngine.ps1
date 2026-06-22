@@ -478,28 +478,28 @@ try {
     Start-AsyncLibraryScanner 
     Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
     
-    # --- FIXED: STATE-TRACKED INTERRUPTIBLE ENGINE LOOP ---
+    # --- FIXED: STATEFUL ASYNCHRONOUS ENGINE LOOP ---
     $AsyncResult = $null
     while ($true) {
         try {
-            # Only open a new asynchronous listener if we aren't already waiting on one
+            # Only allocate a fresh async request context if we aren't already waiting on one
             if ($null -eq $AsyncResult) {
                 $AsyncResult = $Listener.BeginGetContext($null, $null)
             }
             
             # Non-blocking pause: wait up to 1 second for a new request.
-            # If no request falls in, loop drops out and stays responsive to process kills/signals.
+            # If no request hits, drop out and stay responsive to process kills/signals,
+            # but keep the active handle intact for the next loop pass!
             if (-not $AsyncResult.AsyncWaitHandle.WaitOne(1000)) {
-                # Timeout occurred. Do NOT clear $AsyncResult so we reuse it in the next iteration.
                 continue
             }
 
-            # A request arrived! Fetch it cleanly using the tracked handle
+            # A connection landed! Consume the handle and clear the tracking variable
             $Context = $Listener.EndGetContext($AsyncResult) 
-            $AsyncResult = $null # Clear it so the next loop iteration spins up a fresh context listener
+            $AsyncResult = $null
             
             $Request = $Context.Request 
-            $Response = $Context.Response 
+            $Response = $Context.Response
             $UrlPath = $Request.Url.LocalPath 
             $Method  = $Request.HttpMethod
 
@@ -968,7 +968,12 @@ try {
         } 
         catch {
             Log-Engine "⚠️ Request Parsing Context Exception: $_" "33"
-            try { $Response.Abort() } catch {}
+            # Force-clear the tracking state so a broken handle doesn't wedge the loop
+            $AsyncResult = $null
+            try { 
+                if ($null -ne $Context) { $Context.Response.Abort() } 
+                elif ($null -ne $Response) { $Response.Abort() }
+            } catch {}
         }
     }
 }
