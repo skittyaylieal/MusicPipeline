@@ -149,13 +149,19 @@ $Queue | ForEach-Object -Parallel {
     $FFmpegArgs = @(
         "-y", "-loglevel", "quiet",
         "-i", $_.Source,
-        "-c:a", "aac", "-vbr", "4",
+        
+        # Explicitly targets the FDK library using your legacy quality target
+        "-c:a", "libfdk_aac", "-vbr", "4",
+        
+        "-map", "0:a",
+        "-map", "0:v?",
+        
         "-c:v", "copy", "-disposition:v", "attached_pic",
         "-map_metadata", "0", "-id3v2_version", "3",
         $_.Destination
     )
 
-    $Proc = Start-Process -FilePath $using:FFmpegPath -ArgumentList $FFmpegArgs -NoNewWindow -PassThru -Wait
+    & $using:FFmpegPath @FFmpegArgs
 } -ThrottleLimit $MaxThreads
 
 $MetricStopwatch.Stop()
