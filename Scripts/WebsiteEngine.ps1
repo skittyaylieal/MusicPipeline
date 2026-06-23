@@ -858,6 +858,8 @@ try {
                 if ($Request.Url.Query -match "skip=(\d+)") { $SkipCount = [int]$Matches[1] }
 
                 $TotalLinesCount = 0
+                $NextPointer = $SkipCount
+
                 if (Test-Path $Global:DiagLogFile) { 
                     try {
                         # Open via shared file stream to handle parallel background pipeline writes safely
@@ -871,13 +873,25 @@ try {
                         if (-not [string]::IsNullOrEmpty($FullStringContent)) {
                             $AllLines = $FullStringContent -split "`r?`n"
                             $TotalLinesCount = $AllLines.Count
+                            
                             if ($TotalLinesCount -gt 0 -and $SkipCount -lt $TotalLinesCount) {
-                                $CurrentLogs = $AllLines[$SkipCount..($TotalLinesCount - 1)]
+                                # FIX: Cap the return payload to 3000 lines max.
+                                # This keeps JSON serialization instant and eliminates network socket timeouts.
+                                $MaxLinesToReturn = 3000
+                                $EndIndex = [math]::Min(($TotalLinesCount - 1), ($SkipCount + $MaxLinesToReturn - 1))
+                                
+                                $CurrentLogs = $AllLines[$SkipCount..$EndIndex]
+                                
+                                # Advance the pointer to the end of this batch so the client catches up incrementally
+                                $NextPointer = $EndIndex + 1
+                            } else {
+                                $NextPointer = $TotalLinesCount
                             }
                         }
                     } catch { 
                         $CurrentLogs = @() 
                         $TotalLinesCount = 0
+                        $NextPointer = $SkipCount
                     }
                 } 
                 
@@ -893,7 +907,10 @@ try {
                     $Global:IsPipelineRunning = $false 
                 } 
 
-                $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs; totalLines = $TotalLinesCount } | ConvertTo-Json -Compress 
+                # FIX: Pass $NextPointer as totalLines. 
+                # Your frontend JS uses data.totalLines to set its next skip parameter,
+                # meaning it will now gracefully page through huge backlogs 300 lines at a time every 1.2s!
+                $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs; totalLines = $NextPointer } | ConvertTo-Json -Compress 
                 if ([string]::IsNullOrWhiteSpace($JsonPayload)) { $JsonPayload = "{}" }
                 
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload) 
