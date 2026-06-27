@@ -330,8 +330,7 @@ function Invoke-PipelineExecution {
                     SleepRequests    = $EnvMap.SleepRequests 
                     CleanSweep       = $EnvMap.CleanSweep 
                 }
-                $Step2Result = & $S2ScriptPath @S2Params 2>&1 
-                $Step2Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+                & $S2ScriptPath @S2Params 2>&1 
             } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
             $S2Watch.Stop()
             $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
@@ -352,8 +351,7 @@ function Invoke-PipelineExecution {
             $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
             if (Test-Path $S4ScriptPath) {
                 $S4Params = @{ BackupDir = $EnvMap.BackupDir } 
-                $Step4Result = & $S4ScriptPath @S4Params 2>&1 
-                $Step4Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+                & $S4ScriptPath @S4Params 2>&1 
             } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
             $S4Watch.Stop()
             $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
@@ -363,8 +361,7 @@ function Invoke-PipelineExecution {
             $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
             if (Test-Path $S5ScriptPath) {
                 $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = $EnvMap.MaxCompressThreads } 
-                $Step5Result = & $S5ScriptPath @S5Params 2>&1 
-                $Step5Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+                & $S5ScriptPath @S5Params 2>&1 
             } else { Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping." }
             $S5Watch.Stop()
             $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
