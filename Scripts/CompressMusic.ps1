@@ -82,7 +82,8 @@ if ($AllFiles.Count -eq 0) {
 }
 
 Invoke-LogMsg "[*] Syncing timed lyric (.lrc) files..."
-Get-ChildItem -LiteralPath $BackupDir -Filter *.lrc -Recurse -File | ForEach-Object {
+Get-ChildItem -LiteralPath $BackupDir -Recurse -File | Where-Object { $_.Extension -eq '.lrc' } | 
+ForEach-Object {
     if ($_.Name -notlike "*cookie*") {
         $RelativePath = $_.FullName.Substring($BackupDir.Length)
         $DestinationLrc = "$MobileDir$RelativePath"
