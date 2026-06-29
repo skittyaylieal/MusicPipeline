@@ -148,10 +148,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
             $PlaylistURL
         )
 
-        # Configuration: Setup temporary file tracking for live tailing
-        $OutFile = Join-Path $using:LocalConfigDir "playlist${LoopIndex}_stream.log"
-        if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue }
-
         # FIX: Explicitly escape double quotes around individual arguments to protect spaces/backslashes from splitting
         $EscapedArgs = @()
         foreach ($Arg in $YTDLArgs) {
@@ -163,68 +159,39 @@ $SanitizedURLs | ForEach-Object -Parallel {
         }
         $YTDLArgsString = $EscapedArgs -join " "
         
-        # Build a safely nested executable execution string for CMD processing
-        $CommandLine = "`"`"$using:LocalYTDLPPath`" $YTDLArgsString > `"$OutFile`" 2>&1`""
+        # Build a safely nested executable execution string for CMD processing (Merging 2>&1 into output stream)
+        $CommandLine = "`"`"$using:LocalYTDLPPath`" $YTDLArgsString 2>&1`""
 
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = "cmd.exe"
         $psi.Arguments              = "/c $CommandLine"
         $psi.UseShellExecute        = $false  
-        $psi.CreateNoWindow         = $true   # Strictly guarantees no terminal pops up or steals desktop focus
+        $psi.CreateNoWindow         = $true   
         $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $psi.RedirectStandardOutput = $true   # Stream output straight into system memory buffers
 
+        # Launch the executable engine
         $proc = [System.Diagnostics.Process]::Start($psi)
 
         $Capture = $false
-        $LastLineCount = 0
 
-        # LIVE AGGREGATOR LOOP: Continuously streams text from disk as yt-dlp flushes it
-        while (-not $proc.HasExited) {
-            [System.Threading.Thread]::Sleep(100) # Prevents high CPU consumption while spinning
+        # LIVE REDIRECTION ENGINE: Blocks natively and streams text lines directly to logger as they are generated
+        while (-not $proc.StandardOutput.EndOfStream) {
+            $CurrentLine = $proc.StandardOutput.ReadLine()
+            
+            if ($null -ne $CurrentLine) {
+                Invoke-LogMsg $CurrentLine $LoopIndex
 
-            if (Test-Path -LiteralPath $OutFile) {
-                try {
-                    # Open file with FileShare.ReadWrite to avoid locking out the yt-dlp engine stream
-                    $Stream = [System.IO.File]::Open($OutFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-                    $Reader = [System.IO.StreamReader]::new($Stream, [System.Text.Encoding]::UTF8)
-                    $Lines = [System.Collections.Generic.List[string]]::new()
-                    
-                    while (($Line = $Reader.ReadLine()) -ne $null) {
-                        $Lines.Add($Line)
-                    }
-                    $Reader.Close(); $Stream.Close()
-
-                    # Whenever new stream segments register, read and flush them live to console log
-                    if ($Lines.Count -gt $LastLineCount) {
-                        for ($i = $LastLineCount; $i -lt $Lines.Count; $i++) {
-                            $CurrentLine = $Lines[$i]
-                            Invoke-LogMsg $CurrentLine $LoopIndex
-
-                            if ($CurrentLine -match "Finished downloading playlist:") { $Capture = $true }
-                            if ($Capture) {
-                                [System.IO.File]::AppendAllText($ErrorLogPath, ($CurrentLine + [System.Environment]::NewLine))
-                            }
-                        }
-                        $LastLineCount = $Lines.Count
-                    }
-                } catch {
-                    # Fail silently if the file is momentarily locked by the OS during flush cycles
+                # Preserve error harvesting rules for localized tracking logs
+                if ($CurrentLine -match "Finished downloading playlist:") { $Capture = $true }
+                if ($Capture) {
+                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CurrentLine + [System.Environment]::NewLine))
                 }
             }
         }
 
-        # Final terminal processing pass to harvest any remaining text drops right at death
-        if (Test-Path -LiteralPath $OutFile) {
-            try {
-                $Lines = Get-Content -LiteralPath $OutFile -ErrorAction SilentlyContinue
-                if ($Lines -and $Lines.Count -gt $LastLineCount) {
-                    for ($i = $LastLineCount; $i -lt $Lines.Count; $i++) {
-                        Invoke-LogMsg $Lines[$i] $LoopIndex
-                    }
-                }
-                Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
-            } catch {}
-        }
+        # Native handle wait synchronization
+        $proc.WaitForExit()
 
         if ($proc.ExitCode -eq 0) {
             Invoke-LogMsg "Sync completed successfully!" $LoopIndex
