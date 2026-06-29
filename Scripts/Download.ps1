@@ -173,20 +173,17 @@ $SanitizedURLs | ForEach-Object -Parallel {
         # Launch the executable engine
         $proc = [System.Diagnostics.Process]::Start($psi)
 
-        $Capture = $false
 
-        # LIVE REDIRECTION ENGINE: Blocks natively and streams text lines directly to logger as they are generated
+        # LIVE REDIRECTION ENGINE: Streams text lines directly to logger and session log in real-time
         while (-not $proc.StandardOutput.EndOfStream) {
             $CurrentLine = $proc.StandardOutput.ReadLine()
             
             if ($null -ne $CurrentLine) {
+                # 1. Flash it to your master console/global log stream
                 Invoke-LogMsg $CurrentLine $LoopIndex
 
-                # Preserve error harvesting rules for localized tracking logs
-                if ($CurrentLine -match "Finished downloading playlist:") { $Capture = $true }
-                if ($Capture) {
-                    [System.IO.File]::AppendAllText($ErrorLogPath, ($CurrentLine + [System.Environment]::NewLine))
-                }
+                # 2. Instantly append it to the dedicated playlist log for deep diagnostics
+                [System.IO.File]::AppendAllText($ErrorLogPath, ($CurrentLine + [System.Environment]::NewLine))
             }
         }
 
