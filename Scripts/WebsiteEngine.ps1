@@ -283,7 +283,7 @@ function Invoke-PipelineExecution {
         MaxSleepInterval = [int]$Global:Profile.MaxSleepInterval
         SleepRequests    = [int]$Global:Profile.SleepRequests
         MaxCompressThreads = [int]$Global:Profile.MaxCompressThreads
-        MaxDownloadThreads = [int]$Global:Profile.DownloadThreads
+        MaxDownloadThreads = [int]$Global:Profile.MaxDownloadThreads
         CleanSweep       = $CleanSweep 
         LogFile          = $Global:DiagLogFile 
         TimingFile       = $Global:TimingFile 
