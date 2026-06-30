@@ -5,7 +5,6 @@ Param (
     [string]$HistoryPath,
     [string[]]$PlaylistURLs,
     [string]$ConfigDir,
-    [string]$CacheDir,
     [int]$SleepInterval,
     [int]$MaxSleepInterval,
     [int]$SleepRequests,
@@ -19,7 +18,6 @@ $LocalYTDLPPath        = $YTDLPPath
 $LocalBackupDir        = $BackupDir
 $LocalCookiePath       = $CookiePath
 $LocalConfigDir        = $ConfigDir
-$LocalCacheDir         = $CacheDir
 $LocalSleepInterval    = $SleepInterval
 $LocalMaxSleepInterval = $MaxSleepInterval
 $LocalSleepRequests    = $SleepRequests
@@ -129,7 +127,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--cookies", $using:LocalCookiePath,
             "-P", $using:LocalBackupDir,
             "-o", $using:OutputTemplate,
-            "--cache-dir", $using:LocalCacheDir,
+            "--no-cache-dir",
             "--geo-bypass",
             "--js-runtime", "deno",
             "--extractor-args", "youtube:player_js_variant=tv",
@@ -172,8 +170,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $psi.RedirectStandardOutput = $true   # Stream output straight into system memory buffers
 
         # Remove log buffer
-        [System.Environment]::SetEnvironmentVariable("PYTHONUNBUFFERED", "1")
-
+        $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
 
         # Launch the executable engine
         $proc = [System.Diagnostics.Process]::Start($psi)

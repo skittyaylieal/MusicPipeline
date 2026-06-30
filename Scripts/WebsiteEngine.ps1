@@ -270,7 +270,6 @@ function Invoke-PipelineExecution {
     $ContextBundle = @{
         ScriptDir        = $ScriptDir 
         ConfigDir        = $ConfigDir 
-        CacheDir         = Join-Path $ConfigDir ".cache"
         BackupDir        = $Global:Profile.BackupDir 
         MobileDir        = $Global:Profile.MobileDir 
         CookieFile       = $Global:Profile.CookieFile 
@@ -327,7 +326,6 @@ function Invoke-PipelineExecution {
                     HistoryPath         = $EnvMap.HistoryFile 
                     PlaylistURLs        = $EnvMap.Playlists 
                     ConfigDir           = $EnvMap.ConfigDir 
-                    CacheDir            = $EnvMap.CacheDir
                     SleepInterval       = $EnvMap.SleepInterval 
                     MaxSleepInterval    = $EnvMap.MaxSleepInterval 
                     SleepRequests       = $EnvMap.SleepRequests
