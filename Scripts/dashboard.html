@@ -393,6 +393,8 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div class="config-group"><label>Throttling Burst Limit (SleepRequests)</label><input type="text" id="cfg-SleepRequests"></div>
                         <div class="config-group"><label>FFmpeg Transcode Worker Limit (MaxCompressThreads)</label><input type="text" id="cfg-MaxCompressThreads"></div>
+                        <div class="config-group"><label>Parallelised p
+                        Playlist Worker Limit (MaxDownloadThreads)</label><input type="text" id="cfg-MaxDownloadThreads"></div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div class="config-group"><label>Folder Scanner Loop (Sec)</label><input type="text" id="cfg-ScannerSleepIntervalSec"></div>
@@ -1125,6 +1127,7 @@
                 MaxSleepInterval: parseInt(document.getElementById('cfg-MaxSleepInterval').value) || 12,
                 SleepRequests: parseInt(document.getElementById('cfg-SleepRequests').value) || 3,
                 MaxCompressThreads: parseInt(document.getElementById('cfg-MaxCompressThreads').value) || 3,
+                MaxDownloadThreads: parseInt(document.getElementById('cfg-MaxDownloadThreads').value) || 3,
                 ScannerSleepIntervalSec: parseInt(document.getElementById('cfg-ScannerSleepIntervalSec').value) || 60,
                 ChronDaemonSleepSec: parseInt(document.getElementById('cfg-ChronDaemonSleepSec').value) || 1800,
                 Playlists: playlistsArray
