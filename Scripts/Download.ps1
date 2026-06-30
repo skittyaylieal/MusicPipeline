@@ -9,6 +9,7 @@ Param (
     [int]$SleepInterval,
     [int]$MaxSleepInterval,
     [int]$SleepRequests,
+    [int]$MaxDownloadThreads = 1,
     [switch]$CleanSweep,
     [int]$Index
 )
@@ -206,7 +207,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             Remove-Item -LiteralPath $LocalActiveHistoryLog -Force -ErrorAction SilentlyContinue
         }
     }
-} -ThrottleLimit 1
+} -ThrottleLimit $MaxDownloadThreads
 
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed

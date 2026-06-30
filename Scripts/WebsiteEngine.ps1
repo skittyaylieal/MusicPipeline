@@ -35,6 +35,7 @@ function Load-ProfileContext {
                     MaxSleepInterval        = 12
                     SleepRequests           = 3
                     MaxCompressThreads      = 3
+                    MaxDownloadThreads      = 3
                     ScannerSleepIntervalSec = 60
                     ChronDaemonSleepSec     = 1800
                     Playlists               = @(
@@ -282,6 +283,7 @@ function Invoke-PipelineExecution {
         MaxSleepInterval = [int]$Global:Profile.MaxSleepInterval
         SleepRequests    = [int]$Global:Profile.SleepRequests
         MaxCompressThreads = [int]$Global:Profile.MaxCompressThreads
+        MaxDownloadThreads = [int]$Global:Profile.DownloadThreads
         CleanSweep       = $CleanSweep 
         LogFile          = $Global:DiagLogFile 
         TimingFile       = $Global:TimingFile 
@@ -318,17 +320,18 @@ function Invoke-PipelineExecution {
             $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1" 
             if (Test-Path $S2ScriptPath) {
                 $S2Params = @{
-                    BackupDir        = $EnvMap.BackupDir 
-                    YTDLPPath        = $EnvMap.YTDLPExe 
-                    CookiePath       = $EnvMap.CookieFile 
-                    HistoryPath      = $EnvMap.HistoryFile 
-                    PlaylistURLs     = $EnvMap.Playlists 
-                    ConfigDir        = $EnvMap.ConfigDir 
-                    CacheDir         = $EnvMap.CacheDir
-                    SleepInterval    = $EnvMap.SleepInterval 
-                    MaxSleepInterval = $EnvMap.MaxSleepInterval 
-                    SleepRequests    = $EnvMap.SleepRequests 
-                    CleanSweep       = $EnvMap.CleanSweep 
+                    BackupDir           = $EnvMap.BackupDir 
+                    YTDLPPath           = $EnvMap.YTDLPExe 
+                    CookiePath          = $EnvMap.CookieFile 
+                    HistoryPath         = $EnvMap.HistoryFile 
+                    PlaylistURLs        = $EnvMap.Playlists 
+                    ConfigDir           = $EnvMap.ConfigDir 
+                    CacheDir            = $EnvMap.CacheDir
+                    SleepInterval       = $EnvMap.SleepInterval 
+                    MaxSleepInterval    = $EnvMap.MaxSleepInterval 
+                    SleepRequests       = $EnvMap.SleepRequests
+                    MaxDownloadThreads  = $EnvMap.MaxDownloadThreads
+                    CleanSweep          = $EnvMap.CleanSweep 
                 }
                 & $S2ScriptPath @S2Params 2>&1 
             } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
