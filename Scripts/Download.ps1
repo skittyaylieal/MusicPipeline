@@ -171,6 +171,10 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
         $psi.RedirectStandardOutput = $true   # Stream output straight into system memory buffers
 
+        # Remove log buffer
+        $env::PYTHONUNBUFFERED = "1"
+
+
         # Launch the executable engine
         $proc = [System.Diagnostics.Process]::Start($psi)
 
