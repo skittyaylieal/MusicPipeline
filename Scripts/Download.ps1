@@ -5,6 +5,7 @@ Param (
     [string]$HistoryPath,
     [string[]]$PlaylistURLs,
     [string]$ConfigDir,
+    [string]$CacheDir,
     [int]$SleepInterval,
     [int]$MaxSleepInterval,
     [int]$SleepRequests,
@@ -18,6 +19,7 @@ $LocalYTDLPPath        = $YTDLPPath
 $LocalBackupDir        = $BackupDir
 $LocalCookiePath       = $CookiePath
 $LocalConfigDir        = $ConfigDir
+$LocalCacheDir         = $CacheDir
 $LocalSleepInterval    = $SleepInterval
 $LocalMaxSleepInterval = $MaxSleepInterval
 $LocalSleepRequests    = $SleepRequests
@@ -160,7 +162,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         
         # Build a safely nested executable execution string for CMD processing (Merging 2>&1 into output stream)
         $CommandLine = "`"`"$using:LocalYTDLPPath`" $YTDLArgsString 2>&1`""
-        
+
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = "cmd.exe"
         $psi.Arguments              = "/c $CommandLine"
