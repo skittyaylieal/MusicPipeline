@@ -446,6 +446,11 @@ function Invoke-HotReload {
 # -----------------------------------------------------------------
 # 3. ADAPTIVE NETWORK ENGINE ROUTER ROUTINE
 # -----------------------------------------------------------------
+
+# 🟢 Memory Salvage: Clear out any heavy historical errors pinned in the console memory
+$Error.Clear()
+[System.GC]::Collect()
+
 Log-Engine "🧼 Flushing old proxy tables and cleaning session jobs..." "33"
 netsh interface portproxy reset | Out-Null 
 Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
@@ -457,14 +462,18 @@ while ($true) {
     $TargetPort++ 
 }
 
-Log-Engine "🔗 Aligning fresh Windows port proxy map: 80 ---> $TargetPort" "36"
-netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1 | Out-Null
-
-$Listener = New-Object System.Net.HttpListener 
-$Listener.Prefixes.Add("http://127.0.0.1:$TargetPort/") 
-
+# Wrap the ENTIRE initialization routine in a safe, memory-insulated try block
 try {
+    Log-Engine "🔗 Aligning fresh Windows port proxy map: 80 ---> $TargetPort" "36"
+    
+    # Track exit code safely without letting a heavy error stream build up
+    $NetshOut = netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "netsh registration failed: $NetshOut" }
+
+    $Listener = New-Object System.Net.HttpListener 
+    $Listener.Prefixes.Add("http://127.0.0.1:$TargetPort/") 
     $Listener.Start() 
+
     $LocalIPs = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Wi-Fi','Ethernet' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPAddress 
     $PrimaryIP = if ($LocalIPs) { $LocalIPs[0] } else { "127.0.0.1" } 
 
@@ -501,7 +510,6 @@ try {
             $Response = $Context.Response
             $UrlPath = $Request.Url.LocalPath 
             $Method  = $Request.HttpMethod
-
 
             $Response.KeepAlive = $false 
             $Response.Headers.Add("Connection", "close") 
@@ -994,9 +1002,13 @@ try {
     }
 }
 catch {
-    Log-Engine "🛑 Fatal HTTP Core Listener Breakdown: $_" "1;31"
+    # 🟢 SAFE: Extract only the literal text message string instead of serializing the entire object graph
+    $ExceptionMessage = if ($_.Exception) { $_.Exception.Message } else { $_.ToString() }
+    Log-Engine "🛑 Fatal HTTP Core Listener Breakdown: $ExceptionMessage" "1;31"
 }
 finally {
-    if ($null -ne $Listener) { $Listener.Stop(); $Listener.Close() }
-    netsh interface portproxy reset
+    if ($null -ne $Listener) { 
+        try { $Listener.Stop(); $Listener.Close() } catch {} 
+    }
+    netsh interface portproxy reset | Out-Null
 }
