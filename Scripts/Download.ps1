@@ -127,7 +127,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--cookies", $using:LocalCookiePath,
             "-P", $using:LocalBackupDir,
             "-o", $using:OutputTemplate,
-            "--no-cache-dir",
+            "--cache-dir", $using:LocalCacheDir,
             "--geo-bypass",
             "--js-runtime", "deno",
             "--extractor-args", "youtube:player_js_variant=tv",
@@ -159,8 +159,8 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $YTDLArgsString = $EscapedArgs -join " "
         
         # Build a safely nested executable execution string for CMD processing (Merging 2>&1 into output stream)
-        $CommandLine = "set PYTHONUNBUFFERED=1 && `"`"$using:LocalYTDLPPath`" $YTDLArgsString 2>&1`""
-
+        $CommandLine = "`"`"$using:LocalYTDLPPath`" $YTDLArgsString 2>&1`""
+        
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = "cmd.exe"
         $psi.Arguments              = "/c $CommandLine"
