@@ -159,7 +159,7 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $YTDLArgsString = $EscapedArgs -join " "
         
         # Build a safely nested executable execution string for CMD processing (Merging 2>&1 into output stream)
-        $CommandLine = "`"`"$using:LocalYTDLPPath`" $YTDLArgsString 2>&1`""
+        $CommandLine = "set PYTHONUNBUFFERED=1 && `"`"$using:LocalYTDLPPath`" $YTDLArgsString 2>&1`""
 
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = "cmd.exe"
