@@ -404,7 +404,7 @@ function Invoke-PipelineExecution {
         catch { Log-Progress "`e[1;31m[CRITICAL ERROR] Pipeline execution collapsed: $_`e[0m" }
     }
 
-    $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $MasterPipelineJob -ArgumentList $ContextBundle 
+    $Job = Start-ThreadJob -Name "ActiveMusicDownloader" -ScriptBlock $MasterPipelineJob -ArgumentList $ContextBundle 
 }
 
 function Invoke-HotReload {
