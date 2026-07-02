@@ -77,9 +77,12 @@ $SanitizedURLs | ForEach-Object -Parallel {
         $Reset = "$ESC[0m"
         
         $ColorCode = switch ($Idx) {
-            1 { "36" }  # Cyan
-            2 { "35" }  # Magenta
+            1 { "38;5;51" }  # Cyan
+            2 { "38;5;201" }  # Magenta
             3 { "33" }  # Yellow
+            4 { "38;5;135" } # Purple
+            5 { "38;5;22" } # Forest
+            6 { "38;5;217" } # Peach
             default { "32" } # Green fallback
         }
         

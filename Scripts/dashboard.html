@@ -827,21 +827,30 @@
                                 return;
                             }
 
-                            colorCodes.forEach(code => {
+                            // --- UPDATED FOR 256-COLOR ESCAPES ---
+                            // Automatically fix missing escape characters for traditional or extended 256-color codes
+                            const extendedColorCodes = ['38;5;51', '38;5;201', '33', '38;5;135', '38;5;22', '38;5;217', '32'];
+                            extendedColorCodes.forEach(code => {
                                 if (cleanedLine.includes(`[${code}m`) && !cleanedLine.includes('\x1b')) {
-                                    cleanedLine = cleanedLine.replace(new RegExp(`\\[${code}m`, 'g'), `\x1b[${code}m`);
+                                    cleanedLine = cleanedLine.replace(new RegExp(`\\[${code.replace(/;/g, '\\;')}(?=m)`, 'g'), `\x1b[${code}`);
                                 }
                             });
 
                             let formattedLine = cleanedLine
-                                .replace(/\x1b\[(1;)?33m/g, '<span style="color:#FFB86C; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?34m/g, '<span style="color:#6272A4; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">')
-                                .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">')
-                                .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')
-                                .replace(/\x1b\[0m/g, '</span>');
+                                // --- 256-Color & Classic Matches ---
+                                .replace(/\x1b\[(38;5;51|36)m/g, '<span style="color:#8BE9FD; font-weight:bold;">')   // Cyan (Matches your original color)
+                                .replace(/\x1b\[(38;5;201|35)m/g, '<span style="color:#FF79C6; font-weight:bold;">')  // Magenta (Matches your original color)
+                                .replace(/\x1b\[38;5;135m/g, '<span style="color:#BD93F9; font-weight:bold;">')       // Purple (New addition)
+                                .replace(/\x1b\[38;5;22m/g, '<span style="color:#50FA7B; opacity:0.85;">')            // Forest Green (New addition)
+                                .replace(/\x1b\[38;5;217m/g, '<span style="color:#FFB86C; font-weight:lighter;">')   // Peach (New addition)
+                                
+                                // --- Original Standard Matches ---
+                                .replace(/\x1b\[(1;)?33m/g, '<span style="color:#FFB86C; font-weight:bold;">')        // Yellow
+                                .replace(/\x1b\[(1;)?34m/g, '<span style="color:#6272A4; font-weight:bold;">')        // Blue
+                                .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">')        // Green Fallback
+                                .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">')        // Red
+                                .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')                          // Gray
+                                .replace(/\x1b\[0m/g, '</span>');                                                    // Reset
 
                             batchedHTML += `<div style="display:block; min-height:1.2em; white-space:pre-wrap;">${formattedLine}</div>`;
                         });
