@@ -25,7 +25,9 @@ $LocalMaxSleepInterval = $MaxSleepInterval
 $LocalSleepRequests    = $SleepRequests
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-Clear-Host
+try {
+    Clear-Host
+} catch {}
 
 Write-Output "============================================="
 Write-Output "    PowerShell Module: Media Downloader"

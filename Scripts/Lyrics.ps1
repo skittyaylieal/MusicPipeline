@@ -4,7 +4,9 @@ Param (
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 $env:PYTHONIOENCODING = "utf-8"
-Clear-Host
+try {
+    Clear-Host
+} catch {}
 
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 

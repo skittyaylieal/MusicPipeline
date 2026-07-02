@@ -296,7 +296,9 @@ function Invoke-PipelineExecution {
 
         #$env:PYTHONUNBUFFERED = "1" 
         $env:YTDLP_UNBUFFERED = "1" 
+        $ProgressPreference = 'SilentlyContinue'
 
+        
         function Log-Progress([string]$Msg) {
             $Timestamp = (Get-Date).ToString("HH:mm:ss") 
             "`e[90m[$Timestamp]`e[0m $Msg" | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 

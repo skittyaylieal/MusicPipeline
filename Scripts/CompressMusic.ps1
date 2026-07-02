@@ -6,7 +6,9 @@ Param (
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-Clear-Host
+try {
+    Clear-Host
+} catch {}
 
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 

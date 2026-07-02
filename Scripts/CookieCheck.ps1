@@ -5,7 +5,9 @@ Param (
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-Clear-Host
+try {
+    Clear-Host
+} catch {}
 
 Write-Output "============================================="
 Write-Output "    PowerShell Module: Cookie Validator"
