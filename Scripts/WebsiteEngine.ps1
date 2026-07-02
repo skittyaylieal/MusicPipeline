@@ -294,7 +294,7 @@ function Invoke-PipelineExecution {
     $MasterPipelineJob = {
         param($EnvMap)
 
-        $env:PYTHONUNBUFFERED = "1" 
+        #$env:PYTHONUNBUFFERED = "1" 
         $env:YTDLP_UNBUFFERED = "1" 
 
         function Log-Progress([string]$Msg) {
