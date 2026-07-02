@@ -60,7 +60,7 @@ foreach ($Log in $ErrorLogs) {
                     reason     = $Reason
                     detectedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
                 })
-                Invoke-LogMsg "    [!] Flagged broken track: $VideoID ($Reason)"
+                Write-Output "    [!] Flagged broken track: $VideoID ($Reason)"
             }
         }
     }
