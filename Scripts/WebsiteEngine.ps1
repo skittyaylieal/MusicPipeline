@@ -298,7 +298,7 @@ function Invoke-PipelineExecution {
         $env:YTDLP_UNBUFFERED = "1" 
         $ProgressPreference = 'SilentlyContinue'
 
-        
+
         function Log-Progress([string]$Msg) {
             $Timestamp = (Get-Date).ToString("HH:mm:ss") 
             "`e[90m[$Timestamp]`e[0m $Msg" | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
@@ -357,7 +357,7 @@ function Invoke-PipelineExecution {
             $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
             if (Test-Path $S4ScriptPath) {
                 $S4Params = @{ BackupDir = $EnvMap.BackupDir } 
-                & $S4ScriptPath @S4Params 2>&1 
+                # & $S4ScriptPath @S4Params 2>&1 
             } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
             $S4Watch.Stop()
             $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
