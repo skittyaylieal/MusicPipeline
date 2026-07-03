@@ -65,15 +65,23 @@ if (-not (Test-Path -LiteralPath $BackupDir)) {
 }
 
 if (-not (Test-Path -LiteralPath $MobileDir)) {
-    New-Item -ItemType Directory -LiteralPath $MobileDir -Force | Out-Null
+    # FIXED: Uses -Path instead of -LiteralPath
+    New-Item -ItemType Directory -Path $MobileDir -Force | Out-Null
 }
 
 # --- OPTIMIZATION: NATIVE .NET HIGH-PERFORMANCE SINGLE-PASS EXTRACTION ---
-Invoke-LogMsg "[*] Indexing backup directory structure (High-Performance Native String Array)..."
+Invoke-LogMsg "[*] Indexing backup directory structure (High-Performance Native Safe Enumeration)..."
 
 try {
-    # Directly pull paths as simple strings to bypass object type mutations and dependency issues
-    [string[]]$BackupObjects = [System.IO.Directory]::GetFiles($BackupDir, "*", [System.IO.SearchOption]::AllDirectories)
+    $DirectoryInfo = [System.IO.DirectoryInfo]::new($BackupDir)
+    
+    # .EnumerateFiles is non-blocking and handles memory instantly. 
+    # Skipping 'ReparsePoint' guarantees it doesn't get trapped by recursive loops.
+    $RawFiles = $DirectoryInfo.EnumerateFiles("*", [System.IO.SearchOption]::AllDirectories) | 
+        Where-Object { $_.Attributes -notmatch 'ReparsePoint' } | 
+        ForEach-Object { $_.FullName }
+        
+    [string[]]$BackupObjects = if ($RawFiles) { @($RawFiles) } else { @() }
 } catch {
     Invoke-LogMsg "🛑 ERROR during disk enumeration: $_"
     Exit 1
@@ -81,14 +89,23 @@ try {
 
 # 1. Filter and purge artwork directly out of the path collection
 Invoke-LogMsg "[*] Purging leftover artwork files..."
-$BackupObjects | Where-Object { $_ -match '\.(webp|jpg|jpeg|png)$' } | 
-    ForEach-Object { Remove-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue }
+if ($BackupObjects.Count -gt 0) {
+    $ArtworkFiles = $BackupObjects | Where-Object { $_ -match '\.(webp|jpg|jpeg|png)$' }
+    if ($ArtworkFiles) {
+        @($ArtworkFiles) | ForEach-Object { Remove-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue }
+    }
+}
 
 # 2. Filter out audio files from the path collection
 Invoke-LogMsg "[*] Scanning source directory for master audio tracks..."
-[string[]]$AllFiles = $BackupObjects | Where-Object { $_ -match '\.(mp3|flac|wav|m4a|ogg)$' }
+if ($BackupObjects.Count -gt 0) {
+    $AudioMatch = $BackupObjects | Where-Object { $_ -match '\.(mp3|flac|wav|m4a|ogg)$' }
+    [string[]]$AllFiles = if ($AudioMatch) { @($AudioMatch) } else { @() }
+} else {
+    [string[]]$AllFiles = @()
+}
 
-if (-not $AllFiles -or $AllFiles.Count -eq 0) {
+if ($AllFiles.Count -eq 0) {
     Invoke-LogMsg "[+] No source audio tracks found to process!"
     $MetricStopwatch.Stop()
     Invoke-LogMsg "[METRIC] 00:00:00"
@@ -97,17 +114,25 @@ if (-not $AllFiles -or $AllFiles.Count -eq 0) {
 
 # 3. Process timed lyrics (.lrc) out of the path collection
 Invoke-LogMsg "[*] Syncing timed lyric (.lrc) files..."
-$BackupObjects | Where-Object { $_ -like '*.lrc' } | 
-ForEach-Object {
-    if ($_ -notlike "*cookie*") {
-        $RelativePath = $_.Substring($BackupDir.Length)
-        $DestinationLrc = "$MobileDir$RelativePath"
-        $DestFolder = [System.IO.Path]::GetDirectoryName($DestinationLrc)
-        if (-not (Test-Path -LiteralPath $DestFolder)) { New-Item -ItemType Directory -LiteralPath $DestFolder -Force | Out-Null }
-        
-        $SrcTime = [System.IO.File]::GetLastWriteTime($_)
-        if (-not (Test-Path -LiteralPath $DestinationLrc) -or ($SrcTime -gt [System.IO.File]::GetLastWriteTime($DestinationLrc))) {
-            Copy-Item -LiteralPath $_ -Destination $DestinationLrc -Force
+if ($BackupObjects.Count -gt 0) {
+    $LrcFiles = $BackupObjects | Where-Object { $_ -like '*.lrc' }
+    if ($LrcFiles) {
+        @($LrcFiles) | ForEach-Object {
+            if ($_ -notlike "*cookie*") {
+                $RelativePath = $_.Substring($BackupDir.Length)
+                $DestinationLrc = "$MobileDir$RelativePath"
+                $DestFolder = [System.IO.Path]::GetDirectoryName($DestinationLrc)
+                
+                # FIXED: Changed -LiteralPath to -Path to fix parameter errors
+                if (-not (Test-Path -LiteralPath $DestFolder)) { 
+                    New-Item -ItemType Directory -Path $DestFolder -Force | Out-Null 
+                }
+                
+                $SrcTime = [System.IO.File]::GetLastWriteTime($_)
+                if (-not (Test-Path -LiteralPath $DestinationLrc) -or ($SrcTime -gt [System.IO.File]::GetLastWriteTime($DestinationLrc))) {
+                    Copy-Item -LiteralPath $_ -Destination $DestinationLrc -Force
+                }
+            }
         }
     }
 }
@@ -142,7 +167,11 @@ Invoke-LogMsg "[+] Spawning parallel ffmpeg processing threads (Max Workers: $Ma
 # Optimization: Modern Parallel Multi-threaded Core Architecture
 $Queue | ForEach-Object -Parallel {
     $TargetFolder = [System.IO.Path]::GetDirectoryName($_.Destination)
-    if (-not (Test-Path -LiteralPath $TargetFolder)) { New-Item -ItemType Directory -LiteralPath $TargetFolder -Force | Out-Null }
+    
+    # FIXED: Changed -LiteralPath to -Path to fix parameter errors inside parallel threads
+    if (-not (Test-Path -LiteralPath $TargetFolder)) { 
+        New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null 
+    }
 
     # Inline thread-safe logger for parallel workers
     $Msg = "[LAUNCH] $($_.Name) -> Mobile M4A"

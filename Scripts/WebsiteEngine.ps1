@@ -346,8 +346,7 @@ function Invoke-PipelineExecution {
             $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
             if (Test-Path $S3ScriptPath) {
                 $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe } 
-                $Step3Result = & $S3ScriptPath @S3Params 2>&1 
-                $Step3Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+                & $S3ScriptPath @S3Params 2>&1 | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
             } else { Log-Progress "⚠️ Fix.ps1 missing. Skipping." }
             $S3Watch.Stop()
             $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
