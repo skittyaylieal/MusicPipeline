@@ -129,7 +129,6 @@ $SanitizedURLs | ForEach-Object -Parallel {
             "--convert-thumbnails", "jpg",
             "--ppa", "EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih",
             "--embed-metadata",
-            "--flat-playlist",
             "--no-keep-video",
             "--force-overwrites",
             "--cookies", $using:LocalCookiePath,
