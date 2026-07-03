@@ -69,29 +69,24 @@ if (-not (Test-Path -LiteralPath $MobileDir)) {
 }
 
 # --- OPTIMIZATION: NATIVE .NET HIGH-PERFORMANCE SINGLE-PASS EXTRACTION ---
-Invoke-LogMsg "[*] Indexing backup directory structure (High-Performance .NET Native)..."
+Invoke-LogMsg "[*] Indexing backup directory structure (High-Performance Native String Array)..."
 
 try {
-    $DirectoryInfo = [System.IO.DirectoryInfo]::new($BackupDir)
-    # Native EnumerateFiles completely bypasses standard pipeline overhead
-    # Checking for 'ReparsePoint' stops it from traversing circular symlink/junction loops
-    $BackupObjects = [System.Linq.Enumerable]::ToArray(
-        ($DirectoryInfo.EnumerateFiles("*", [System.IO.SearchOption]::AllDirectories) | 
-         Where-Object { $_.Attributes -notmatch 'ReparsePoint' })
-    )
+    # Directly pull paths as simple strings to bypass object type mutations and dependency issues
+    [string[]]$BackupObjects = [System.IO.Directory]::GetFiles($BackupDir, "*", [System.IO.SearchOption]::AllDirectories)
 } catch {
     Invoke-LogMsg "🛑 ERROR during disk enumeration: $_"
     Exit 1
 }
 
-# 1. Filter and purge artwork directly out of the memory collection
+# 1. Filter and purge artwork directly out of the path collection
 Invoke-LogMsg "[*] Purging leftover artwork files..."
-$BackupObjects | Where-Object { $_.Extension -match '^\.(webp|jpg|jpeg|png)$' } | 
-    ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
+$BackupObjects | Where-Object { $_ -match '\.(webp|jpg|jpeg|png)$' } | 
+    ForEach-Object { Remove-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue }
 
-# 2. Filter out audio files from the memory collection without touching the disk again
+# 2. Filter out audio files from the path collection
 Invoke-LogMsg "[*] Scanning source directory for master audio tracks..."
-$AllFiles = $BackupObjects | Where-Object { $_.Extension -match '^\.(mp3|flac|wav|m4a|ogg)$' }
+[string[]]$AllFiles = $BackupObjects | Where-Object { $_ -match '\.(mp3|flac|wav|m4a|ogg)$' }
 
 if (-not $AllFiles -or $AllFiles.Count -eq 0) {
     Invoke-LogMsg "[+] No source audio tracks found to process!"
@@ -100,32 +95,36 @@ if (-not $AllFiles -or $AllFiles.Count -eq 0) {
     Exit 0
 }
 
-# 3. Process timed lyrics (.lrc) out of the memory collection
+# 3. Process timed lyrics (.lrc) out of the path collection
 Invoke-LogMsg "[*] Syncing timed lyric (.lrc) files..."
-$BackupObjects | Where-Object { $_.Extension -eq '.lrc' } | 
+$BackupObjects | Where-Object { $_ -like '*.lrc' } | 
 ForEach-Object {
-    if ($_.Name -notlike "*cookie*") {
-        $RelativePath = $_.FullName.Substring($BackupDir.Length)
+    if ($_ -notlike "*cookie*") {
+        $RelativePath = $_.Substring($BackupDir.Length)
         $DestinationLrc = "$MobileDir$RelativePath"
         $DestFolder = [System.IO.Path]::GetDirectoryName($DestinationLrc)
         if (-not (Test-Path -LiteralPath $DestFolder)) { New-Item -ItemType Directory -LiteralPath $DestFolder -Force | Out-Null }
-        if (-not (Test-Path -LiteralPath $DestinationLrc) -or ($_.LastWriteTime -gt (Get-Item -LiteralPath $DestinationLrc).LastWriteTime)) {
-            Copy-Item -LiteralPath $_.FullName -Destination $DestinationLrc -Force
+        
+        $SrcTime = [System.IO.File]::GetLastWriteTime($_)
+        if (-not (Test-Path -LiteralPath $DestinationLrc) -or ($SrcTime -gt [System.IO.File]::GetLastWriteTime($DestinationLrc))) {
+            Copy-Item -LiteralPath $_ -Destination $DestinationLrc -Force
         }
     }
 }
 
 Invoke-LogMsg "[*] Filtering out already compressed files..."
 $Queue = @()
-foreach ($File in $AllFiles) {
-    $RelativePath = $File.FullName.SubString($BackupDir.Length)
+foreach ($FilePath in $AllFiles) {
+    $RelativePath = $FilePath.SubString($BackupDir.Length)
     $DestinationFile = [System.IO.Path]::ChangeExtension("$MobileDir$RelativePath", ".m4a")
+    
+    $SrcTime = [System.IO.File]::GetLastWriteTime($FilePath)
 
-    if (-not (Test-Path -LiteralPath $DestinationFile) -or ($File.LastWriteTime -gt (Get-Item -LiteralPath $DestinationFile).LastWriteTime)) {
+    if (-not (Test-Path -LiteralPath $DestinationFile) -or ($SrcTime -gt [System.IO.File]::GetLastWriteTime($DestinationFile))) {
         $Queue += [PSCustomObject]@{
-            Source      = $File.FullName
+            Source      = $FilePath
             Destination = $DestinationFile
-            Name        = $File.Name
+            Name        = [System.IO.Path]::GetFileName($FilePath)
         }
     }
 }
