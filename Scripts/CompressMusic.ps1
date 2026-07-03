@@ -68,14 +68,26 @@ if (-not (Test-Path -LiteralPath $MobileDir)) {
     New-Item -ItemType Directory -LiteralPath $MobileDir -Force | Out-Null
 }
 
-# --- OPTIMIZATION: SINGLE-PASS DISK EXTRACTION ---
-Invoke-LogMsg "[*] Indexing backup directory structure (Single-Pass)..."
-$BackupObjects = Get-ChildItem -LiteralPath $BackupDir -Recurse -File -ErrorAction SilentlyContinue
+# --- OPTIMIZATION: NATIVE .NET HIGH-PERFORMANCE SINGLE-PASS EXTRACTION ---
+Invoke-LogMsg "[*] Indexing backup directory structure (High-Performance .NET Native)..."
+
+try {
+    $DirectoryInfo = [System.IO.DirectoryInfo]::new($BackupDir)
+    # Native EnumerateFiles completely bypasses standard pipeline overhead
+    # Checking for 'ReparsePoint' stops it from traversing circular symlink/junction loops
+    $BackupObjects = [System.Linq.Enumerable]::ToArray(
+        ($DirectoryInfo.EnumerateFiles("*", [System.IO.SearchOption]::AllDirectories) | 
+         Where-Object { $_.Attributes -notmatch 'ReparsePoint' })
+    )
+} catch {
+    Invoke-LogMsg "🛑 ERROR during disk enumeration: $_"
+    Exit 1
+}
 
 # 1. Filter and purge artwork directly out of the memory collection
 Invoke-LogMsg "[*] Purging leftover artwork files..."
 $BackupObjects | Where-Object { $_.Extension -match '^\.(webp|jpg|jpeg|png)$' } | 
-    Remove-Item -Force -ErrorAction SilentlyContinue
+    ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
 
 # 2. Filter out audio files from the memory collection without touching the disk again
 Invoke-LogMsg "[*] Scanning source directory for master audio tracks..."
