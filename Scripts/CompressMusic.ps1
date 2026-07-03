@@ -68,23 +68,29 @@ if (-not (Test-Path -LiteralPath $MobileDir)) {
     New-Item -ItemType Directory -LiteralPath $MobileDir -Force | Out-Null
 }
 
+# --- OPTIMIZATION: SINGLE-PASS DISK EXTRACTION ---
+Invoke-LogMsg "[*] Indexing backup directory structure (Single-Pass)..."
+$BackupObjects = Get-ChildItem -LiteralPath $BackupDir -Recurse -File -ErrorAction SilentlyContinue
+
+# 1. Filter and purge artwork directly out of the memory collection
 Invoke-LogMsg "[*] Purging leftover artwork files..."
-Get-ChildItem -LiteralPath $BackupDir -Recurse -File | 
-    Where-Object { $_.Extension -match '\.(webp|jpg|jpeg|png)$' } | 
+$BackupObjects | Where-Object { $_.Extension -match '^\.(webp|jpg|jpeg|png)$' } | 
     Remove-Item -Force -ErrorAction SilentlyContinue
 
+# 2. Filter out audio files from the memory collection without touching the disk again
 Invoke-LogMsg "[*] Scanning source directory for master audio tracks..."
-$AllFiles = Get-ChildItem -LiteralPath $BackupDir -Recurse -File | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|ogg)$' }
+$AllFiles = $BackupObjects | Where-Object { $_.Extension -match '^\.(mp3|flac|wav|m4a|ogg)$' }
 
-if ($AllFiles.Count -eq 0) {
+if (-not $AllFiles -or $AllFiles.Count -eq 0) {
     Invoke-LogMsg "[+] No source audio tracks found to process!"
     $MetricStopwatch.Stop()
     Invoke-LogMsg "[METRIC] 00:00:00"
     Exit 0
 }
 
+# 3. Process timed lyrics (.lrc) out of the memory collection
 Invoke-LogMsg "[*] Syncing timed lyric (.lrc) files..."
-Get-ChildItem -LiteralPath $BackupDir -Recurse -File | Where-Object { $_.Extension -eq '.lrc' } | 
+$BackupObjects | Where-Object { $_.Extension -eq '.lrc' } | 
 ForEach-Object {
     if ($_.Name -notlike "*cookie*") {
         $RelativePath = $_.FullName.Substring($BackupDir.Length)
@@ -149,7 +155,6 @@ $Queue | ForEach-Object -Parallel {
         }
     }
 
-    # CHANGE: Swapped "quiet" to "error" so FFmpeg actually outputs problems
     $FFmpegArgs = @(
         "-y", "-loglevel", "error",
         "-i", $_.Source,
@@ -162,7 +167,6 @@ $Queue | ForEach-Object -Parallel {
     )
 
     # --- DEBUG ENGINE: Capture standard error streams ---
-    # 2>&1 merges FFmpeg's error stream into PowerShell's output stream so we can intercept it
     $FFmpegOutput = & $using:FFmpegPath @FFmpegArgs 2>&1
 
     # If FFmpeg exited with a code other than 0, it broke

@@ -845,6 +845,8 @@
                                 .replace(/\x1b\[38;5;217m/g, '<span style="color:#FFB86C; font-weight:lighter;">')   // Peach (New addition)
                                 
                                 // --- Original Standard Matches ---
+                                .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')        // Cyan
+                                .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">')        // Magenta
                                 .replace(/\x1b\[(1;)?33m/g, '<span style="color:#FFB86C; font-weight:bold;">')        // Yellow
                                 .replace(/\x1b\[(1;)?34m/g, '<span style="color:#6272A4; font-weight:bold;">')        // Blue
                                 .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">')        // Green Fallback
