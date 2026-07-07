@@ -345,7 +345,7 @@ function Invoke-PipelineExecution {
             $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
             $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
             if (Test-Path $S3ScriptPath) {
-                $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe } 
+                $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe; GlobalLogFile = $EnvMap.LogFile } 
                 & $S3ScriptPath @S3Params 2>&1 | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
             } else { Log-Progress "⚠️ Fix.ps1 missing. Skipping." }
             $S3Watch.Stop()
@@ -356,7 +356,7 @@ function Invoke-PipelineExecution {
             $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
             if (Test-Path $S4ScriptPath) {
                 $S4Params = @{ BackupDir = $EnvMap.BackupDir } 
-                # & $S4ScriptPath @S4Params 2>&1 
+                & $S4ScriptPath @S4Params 2>&1 
             } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
             $S4Watch.Stop()
             $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
