@@ -11,7 +11,7 @@ try {
 } catch {}
 
 # Sanity Check: Ensure thread count never maps to an illegal or unbounded allocation framework
-if ($MaxThreads -lt 1) { $MaxThreads = 1}
+if ($MaxThreads -lt 1) { $MaxThreads = 1 }
 
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
@@ -27,9 +27,9 @@ function Invoke-LogMsg([string]$Text) {
     
     if ($Text -match '🛑|CRITICAL|ERROR:|\\[!\\]') {
         $ColorCode = "1;31" # Bold Red
-    } elseif ($Text -match '\\[\\+\\]|\\[BAKED\\]') {
+    } elseif ($Text -match '\[\+\]|\[BAKED\]') {
         $ColorCode = "32" # Green for success
-    } elseif ($Text -match '\\[\\*\\]|================') {
+    } elseif ($Text -match '\[\*\]|================') {
         $ColorCode = "36" # Cyan for headers/info
     }
 
@@ -87,7 +87,8 @@ try {
 
 Invoke-LogMsg "[*] Purging leftover artwork files..."
 if ($BackupObjects.Count -gt 0) {
-    $ArtworkFiles = $BackupObjects | Where-Object { $_ -match '\\.(webp|jpg|jpeg|png)$' }
+    # FIXED: Single backslash for literal dot matching
+    $ArtworkFiles = $BackupObjects | Where-Object { $_ -match '\.(webp|jpg|jpeg|png)$' }
     if ($ArtworkFiles) {
         @($ArtworkFiles) | ForEach-Object { Remove-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue }
     }
@@ -95,7 +96,8 @@ if ($BackupObjects.Count -gt 0) {
 
 Invoke-LogMsg "[*] Scanning source directory for master audio tracks..."
 if ($BackupObjects.Count -gt 0) {
-    $AudioMatch = $BackupObjects | Where-Object { $_ -match '\\.(mp3|flac|wav|m4a|ogg)$' }
+    # FIXED: Single backslash for literal dot matching
+    $AudioMatch = $BackupObjects | Where-Object { $_ -match '\.(mp3|flac|wav|m4a|ogg)$' }
     [string[]]$AllFiles = if ($AudioMatch) { @($AudioMatch) } else { @() }
 } else {
     [string[]]$AllFiles = @()
@@ -151,7 +153,8 @@ foreach ($FilePath in $AllFiles) {
 if ($Queue.Count -eq 0) {
     Invoke-LogMsg "[+] Mobile folder completely up to date. 0 tracks queued."
     $MetricStopwatch.Stop()
-    Invoke-LogMsg "[METRIC] $("{0:hh\\:mm\\:ss}" -f $MetricStopwatch.Elapsed)"
+    # FIXED: Single backslashes for string format escaping
+    Invoke-LogMsg "[METRIC] $("{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed)"
     Exit 0
 }
 
@@ -216,7 +219,6 @@ $Queue | ForEach-Object -Parallel {
         }
 
         # DEFENSIVE BACK-OFF: If system memory is exhausted, enforce an immediate 2.5 second sleep
-        # This completely breaks the machine-gun cascade loop and lets the OS salvage garbage handles.
         if ($IsOOMError) {
             Write-Host "$ESC[1;33m[SYSTEM ALERT] Out-of-Memory detected. Pausing core engine thread worker group...$ESC[0m"
             [System.Threading.Thread]::Sleep(2500)
@@ -230,7 +232,8 @@ $Queue | ForEach-Object -Parallel {
 } -ThrottleLimit $MaxThreads
 
 $MetricStopwatch.Stop()
-$Elapsed = "{0:hh\\:mm\\:ss}" -f $MetricStopwatch.Elapsed
+# FIXED: Single backslashes for string format escaping
+$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Invoke-LogMsg "[BAKED] Mobile library is perfectly synced and compressed!"
 Invoke-LogMsg "[METRIC] $Elapsed"
 Invoke-LogMsg "============================================="
