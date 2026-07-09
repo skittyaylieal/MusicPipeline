@@ -402,7 +402,7 @@ function Invoke-PipelineExecution {
 
                 $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
                 if (Test-Path $S5ScriptPath) { 
-                    $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = $EnvMap.MaxCompressThreads } [cite: 261, 262]
+                    $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = $EnvMap.MaxCompressThreads } 
                     & $S5ScriptPath @S5Params 2>&1 
                 } else { Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping." } 
                 $S5Watch.Stop() 
@@ -413,9 +413,9 @@ function Invoke-PipelineExecution {
                 $S6Watch = [System.Diagnostics.Stopwatch]::StartNew() 
                 $S6ScriptPath = Join-Path $EnvMap.ScriptDir "Metrics.ps1" 
                 if (Test-Path $S6ScriptPath) { 
-                    $S6Params = @{ LogPath = $EnvMap.LogFile; DatabasePath = Join-Path $EnvMap.ConfigDir "track_history.json"; RunId = (Get-Date).ToString("yyyyMMdd_HHmmss") } [cite: 263, 264]
+                    $S6Params = @{ LogPath = $EnvMap.LogFile; DatabasePath = Join-Path $EnvMap.ConfigDir "track_history.json"; RunId = (Get-Date).ToString("yyyyMMdd_HHmmss") } 
                     $Step6Result = & $S6ScriptPath @S6Params 2>&1 
-                    $Step6Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 [cite: 264, 265]
+                    $Step6Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
                 } else { Log-Progress "⚠️ Metrics.ps1 missing. Skipping." } 
                 $S6Watch.Stop() 
                 $S6Time = [string]::Format("{0:hh\:mm\:ss}", $S6Watch.Elapsed) 
