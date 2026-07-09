@@ -258,37 +258,62 @@ function Start-AutomatedChronDaemon {
 function Invoke-PipelineExecution {
     param(
         [bool]$CleanSweep = $false,
-        [string]$TriggerType = "Manual" 
+        [string]$TriggerType = "Manual",
+        [bool]$SkipStep1 = $false,
+        [bool]$SkipStep2 = $false,
+        [bool]$SkipStep3 = $false,
+        [bool]$SkipStep4 = $false,
+        [bool]$SkipStep5 = $false,
+        [bool]$SkipStep6 = $false,
+        [bool]$CleanSweepDownload = $false,
+        [bool]$CleanSweepLyrics = $false,
+        [bool]$CleanSweepCompress = $false
     )
 
     if ($Global:IsPipelineRunning) { return } 
     $Global:IsPipelineRunning = $true 
     
-    "`n`e[1;35m=================================================================`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
-    "`e[1;36m[SYSTEM] ($TriggerType Run) Initializing Master Pipeline...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
+    "`n`e[1;35m=================================================================`e[0m" |
+        Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
+    "`e[1;36m[SYSTEM] ($TriggerType Run) Initializing Custom Sequence Flow Framework...`e[0m" |
+        Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
+
+    # If the user hit the default global Clean Sweep button, pass it along down to step 2's parameter fallback explicitly
+    $EffectiveCleanDownload = if ($CleanSweep) { $true } else { $CleanSweepDownload }
 
     $ContextBundle = @{
-        ScriptDir        = $ScriptDir 
-        ConfigDir        = $ConfigDir 
-        CacheDir         = Join-Path $ConfigDir ".cache"
-        BackupDir        = $Global:Profile.BackupDir 
-        MobileDir        = $Global:Profile.MobileDir 
-        CookieFile       = $Global:Profile.CookieFile 
-        HistoryFile      = $Global:Profile.HistoryFile 
-        YTDLPExe         = $Global:Profile.YTDLPExe 
-        FFmpegExe        = $Global:Profile.FFmpegExe 
-        FirefoxExe       = $Global:Profile.FirefoxExe 
-        CheckURL         = $Global:Profile.CheckURL 
-        Playlists        = @($Global:Profile.Playlists)
-        SleepInterval    = [int]$Global:Profile.SleepInterval
-        MaxSleepInterval = [int]$Global:Profile.MaxSleepInterval
-        SleepRequests    = [int]$Global:Profile.SleepRequests
-        MaxCompressThreads = [int]$Global:Profile.MaxCompressThreads
-        MaxDownloadThreads = [int]$Global:Profile.MaxDownloadThreads
-        CleanSweep       = $CleanSweep 
-        LogFile          = $Global:DiagLogFile 
-        TimingFile       = $Global:TimingFile 
-        RunType          = $TriggerType 
+        ScriptDir          = $ScriptDir 
+        ConfigDir          = $ConfigDir 
+        CacheDir           = Join-Path $ConfigDir ".cache" 
+        BackupDir          = $Global:Profile.BackupDir 
+        MobileDir          = $Global:Profile.MobileDir 
+        CookieFile         = $Global:Profile.CookieFile 
+        HistoryFile        = $Global:Profile.HistoryFile 
+        YTDLPExe           = $Global:Profile.YTDLPExe 
+        FFmpegExe          = $Global:Profile.FFmpegExe 
+        FirefoxExe         = $Global:Profile.FirefoxExe 
+        CheckURL           = $Global:Profile.CheckURL 
+        Playlists          = @($Global:Profile.Playlists) 
+        SleepInterval      = [int]$Global:Profile.SleepInterval 
+        MaxSleepInterval   = [int]$Global:Profile.MaxSleepInterval 
+        SleepRequests      = [int]$Global:Profile.SleepRequests 
+        MaxCompressThreads = [int]$Global:Profile.MaxCompressThreads 
+        MaxDownloadThreads = [int]$Global:Profile.MaxDownloadThreads 
+        
+        # New Execution Controller Directives
+        SkipStep1          = $SkipStep1
+        SkipStep2          = $SkipStep2
+        SkipStep3          = $SkipStep3
+        SkipStep4          = $SkipStep4
+        SkipStep5          = $SkipStep5
+        SkipStep6          = $SkipStep6
+        CleanDownload      = $EffectiveCleanDownload
+        CleanLyrics        = $CleanSweepLyrics
+        CleanCompress      = $CleanSweepCompress
+        
+        LogFile            = $Global:DiagLogFile 
+        TimingFile         = $Global:TimingFile 
+        RunType            = $TriggerType 
     }
 
     $MasterPipelineJob = {
@@ -307,80 +332,94 @@ function Invoke-PipelineExecution {
         $OverallStopwatch = [System.Diagnostics.Stopwatch]::StartNew() 
 
         try {
-            Log-Progress "`e[1;33m[STEP 1/6]`e[0m Running Cookie Validation..." 
-            $S1Watch = [System.Diagnostics.Stopwatch]::StartNew() 
-            $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1" 
-            if (Test-Path $S1ScriptPath) {
-                $S1Params = @{ CookiePath = $EnvMap.CookieFile; YTDLPPath = $EnvMap.YTDLPExe; TestURL = $EnvMap.CheckURL } 
-                $Step1Result = & $S1ScriptPath @S1Params 2>&1 
-                $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
-            } else { Log-Progress "⚠️ CookieCheck.ps1 missing. Skipping." }
-            $S1Watch.Stop()
-            $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
+            if (-not $EnvMap.SkipStep1) {
+                Log-Progress "`e[1;33m[STEP 1/6]`e[0m Running Cookie Validation..." 
+                $S1Watch = [System.Diagnostics.Stopwatch]::StartNew() 
+                $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1" 
+                if (Test-Path $S1ScriptPath) {
+                    $S1Params = @{ CookiePath = $EnvMap.CookieFile; YTDLPPath = $EnvMap.YTDLPExe; TestURL = $EnvMap.CheckURL } 
+                    $Step1Result = & $S1ScriptPath @S1Params 2>&1 
+                    $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+                } else { Log-Progress "⚠️ CookieCheck.ps1 missing. Skipping." }
+                $S1Watch.Stop()
+                $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
+            } else { Log-Progress "`e[90m[STEP 1/6] Explicitly bypassed via step toggle directive.`e[0m"; $S1Time = "00:00:00" }
+            if (-not $EnvMap.SkipStep2) {
+                Log-Progress "`e[1;33m[STEP 2/6]`e[0m Running Native Pipeline Downloader..." 
+                $S2Watch = [System.Diagnostics.Stopwatch]::StartNew() 
+                $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1" 
+                if (Test-Path $S2ScriptPath) {
+                    $S2Params = @{
+                        BackupDir           = $EnvMap.BackupDir 
+                        YTDLPPath           = $EnvMap.YTDLPExe 
+                        CookiePath          = $EnvMap.CookieFile 
+                        HistoryPath         = $EnvMap.HistoryFile 
+                        PlaylistURLs        = $EnvMap.Playlists 
+                        ConfigDir           = $EnvMap.ConfigDir 
+                        CacheDir            = $EnvMap.CacheDir
+                        SleepInterval       = $EnvMap.SleepInterval 
+                        MaxSleepInterval    = $EnvMap.MaxSleepInterval 
+                        SleepRequests       = $EnvMap.SleepRequests
+                        MaxDownloadThreads  = $EnvMap.MaxDownloadThreads
+                        CleanSweep          = $EnvMap.CleanDownload
+                    }
+                    & $S2ScriptPath @S2Params 2>&1 
+                } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
+                $S2Watch.Stop()
+                $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
+            } else { Log-Progress "`e[90m[STEP 2/6] Explicitly bypassed via step toggle directive.`e[0m"; $S2Time = "00:00:00" }
+            if (-not $EnvMap.SkipStep3) {
+                Log-Progress "`e[1;33m[STEP 3/6]`e[0m Running Error Log Analysis..." 
+                $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
+                $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
+                if (Test-Path $S3ScriptPath) {
+                    $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe; GlobalLogFile = $EnvMap.LogFile } 
+                    & $S3ScriptPath @S3Params 2>&1 | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
+                } else { Log-Progress "⚠️ Fix.ps1 missing. Skipping." }
+                $S3Watch.Stop()
+                $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
+            } else { Log-Progress "`e[90m[STEP 3/6] Explicitly bypassed via step toggle directive.`e[0m"; $S3Time = "00:00:00" }
+            if (-not $EnvMap.SkipStep4) {
+                Log-Progress "`e[1;33m[STEP 4/6]`e[0m Syncing Local Lyrics Databases..." 
+                $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
+                $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
+                if (Test-Path $S4ScriptPath) {
+                    $S4Params = @{ BackupDir = $EnvMap.BackupDir }
+                    if ($EnvMap.CleanLyrics) { $S4Params.ForceFullRefresh = $true } 
+                    & $S4ScriptPath @S4Params 2>&1 
+                } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
+                $S4Watch.Stop()
+                $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
+            } else { Log-Progress "`e[90m[STEP 4/6] Explicitly bypassed via step toggle directive.`e[0m"; $S4Time = "00:00:00" }
+            if (-not $EnvMap.SkipStep5) {
+                Log-Progress "`e[1;33m[STEP 5/6]`e[0m Executing Lossy Mobile Deployment Transcoding..." 
+                $S5Watch = [System.Diagnostics.Stopwatch]::StartNew() 
 
-            Log-Progress "`e[1;33m[STEP 2/6]`e[0m Running Native Pipeline Downloader..." 
-            $S2Watch = [System.Diagnostics.Stopwatch]::StartNew() 
-            $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1" 
-            if (Test-Path $S2ScriptPath) {
-                $S2Params = @{
-                    BackupDir           = $EnvMap.BackupDir 
-                    YTDLPPath           = $EnvMap.YTDLPExe 
-                    CookiePath          = $EnvMap.CookieFile 
-                    HistoryPath         = $EnvMap.HistoryFile 
-                    PlaylistURLs        = $EnvMap.Playlists 
-                    ConfigDir           = $EnvMap.ConfigDir 
-                    CacheDir            = $EnvMap.CacheDir
-                    SleepInterval       = $EnvMap.SleepInterval 
-                    MaxSleepInterval    = $EnvMap.MaxSleepInterval 
-                    SleepRequests       = $EnvMap.SleepRequests
-                    MaxDownloadThreads  = $EnvMap.MaxDownloadThreads
-                    CleanSweep          = $EnvMap.CleanSweep 
+                if ($EnvMap.CleanCompress) {
+                    Log-Progress "🧹 [CLEAN SWEEP ACTIVATED] Purging target mobile transcoding folder storage contents..."
+                    Remove-Item -Path "$($EnvMap.MobileDir)\*" -Recurse -Force -ErrorAction SilentlyContinue
                 }
-                & $S2ScriptPath @S2Params 2>&1 
-            } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
-            $S2Watch.Stop()
-            $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
 
-            Log-Progress "`e[1;33m[STEP 3/6]`e[0m Running Error Log Analysis..." 
-            $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
-            $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
-            if (Test-Path $S3ScriptPath) {
-                $S3Params = @{ ConfigDir = $EnvMap.ConfigDir; HistoryPath = $EnvMap.HistoryFile; FirefoxPath = $EnvMap.FirefoxExe; GlobalLogFile = $EnvMap.LogFile } 
-                & $S3ScriptPath @S3Params 2>&1 | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
-            } else { Log-Progress "⚠️ Fix.ps1 missing. Skipping." }
-            $S3Watch.Stop()
-            $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
-
-            Log-Progress "`e[1;33m[STEP 4/6]`e[0m Syncing Local Lyrics Databases..." 
-            $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
-            $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
-            if (Test-Path $S4ScriptPath) {
-                $S4Params = @{ BackupDir = $EnvMap.BackupDir } 
-                & $S4ScriptPath @S4Params 2>&1 
-            } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
-            $S4Watch.Stop()
-            $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
-
-            Log-Progress "`e[1;33m[STEP 5/6]`e[0m Executing Lossy Mobile Deployment Transcoding..." 
-            $S5Watch = [System.Diagnostics.Stopwatch]::StartNew() 
-            $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
-            if (Test-Path $S5ScriptPath) {
-                $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = $EnvMap.MaxCompressThreads } 
-                & $S5ScriptPath @S5Params 2>&1 
-            } else { Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping." }
-            $S5Watch.Stop()
-            $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
-
-            Log-Progress "`e[1;33m[STEP 6/6]`e[0m Compiling Track Telemetry & Analytics..." 
-            $S6Watch = [System.Diagnostics.Stopwatch]::StartNew() 
-            $S6ScriptPath = Join-Path $EnvMap.ScriptDir "Metrics.ps1" 
-            if (Test-Path $S6ScriptPath) {
-                $S6Params = @{ LogPath = $EnvMap.LogFile; DatabasePath = Join-Path $EnvMap.ConfigDir "track_history.json"; RunId = (Get-Date).ToString("yyyyMMdd_HHmmss") } 
-                $Step6Result = & $S6ScriptPath @S6Params 2>&1 
-                $Step6Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
-            } else { Log-Progress "⚠️ Metrics.ps1 missing. Skipping." }
-            $S6Watch.Stop()
-            $S6Time = [string]::Format("{0:hh\:mm\:ss}", $S6Watch.Elapsed)
+                $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
+                if (Test-Path $S5ScriptPath) { 
+                    $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = $EnvMap.MaxCompressThreads } [cite: 261, 262]
+                    & $S5ScriptPath @S5Params 2>&1 
+                } else { Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping." } 
+                $S5Watch.Stop() 
+                $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
+            } else { Log-Progress "`e[90m[STEP 5/6] Explicitly bypassed via step toggle directive.`e[0m"; $S5Time = "00:00:00" }
+            if (-not $EnvMap.SkipStep6) {
+                Log-Progress "`e[1;33m[STEP 6/6]`e[0m Compiling Track Telemetry & Analytics..." 
+                $S6Watch = [System.Diagnostics.Stopwatch]::StartNew() 
+                $S6ScriptPath = Join-Path $EnvMap.ScriptDir "Metrics.ps1" 
+                if (Test-Path $S6ScriptPath) { 
+                    $S6Params = @{ LogPath = $EnvMap.LogFile; DatabasePath = Join-Path $EnvMap.ConfigDir "track_history.json"; RunId = (Get-Date).ToString("yyyyMMdd_HHmmss") } [cite: 263, 264]
+                    $Step6Result = & $S6ScriptPath @S6Params 2>&1 
+                    $Step6Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 [cite: 264, 265]
+                } else { Log-Progress "⚠️ Metrics.ps1 missing. Skipping." } 
+                $S6Watch.Stop() 
+                $S6Time = [string]::Format("{0:hh\:mm\:ss}", $S6Watch.Elapsed) 
+            } else { Log-Progress "`e[90m[STEP 6/6] Explicitly bypassed via step toggle directive.`e[0m"; $S6Time = "00:00:00" }
 
             $OverallStopwatch.Stop() 
             $TotalTime = [string]::Format("{0:hh\:mm\:ss}", $OverallStopwatch.Elapsed) 
@@ -954,6 +993,39 @@ try {
                 $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}') 
                 $Response.ContentType = "application/json" 
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
+                $Response.OutputStream.Close()
+            }
+            # --- TARGETED CUSTOM CONFIGURATION RUNTIME ENDPOINT ---
+            elseif ($UrlPath -eq "/run-custom" -and $Method -eq "POST") {
+                if ($Global:IsPipelineRunning) {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline engine is currently locked in an active run state."}')
+                    $Response.StatusCode = 423
+                } else {
+                    $Reader = New-Object System.IO.StreamReader($Request.InputStream)
+                    $JSONPayload = $Reader.ReadToEnd() | ConvertFrom-Json
+                    
+                    # Convert incoming step tracking objects to clean runtime switch mappings
+                    $CustomRuntimeContext = @{
+                        TriggerType        = "Custom"
+                        SkipStep1          = [bool](-not $JSONPayload.steps.s1)
+                        SkipStep2          = [bool](-not $JSONPayload.steps.s2)
+                        SkipStep3          = [bool](-not $JSONPayload.steps.s3)
+                        SkipStep4          = [bool](-not $JSONPayload.steps.s4)
+                        SkipStep5          = [bool](-not $JSONPayload.steps.s5)
+                        SkipStep6          = [bool](-not $JSONPayload.steps.s6)
+                        CleanSweepDownload = [bool]($JSONPayload.cleanModes.s2)
+                        CleanSweepLyrics   = [bool]($JSONPayload.cleanModes.s4)
+                        CleanSweepCompress = [bool]($JSONPayload.cleanModes.s5)
+                    }
+
+                    # Safely pass explicit switch flags down to our asynchronous execution handler
+                    Invoke-PipelineExecution @CustomRuntimeContext
+                    
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Custom step execution initialization accepted cleanly."}')
+                    $Response.StatusCode = 200
+                }
+                $Response.ContentType = "application/json"
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
             elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") {

@@ -1,5 +1,6 @@
 Param (
-    [string]$BackupDir
+    [string]$BackupDir,
+    [switch]$ForceFullRefresh
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -113,6 +114,10 @@ if (-not (Test-Path -LiteralPath $BackupDir -PathType Container)) {
     Exit 1
 }
 
+if ($ForceFullRefresh) {
+    Invoke-LogMsg "🧹 [CLEAN SWEEP REFRESH] Forcing deep query over every track. Local skips will be bypassed."
+}
+
 Invoke-LogMsg "[*] Initializing ultra-fast deep database scan across: $BackupDir"
 
 try {
@@ -150,7 +155,8 @@ foreach ($FilePath in $AudioFiles) {
     $LrcFile = Join-Path $DirName "$($FileInfo.BaseName).lrc"
     $TxtFile = Join-Path $DirName "$($FileInfo.BaseName).txt"
     
-    if (Test-Path -LiteralPath $LrcFile) {
+    # Modified: If ForceFullRefresh is active, skip checking for existing files on disk
+    if (-not $ForceFullRefresh -and (Test-Path -LiteralPath $LrcFile)) {
          Invoke-LogMsg "    [-] Synced .lrc companion already exists on disk. Skipping API matching engine."
          Invoke-LogMsg "---------------------------------------------"
          continue
@@ -197,13 +203,15 @@ except Exception as e:
     $CheckExitCode = Invoke-NativeProcess "python" @($TmpPyCheck)
     Remove-Item $TmpPyCheck -Force
     
-    if ($CheckExitCode -eq 3) {
+    # Modified: If ForceFullRefresh is active, ignore pre-existing instrumental tags
+    if (-not $ForceFullRefresh -and $CheckExitCode -eq 3) {
         Invoke-LogMsg "    [-] Track explicitly marked as Instrumental. Skipping API matching engine."
         Invoke-LogMsg "---------------------------------------------"
         continue
     }
 
-    $HasUnsyncedLyrics = ($CheckExitCode -eq 2)
+    # Modified: If ForceFullRefresh is active, treat unsynced state as false to force re-fetch
+    $HasUnsyncedLyrics = if ($ForceFullRefresh) { $false } else { ($CheckExitCode -eq 2) }
     Invoke-LogMsg "    [*] Internal metadata analysis complete. Unsynced state present: $HasUnsyncedLyrics"
 
     $SearchQuery = $FileInfo.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' '
