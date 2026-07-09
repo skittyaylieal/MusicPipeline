@@ -10,6 +10,9 @@ try {
     Clear-Host
 } catch {}
 
+# Sanity Check: Ensure thread count never maps to an illegal or unbounded allocation framework
+if ($MaxThreads -lt 1) { $MaxThreads = 1}
+
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
 # Unified Thread-Safe Logger
@@ -22,11 +25,11 @@ function Invoke-LogMsg([string]$Text) {
     # Base configuration color for Compressor (Magenta styling)
     $ColorCode = "35" 
     
-    if ($Text -match '🛑|CRITICAL|ERROR:|\[!\]') {
+    if ($Text -match '🛑|CRITICAL|ERROR:|\\[!\\]') {
         $ColorCode = "1;31" # Bold Red
-    } elseif ($Text -match '\[\+\]|\[BAKED\]') {
+    } elseif ($Text -match '\\[\\+\\]|\\[BAKED\\]') {
         $ColorCode = "32" # Green for success
-    } elseif ($Text -match '\[\*\]|================') {
+    } elseif ($Text -match '\\[\\*\\]|================') {
         $ColorCode = "36" # Cyan for headers/info
     }
 
@@ -65,18 +68,13 @@ if (-not (Test-Path -LiteralPath $BackupDir)) {
 }
 
 if (-not (Test-Path -LiteralPath $MobileDir)) {
-    # FIXED: Uses -Path instead of -LiteralPath
     New-Item -ItemType Directory -Path $MobileDir -Force | Out-Null
 }
 
-# --- OPTIMIZATION: NATIVE .NET HIGH-PERFORMANCE SINGLE-PASS EXTRACTION ---
 Invoke-LogMsg "[*] Indexing backup directory structure (High-Performance Native Safe Enumeration)..."
 
 try {
     $DirectoryInfo = [System.IO.DirectoryInfo]::new($BackupDir)
-    
-    # .EnumerateFiles is non-blocking and handles memory instantly. 
-    # Skipping 'ReparsePoint' guarantees it doesn't get trapped by recursive loops.
     $RawFiles = $DirectoryInfo.EnumerateFiles("*", [System.IO.SearchOption]::AllDirectories) | 
         Where-Object { $_.Attributes -notmatch 'ReparsePoint' } | 
         ForEach-Object { $_.FullName }
@@ -87,19 +85,17 @@ try {
     Exit 1
 }
 
-# 1. Filter and purge artwork directly out of the path collection
 Invoke-LogMsg "[*] Purging leftover artwork files..."
 if ($BackupObjects.Count -gt 0) {
-    $ArtworkFiles = $BackupObjects | Where-Object { $_ -match '\.(webp|jpg|jpeg|png)$' }
+    $ArtworkFiles = $BackupObjects | Where-Object { $_ -match '\\.(webp|jpg|jpeg|png)$' }
     if ($ArtworkFiles) {
         @($ArtworkFiles) | ForEach-Object { Remove-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue }
     }
 }
 
-# 2. Filter out audio files from the path collection
 Invoke-LogMsg "[*] Scanning source directory for master audio tracks..."
 if ($BackupObjects.Count -gt 0) {
-    $AudioMatch = $BackupObjects | Where-Object { $_ -match '\.(mp3|flac|wav|m4a|ogg)$' }
+    $AudioMatch = $BackupObjects | Where-Object { $_ -match '\\.(mp3|flac|wav|m4a|ogg)$' }
     [string[]]$AllFiles = if ($AudioMatch) { @($AudioMatch) } else { @() }
 } else {
     [string[]]$AllFiles = @()
@@ -112,7 +108,6 @@ if ($AllFiles.Count -eq 0) {
     Exit 0
 }
 
-# 3. Process timed lyrics (.lrc) out of the path collection
 Invoke-LogMsg "[*] Syncing timed lyric (.lrc) files..."
 if ($BackupObjects.Count -gt 0) {
     $LrcFiles = $BackupObjects | Where-Object { $_ -like '*.lrc' }
@@ -123,7 +118,6 @@ if ($BackupObjects.Count -gt 0) {
                 $DestinationLrc = "$MobileDir$RelativePath"
                 $DestFolder = [System.IO.Path]::GetDirectoryName($DestinationLrc)
                 
-                # FIXED: Changed -LiteralPath to -Path to fix parameter errors
                 if (-not (Test-Path -LiteralPath $DestFolder)) { 
                     New-Item -ItemType Directory -Path $DestFolder -Force | Out-Null 
                 }
@@ -157,7 +151,7 @@ foreach ($FilePath in $AllFiles) {
 if ($Queue.Count -eq 0) {
     Invoke-LogMsg "[+] Mobile folder completely up to date. 0 tracks queued."
     $MetricStopwatch.Stop()
-    Invoke-LogMsg "[METRIC] $("{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed)"
+    Invoke-LogMsg "[METRIC] $("{0:hh\\:mm\\:ss}" -f $MetricStopwatch.Elapsed)"
     Exit 0
 }
 
@@ -168,12 +162,10 @@ Invoke-LogMsg "[+] Spawning parallel ffmpeg processing threads (Max Workers: $Ma
 $Queue | ForEach-Object -Parallel {
     $TargetFolder = [System.IO.Path]::GetDirectoryName($_.Destination)
     
-    # FIXED: Changed -LiteralPath to -Path to fix parameter errors inside parallel threads
     if (-not (Test-Path -LiteralPath $TargetFolder)) { 
         New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null 
     }
 
-    # Inline thread-safe logger for parallel workers
     $Msg = "[LAUNCH] $($_.Name) -> Mobile M4A"
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
     $ESC = [char]27
@@ -206,27 +198,39 @@ $Queue | ForEach-Object -Parallel {
         $_.Destination
     )
 
-    # --- DEBUG ENGINE: Capture standard error streams ---
+    # Execute FFmpeg securely inside tracking wrapper
     $FFmpegOutput = & $using:FFmpegPath @FFmpegArgs 2>&1
 
-    # If FFmpeg exited with a code other than 0, it broke
     if ($LASTEXITCODE -ne 0) {
         $AlertTimestamp = (Get-Date).ToString("HH:mm:ss")
         $CleanedAlert = $FFmpegOutput -join " "
-        $ErrorLine = "$ESC[1;31m[$AlertTimestamp] [Compressor] 🛑 CRASH ON VAL ($($_.Name)): $CleanedAlert$ESC[0m"
         
-        # Spit it out to the console immediately
+        # Check if the output explicitly flags a memory shortage event
+        $IsOOMError = $CleanedAlert -match 'Cannot allocate memory|bad_alloc|-12'
+        
+        $ErrorLine = "$ESC[1;31m[$AlertTimestamp] [Compressor] 🛑 CRASH ON VAL ($($_.Name)): $CleanedAlert$ESC[0m"
         Write-Host $ErrorLine
         
-        # Force it into the web log stream so you can read it on your dashboard
         if (Test-Path -LiteralPath $using:GlobalLogFile) {
             try { [System.IO.File]::AppendAllText($using:GlobalLogFile, ($ErrorLine + [System.Environment]::NewLine)) } catch {}
         }
+
+        # DEFENSIVE BACK-OFF: If system memory is exhausted, enforce an immediate 2.5 second sleep
+        # This completely breaks the machine-gun cascade loop and lets the OS salvage garbage handles.
+        if ($IsOOMError) {
+            Write-Host "$ESC[1;33m[SYSTEM ALERT] Out-of-Memory detected. Pausing core engine thread worker group...$ESC[0m"
+            [System.Threading.Thread]::Sleep(2500)
+        }
+    }
+
+    # Routine Cleanup: Periodically flush thread context memory to keep the runspace clean
+    if ((Get-Random -Min 1 -Max 100) -le 15) {
+        [System.GC]::Collect()
     }
 } -ThrottleLimit $MaxThreads
 
 $MetricStopwatch.Stop()
-$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
+$Elapsed = "{0:hh\\:mm\\:ss}" -f $MetricStopwatch.Elapsed
 Invoke-LogMsg "[BAKED] Mobile library is perfectly synced and compressed!"
 Invoke-LogMsg "[METRIC] $Elapsed"
 Invoke-LogMsg "============================================="
