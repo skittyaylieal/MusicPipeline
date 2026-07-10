@@ -486,22 +486,28 @@ function Invoke-PipelineExecution {
                 $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
             } else { Log-Progress "`e[90m[STEP 4/6] Explicitly bypassed via step toggle directive.`e[0m"; $S4Time = "00:00:00" }
             if (-not $EnvMap.SkipStep5) {
-                Log-Progress "`e[1;33m[STEP 5/6]`e[0m Executing Lossy Mobile Deployment Transcoding..." 
-                $S5Watch = [System.Diagnostics.Stopwatch]::StartNew() 
-
-                if ($EnvMap.CleanCompress) {
-                    Log-Progress "🧹 [CLEAN SWEEP ACTIVATED] Purging target mobile transcoding folder storage contents..."
-                    Remove-Item -Path "$($EnvMap.MobileDir)\*" -Recurse -Force -ErrorAction SilentlyContinue
+                Log-Progress "`e[1;35m[STEP 5/6]`e[0m Syncing and Compressing Mobile M4A Library Track Array..."
+                $S5Watch = [System.Diagnostics.Stopwatch]::StartNew()
+                $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1"
+                
+                if (Test-Path $S5ScriptPath) {
+                    $S5Params = @{
+                        BackupDir        = $EnvMap.BackupDir
+                        MobileDir        = $EnvMap.MobileDir
+                        FFmpegPath       = $EnvMap.FFmpegExe
+                        MaxThreads       = [int]$EnvMap.CompressThreads
+                        ForceCleanSweep  = [bool]$EnvMap.CleanSweepCompress
+                    }
+                    
+                    # Execute compressor engine with non-destructive tracking arguments
+                    & $S5ScriptPath @S5Params 2>&1 | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
+                } else {
+                    Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping."
                 }
-
-                $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1" 
-                if (Test-Path $S5ScriptPath) { 
-                    $S5Params = @{ BackupDir = $EnvMap.BackupDir; MobileDir = $EnvMap.MobileDir; FFmpegPath = $EnvMap.FFmpegExe; MaxThreads = $EnvMap.MaxCompressThreads } 
-                    & $S5ScriptPath @S5Params 2>&1 
-                } else { Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping." } 
-                $S5Watch.Stop() 
-                $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed) 
-            } else { Log-Progress "`e[90m[STEP 5/6] Explicitly bypassed via step toggle directive.`e[0m"; $S5Time = "00:00:00" }
+                $S5Watch.Stop()
+                $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed)
+            } else {Log-Progress "`e[90m[STEP 5/6] Disabled by explicit configuration profile bypass.`e[0m"
+            $S5Time = "00:00:00"}
             if (-not $EnvMap.SkipStep6) {
                 Log-Progress "`e[1;33m[STEP 6/6]`e[0m Compiling Track Telemetry & Analytics..." 
                 $S6Watch = [System.Diagnostics.Stopwatch]::StartNew() 

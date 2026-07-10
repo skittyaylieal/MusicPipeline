@@ -2,7 +2,8 @@ Param (
     [string]$BackupDir,
     [string]$MobileDir,
     [string]$FFmpegPath,
-    [int]$MaxThreads = 4
+    [int]$MaxThreads = 4,
+    [switch]$ForceCleanSweep
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -15,7 +16,7 @@ if ($MaxThreads -lt 1) { $MaxThreads = 1 }
 
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
-# Unified Thread-Safe Logger
+# Centralized Thread-Safe Logger
 function Invoke-LogMsg([string]$Text) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return }
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
@@ -27,9 +28,9 @@ function Invoke-LogMsg([string]$Text) {
     
     if ($Text -match '🛑|CRITICAL|ERROR:|\\[!\\]') {
         $ColorCode = "1;31" # Bold Red
-    } elseif ($Text -match '\[\+\]|\[BAKED\]') {
+    } elseif ($Text -match '\\[\\+\\]|\\[BAKED\\]') {
         $ColorCode = "32" # Green for success
-    } elseif ($Text -match '\[\*\]|================') {
+    } elseif ($Text -match '\\[\\*\\]|================') {
         $ColorCode = "36" # Cyan for headers/info
     }
 
@@ -71,6 +72,10 @@ if (-not (Test-Path -LiteralPath $MobileDir)) {
     New-Item -ItemType Directory -Path $MobileDir -Force | Out-Null
 }
 
+if ($ForceCleanSweep) {
+    Invoke-LogMsg "🧹 Clean Sweep flag active: Forcing on-the-fly regeneration of files without destructive directory pre-purging."
+}
+
 Invoke-LogMsg "[*] Indexing backup directory structure (High-Performance Native Safe Enumeration)..."
 
 try {
@@ -87,7 +92,6 @@ try {
 
 Invoke-LogMsg "[*] Purging leftover artwork files..."
 if ($BackupObjects.Count -gt 0) {
-    # FIXED: Single backslash for literal dot matching
     $ArtworkFiles = $BackupObjects | Where-Object { $_ -match '\.(webp|jpg|jpeg|png)$' }
     if ($ArtworkFiles) {
         @($ArtworkFiles) | ForEach-Object { Remove-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue }
@@ -96,7 +100,6 @@ if ($BackupObjects.Count -gt 0) {
 
 Invoke-LogMsg "[*] Scanning source directory for master audio tracks..."
 if ($BackupObjects.Count -gt 0) {
-    # FIXED: Single backslash for literal dot matching
     $AudioMatch = $BackupObjects | Where-Object { $_ -match '\.(mp3|flac|wav|m4a|ogg)$' }
     [string[]]$AllFiles = if ($AudioMatch) { @($AudioMatch) } else { @() }
 } else {
@@ -125,7 +128,7 @@ if ($BackupObjects.Count -gt 0) {
                 }
                 
                 $SrcTime = [System.IO.File]::GetLastWriteTime($_)
-                if (-not (Test-Path -LiteralPath $DestinationLrc) -or ($SrcTime -gt [System.IO.File]::GetLastWriteTime($DestinationLrc))) {
+                if ($ForceCleanSweep -or -not (Test-Path -LiteralPath $DestinationLrc) -or ($SrcTime -gt [System.IO.File]::GetLastWriteTime($DestinationLrc))) {
                     Copy-Item -LiteralPath $_ -Destination $DestinationLrc -Force
                 }
             }
@@ -133,7 +136,7 @@ if ($BackupObjects.Count -gt 0) {
     }
 }
 
-Invoke-LogMsg "[*] Filtering out already compressed files..."
+Invoke-LogMsg "[*] Filtering compression execution queue..."
 $Queue = @()
 foreach ($FilePath in $AllFiles) {
     $RelativePath = $FilePath.SubString($BackupDir.Length)
@@ -141,7 +144,8 @@ foreach ($FilePath in $AllFiles) {
     
     $SrcTime = [System.IO.File]::GetLastWriteTime($FilePath)
 
-    if (-not (Test-Path -LiteralPath $DestinationFile) -or ($SrcTime -gt [System.IO.File]::GetLastWriteTime($DestinationFile))) {
+    # If ForceCleanSweep is requested, we bypass looking at existing file modification times and queue everything safely
+    if ($ForceCleanSweep -or -not (Test-Path -LiteralPath $DestinationFile) -or ($SrcTime -gt [System.IO.File]::GetLastWriteTime($DestinationFile))) {
         $Queue += [PSCustomObject]@{
             Source      = $FilePath
             Destination = $DestinationFile
@@ -153,7 +157,6 @@ foreach ($FilePath in $AllFiles) {
 if ($Queue.Count -eq 0) {
     Invoke-LogMsg "[+] Mobile folder completely up to date. 0 tracks queued."
     $MetricStopwatch.Stop()
-    # FIXED: Single backslashes for string format escaping
     Invoke-LogMsg "[METRIC] $("{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed)"
     Exit 0
 }
@@ -178,11 +181,11 @@ $Queue | ForEach-Object -Parallel {
     
     if (Test-Path -LiteralPath $using:GlobalLogFile) {
         $RetryCount = 0
-        $Success    = $false
-        while (-not $Success -and $RetryCount -lt 15) {
+        $MicrosoftSuccess = $false
+        while (-not $MicrosoftSuccess -and $RetryCount -lt 15) {
             try {
                 [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
-                $Success = $true
+                $MicrosoftSuccess = $true
             } catch {
                 $RetryCount++
                 [System.Threading.Thread]::Sleep(50)
@@ -218,21 +221,19 @@ $Queue | ForEach-Object -Parallel {
             try { [System.IO.File]::AppendAllText($using:GlobalLogFile, ($ErrorLine + [System.Environment]::NewLine)) } catch {}
         }
 
-        # DEFENSIVE BACK-OFF: If system memory is exhausted, enforce an immediate 2.5 second sleep
+        # DEFENSIVE BACK-OFF: Pause core thread pool if out of memory
         if ($IsOOMError) {
             Write-Host "$ESC[1;33m[SYSTEM ALERT] Out-of-Memory detected. Pausing core engine thread worker group...$ESC[0m"
             [System.Threading.Thread]::Sleep(2500)
         }
     }
 
-    # Routine Cleanup: Periodically flush thread context memory to keep the runspace clean
     if ((Get-Random -Min 1 -Max 100) -le 15) {
         [System.GC]::Collect()
     }
 } -ThrottleLimit $MaxThreads
 
 $MetricStopwatch.Stop()
-# FIXED: Single backslashes for string format escaping
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Invoke-LogMsg "[BAKED] Mobile library is perfectly synced and compressed!"
 Invoke-LogMsg "[METRIC] $Elapsed"
