@@ -118,6 +118,8 @@ function Load-ProfileContext {
         $Global:NormalIntervalSec       = $Global:ActiveConfig.NormalIntervalSec
         $Global:CleanIntervalSec        = $Global:ActiveConfig.CleanIntervalSec
         
+        $Global:Profile                 = $Global:ActiveConfig
+
         Log-Engine "Loaded configuration profile: [$Active]" "32"
     }
     catch {
@@ -1135,11 +1137,13 @@ try {
                     $CurrentEpoch = [DateTimeOffset]::Now.ToUnixTimeSeconds()
 
                     if ($RunContext -eq "AutomatedNormal") {
-                        $RawConfig.profiles.$Act.LastNormalRunEpoch = $CurrentEpoch
+                        # REPLACE THE OLD DOT ASSIGNMENT WITH THIS:
+                        $RawConfig.profiles.$Act | Add-Member -MemberType NoteProperty -Name "LastNormalRunEpoch" -Value $CurrentEpoch -Force
                         Log-Engine "⏰ Timed tracking anchor updated successfully for Normal Routine Track Run." "36"
                     }
                     elseif ($RunContext -eq "AutomatedClean") {
-                        $RawConfig.profiles.$Act.LastCleanRunEpoch = $CurrentEpoch
+                        # REPLACE THE OLD DOT ASSIGNMENT WITH THIS:
+                        $RawConfig.profiles.$Act | Add-Member -MemberType NoteProperty -Name "LastCleanRunEpoch" -Value $CurrentEpoch -Force
                         Log-Engine "🧹 Timed tracking anchor updated successfully for Maintenance Clean Sweep Run." "35"
                     }
 
