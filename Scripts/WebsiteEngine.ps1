@@ -14,7 +14,8 @@ $HtmlFile      = "$ScriptDir\dashboard.html"
 function Load-ProfileContext {
     if (-not (Test-Path $ProfilesFile)) {
         if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force | Out-Null }
-        # Inline absolute fallback generation matching your current environment specifications
+        
+        # Comprehensive profile matrix template - all presets moved completely into config mapping
         $DefaultTemplate = @{
             activeProfile = "Default"
             profiles = @{
@@ -26,23 +27,40 @@ function Load-ProfileContext {
                     CacheFile               = "C:\MusicTools\MusicPipeline\Config\dashboard_cache.json"
                     TimingFile              = "C:\MusicTools\MusicPipeline\Config\timing_history.json"
                     CookieFile              = "C:\MusicTools\MusicPipeline\Config\cookies.txt"
-                    HistoryFile             = "C:\MusicTools\MusicPipeline\Config\downloaded_history.txt"
-                    YTDLPExe                = "C:\MusicTools\yt-dlp.exe"
-                    FFmpegExe               = "C:\MusicTools\ffmpeg.exe"
+                    HistoryFile             = "C:\MusicTools\MusicPipeline\Config\history.txt"
+                    YTDLPExe                = "C:\MusicTools\MusicPipeline\Tools\yt-dlp.exe"
+                    FFmpegExe               = "C:\MusicTools\MusicPipeline\Tools\ffmpeg.exe"
                     FirefoxExe              = "C:\Program Files\Mozilla Firefox\firefox.exe"
-                    CheckURL                = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                    CheckURL                = "https://www.youtube.com"
                     SleepInterval           = 4
                     MaxSleepInterval        = 12
                     SleepRequests           = 3
-                    MaxCompressThreads      = 3
+                    MaxCompressThreads      = 4
                     MaxDownloadThreads      = 3
                     ScannerSleepIntervalSec = 60
-                    ChronDaemonSleepSec     = 1800
+                    ChronDaemonSleepSec     = 60 # Set to 60s to check the automated intervals accurately
+                    
+                    # Split-Daemon Routing Track Parameters
+                    NormalIntervalSec       = 1800     # 30 Minutes
+                    CleanIntervalSec        = 604800   # 7 Days
+                    
+                    NormalStep1             = $true
+                    NormalStep2             = $true
+                    NormalStep3             = $true
+                    NormalStep4             = $true
+                    NormalStep5             = $true
+                    NormalStep6             = $true
+                    
+                    CleanSweepDownload      = $false
+                    CleanSweepLyrics        = $true
+                    CleanSweepCompress      = $true
+                    
+                    # Core Runtime Milestone State Captures
+                    LastNormalRunEpoch      = 0
+                    LastCleanRunEpoch       = 0
+                    
                     Playlists               = @(
-                        "https://www.youtube.com/playlist?list=PLqcuYaDDgyacWpBG6ib-2EKOuQa6aGjZJ",
-                        "https://www.youtube.com/playlist?list=PLqcuYaDDgyaeHKssVjz_Nw3qUDwfrwL09",
-                        "https://www.youtube.com/playlist?list=PLqcuYaDDgyad_i19iLheoQJLLKJUtwlAr",
-                        "https://www.youtube.com/playlist?list=PLqcuYaDDgyach02bt_8R8G7AzE9zSAOkS"
+                        "https://www.youtube.com/playlist?list=PLw-VjHDlEOgs658g796bZ69uBfS809GfF"
                     )
                 }
             }
@@ -50,16 +68,43 @@ function Load-ProfileContext {
         $DefaultTemplate | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
     }
 
-    $RawConfig = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
-    $Global:ActiveProfileName = $RawConfig.activeProfile
-    $Global:Profile = $RawConfig.profiles.$($Global:ActiveProfileName)
+    try {
+        $Global:ProfileData = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
+        $Active = $Global:ProfileData.activeProfile
+        $Global:ActiveConfig = $Global:ProfileData.profiles.$Active
 
-    # Re-expose key engine dependencies cleanly to core runtime globals
-    $Global:DiagLogFile = $Global:Profile.DiagLogFile
-    $Global:CacheFile   = $Global:Profile.CacheFile
-    $Global:TimingFile  = $Global:Profile.TimingFile
+        # Context-mapping active configurations down into script runspace memory references
+        $Global:BackupDir               = $Global:ActiveConfig.BackupDir
+        $Global:MobileDir               = $Global:ActiveConfig.MobileDir
+        $Global:BrokenSongsFile         = $Global:ActiveConfig.BrokenSongsFile
+        $Global:DiagLogFile             = $Global:ActiveConfig.DiagLogFile
+        $Global:CacheFile               = $Global:ActiveConfig.CacheFile
+        $Global:TimingFile              = $Global:ActiveConfig.TimingFile
+        $Global:CookieFile              = $Global:ActiveConfig.CookieFile
+        $Global:HistoryFile             = $Global:ActiveConfig.HistoryFile
+        $Global:YTDLPExe                = $Global:ActiveConfig.YTDLPExe
+        $Global:FFmpegExe               = $Global:ActiveConfig.FFmpegExe
+        $Global:FirefoxExe              = $Global:ActiveConfig.FirefoxExe
+        $Global:CheckURL                = $Global:ActiveConfig.CheckURL
+        $Global:SleepInterval           = $Global:ActiveConfig.SleepInterval
+        $Global:MaxSleepInterval        = $Global:ActiveConfig.MaxSleepInterval
+        $Global:SleepRequests           = $Global:ActiveConfig.SleepRequests
+        $Global:MaxCompressThreads      = $Global:ActiveConfig.MaxCompressThreads
+        $Global:MaxDownloadThreads      = $Global:ActiveConfig.MaxDownloadThreads
+        $Global:ScannerSleepIntervalSec = $Global:ActiveConfig.ScannerSleepIntervalSec
+        $Global:ChronDaemonSleepSec     = $Global:ActiveConfig.ChronDaemonSleepSec
+        
+        # Global variable mappings for new splits
+        $Global:NormalIntervalSec       = $Global:ActiveConfig.NormalIntervalSec
+        $Global:CleanIntervalSec        = $Global:ActiveConfig.CleanIntervalSec
+        
+        Log-Engine "Loaded configuration profile: [$Active]" "32"
+    }
+    catch {
+        Log-Engine "🛑 Critical breakdown loading profiles json architecture context: $_" "1;31"
+        Exit 1
+    }
 }
-
 # Initial Context Engine Boot up Sequence
 Load-ProfileContext
 $Global:IsPipelineRunning = $false
@@ -246,20 +291,20 @@ function Start-AutomatedChronDaemon {
         param($TargetPort, $Delay, $PFile)
         
         while ($true) {
-            # Run calculations every minute
+            # Sleep step interval tracking loops
             Start-Sleep -Seconds $Delay 
             
             if (-not (Test-Path $PFile)) { continue }
             
             try {
-                # Read latest profile values dynamically to adapt to dashboard savings live
+                # Load profile details dynamically to match config alterations on the fly
                 $Raw = Get-Content -LiteralPath $PFile -Raw | ConvertFrom-Json
                 $Act = $Raw.activeProfile
                 $Prof = $Raw.profiles.$Act
                 
                 $CurrentEpoch = [DateTimeOffset]::Now.ToUnixTimeSeconds()
                 
-                # Establish timestamps
+                # Fetch relative calculation checkpoints out of configuration properties
                 $LastNormal = if ($Prof.LastNormalRunEpoch) { [long]$Prof.LastNormalRunEpoch } else { 0 }
                 $LastClean  = if ($Prof.LastCleanRunEpoch) { [long]$Prof.LastCleanRunEpoch } else { 0 }
                 
@@ -269,9 +314,7 @@ function Start-AutomatedChronDaemon {
                 $TriggerClean  = ($CurrentEpoch - $LastClean) -ge $IntervalClean
                 $TriggerNormal = ($CurrentEpoch - $LastNormal) -ge $IntervalNormal
                 
-                # Priorities Check: Always prioritize the heavy maintenance run if both hit limits concurrently
                 if ($TriggerClean) {
-                    # Construct query string options based on mapped configuration matrix profile settings
                     $URI = "http://127.0.0.1:$TargetPort/run?type=AutomatedClean" +
                            "&cleanDownload=$($Prof.CleanSweepDownload)" +
                            "&cleanLyrics=$($Prof.CleanSweepLyrics)" +
@@ -280,7 +323,7 @@ function Start-AutomatedChronDaemon {
                     Invoke-RestMethod -Uri $URI -Method Post | Out-Null
                 }
                 elseif ($TriggerNormal) {
-                    # Map inverted custom routing steps directly out of your dashboard profile checklist fields
+                    # Map structural inversion parameters directly relative to checkbox configuration settings
                     $Skip1 = if ($Prof.NormalStep1 -eq $true) { "false" } else { "true" }
                     $Skip2 = if ($Prof.NormalStep2 -eq $true) { "false" } else { "true" }
                     $Skip3 = if ($Prof.NormalStep3 -eq $true) { "false" } else { "true" }
@@ -295,11 +338,11 @@ function Start-AutomatedChronDaemon {
                 }
             } 
             catch {
-                # Fallback capture to prevent the script background engine thread runspace from collapsing
+                # Safeguard against structural engine dropouts
             }
         }
     }
-    # Pass down the absolute Profiles path location context safely into the thread job parameters structure
+    # Track execution checks every minute (60s) to securely map scheduled tracks
     $Job = Start-Job -Name "ChronDaemon" -ScriptBlock $ChronScript -ArgumentList $RuntimePort, 60, $ProfilesFile 
 }
 
@@ -1043,7 +1086,7 @@ try {
                     continue
                 }
 
-                # Unpack and parse query parameters manually
+                # Extract URL parameters manually from query string inputs
                 $QueryString = $Request.Url.Query
                 $Params = @{}
                 if (-not [string]::IsNullOrEmpty($QueryString)) {
@@ -1055,7 +1098,6 @@ try {
 
                 $RunContext = if ($Params.ContainsKey("type")) { $Params["type"] } else { "Manual" }
                 
-                # Baseline routing configurations switches layout definitions
                 $IsSweepRequested  = [bool]($Params["sweep"] -eq "true")
                 $SkipStep1         = [bool]($Params["skip1"] -eq "true")
                 $SkipStep2         = [bool]($Params["skip2"] -eq "true")
@@ -1068,7 +1110,7 @@ try {
                 $CleanLyrics       = [bool]($Params["cleanLyrics"] -eq "true")
                 $CleanCompress     = [bool]($Params["cleanCompress"] -eq "true")
 
-                # Asynchronously trigger core pipeline engine processes
+                # Asynchronously pass the parameters down to execution pipelines
                 Invoke-PipelineExecution -TriggerType $RunContext `
                                          -CleanSweep $IsSweepRequested `
                                          -SkipStep1 $SkipStep1 -SkipStep2 $SkipStep2 -SkipStep3 $SkipStep3 `
@@ -1077,7 +1119,7 @@ try {
                                          -CleanSweepLyrics $CleanLyrics `
                                          -CleanSweepCompress $CleanCompress
 
-                # Persist the current epoch milestone inside configuration file parameters array
+                # Persist execution completion timestamps right back inside profiles data layout configurations
                 try {
                     $RawConfig = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
                     $Act = $RawConfig.activeProfile
