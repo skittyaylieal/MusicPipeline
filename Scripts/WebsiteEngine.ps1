@@ -9,6 +9,26 @@ $ConfigDir     = "$ScriptRepoDir\Config"
 $HtmlFile      = "$ScriptDir\dashboard.html" 
 
 # -----------------------------------------------------------------
+# CENTRALIZED SERVER LOGGING ROUTINE (Captures framework output)
+# -----------------------------------------------------------------
+function Log-Engine([string]$Message, [string]$AnsiStyle = "37") {
+    $Timestamp = (Get-Date).ToString("HH:mm:ss")
+    $Payload = "`e[${AnsiStyle}m[$Timestamp] [SERVER] $Message`e[0m"
+    
+    # 1. Attempt to append to the log file safely
+    try {
+        $Payload | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 -ErrorAction Stop
+    } catch {
+        # Fallback silently to terminal if the file is transiently locked or busy
+        Write-Host "`e[1;31m[LOG LOCK] Could not write to web stream log file: $_`e[0m"
+    }
+    
+    # 2. Mirror it to your running terminal session so you see it live
+    Write-Host $Payload
+}
+
+
+# -----------------------------------------------------------------
 # CORE PROFILE INJECTION ENGINE
 # -----------------------------------------------------------------
 function Load-ProfileContext {
@@ -117,24 +137,7 @@ if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile -E
 "`n`e[1;32m[SYSTEM] Website Engine Core Session Initialized.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
 
 
-# -----------------------------------------------------------------
-# CENTRALIZED SERVER LOGGING ROUTINE (Captures framework output)
-# -----------------------------------------------------------------
-function Log-Engine([string]$Message, [string]$AnsiStyle = "37") {
-    $Timestamp = (Get-Date).ToString("HH:mm:ss")
-    $Payload = "`e[${AnsiStyle}m[$Timestamp] [SERVER] $Message`e[0m"
-    
-    # 1. Attempt to append to the log file safely
-    try {
-        $Payload | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 -ErrorAction Stop
-    } catch {
-        # Fallback silently to terminal if the file is transiently locked or busy
-        Write-Host "`e[1;31m[LOG LOCK] Could not write to web stream log file: $_`e[0m"
-    }
-    
-    # 2. Mirror it to your running terminal session so you see it live
-    Write-Host $Payload
-}
+
 
 $Global:CachedMetrics = @{
     masterCount  = 0; mobileCount = 0; lrcCount = 0 
