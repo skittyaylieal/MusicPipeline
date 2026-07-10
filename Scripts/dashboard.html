@@ -436,14 +436,48 @@
                         <div class="config-group"><label>Base Extraction Delay (SleepInterval)</label><input type="text" id="cfg-SleepInterval"></div>
                         <div class="config-group"><label>Max Extraction Delay (MaxSleepInterval)</label><input type="text" id="cfg-MaxSleepInterval"></div>
                     </div>
+                
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div class="config-group"><label>Throttling Burst Limit (SleepRequests)</label><input type="text" id="cfg-SleepRequests"></div>
                         <div class="config-group"><label>FFmpeg Transcode Worker Limit (MaxCompressThreads)</label><input type="text" id="cfg-MaxCompressThreads"></div>
                         <div class="config-group"><label>Parallelised Playlist Worker Limit (MaxDownloadThreads)</label><input type="text" id="cfg-MaxDownloadThreads"></div>
                     </div>
+                    
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div class="config-group"><label>Folder Scanner Loop (Sec)</label><input type="text" id="cfg-ScannerSleepIntervalSec"></div>
                         <div class="config-group"><label>Automated Cron Cycle (Sec)</label><input type="text" id="cfg-ChronDaemonSleepSec"></div>
+                    </div>
+
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #27272A;">
+                        <h5 style="color: #F1FA8C; margin: 0 0 10px 0; font-size: 13px;">Advanced Timed Routing Configurations</h5>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px;">
+                            <div class="config-group">
+                                <label>Normal Run Interval (Seconds - e.g., 1800 for 30m)</label>
+                                <input type="text" id="cfg-NormalIntervalSec">
+                            </div>
+                            <div class="config-group">
+                                <label>Clean Run Interval (Seconds - e.g., 604800 for 1 Week)</label>
+                                <input type="text" id="cfg-CleanIntervalSec">
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <span style="font-size: 11px; color: #BD93F9; font-weight: 600; display:block; margin-bottom:5px;">Normal Run Included Steps:</span>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep1"> Step 1: Cookie Checks</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep2"> Step 2: Download Engine</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep3"> Step 3: Fix Broken Metadata</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep4"> Step 4: Timed Lyric Scraper</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep5"> Step 5: FFmpeg Audio Compressor</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep6"> Step 6: Telemetry Reports</label>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; color: #FF79C6; font-weight: 600; display:block; margin-bottom:5px;">Clean Run Forced Sweeps:</span>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-CleanSweepDownload"> Force-Wipe Download History</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-CleanSweepLyrics"> Purge & Force Re-download Lyrics</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-CleanSweepCompress"> Clean-Wipe Mobile Output Folder</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -451,7 +485,7 @@
                     <h4 style="color: #50FA7B; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Active Sync Target Playlists Ledger Matrix</h4>
                     <div class="config-group">
                         <label>Target Remote Playlists Array (One absolute URL entry per text line row)</label>
-                        <textarea id="cfg-Playlists" rows="8" placeholder="https://www.youtube.com/playlist?list=..."></textarea>
+                        <textarea id="cfg-Playlists" rows="14" placeholder="https://www.youtube.com/playlist?list=..."></textarea>
                     </div>
                 </div>
             </div>
@@ -1162,11 +1196,14 @@
 
             const config = fullProfilesObjectContainer[selectedProfileName];
 
+            // Text & numeric configurations list mapping
             const keysToMap = [
                 'BackupDir', 'MobileDir', 'BrokenSongsFile', 'DiagLogFile', 'CacheFile',
                 'TimingFile', 'CookieFile', 'HistoryFile', 'YTDLPExe', 'FFmpegExe',
                 'FirefoxExe', 'CheckURL', 'SleepInterval', 'MaxSleepInterval',
-                'SleepRequests', 'MaxCompressThreads', 'MaxDownloadThreads', 'ScannerSleepIntervalSec', 'ChronDaemonSleepSec' 
+                'SleepRequests', 'MaxCompressThreads', 'MaxDownloadThreads', 
+                'ScannerSleepIntervalSec', 'ChronDaemonSleepSec',
+                'NormalIntervalSec', 'CleanIntervalSec'
             ];
 
             keysToMap.forEach(key => {
@@ -1176,9 +1213,23 @@
                 }
             });
 
+            // Checkbox elements mapping matrices
+            const checkboxKeys = [
+                'NormalStep1', 'NormalStep2', 'NormalStep3', 'NormalStep4', 'NormalStep5', 'NormalStep6',
+                'CleanSweepDownload', 'CleanSweepLyrics', 'CleanSweepCompress'
+            ];
+
+            checkboxKeys.forEach(key => {
+                const element = document.getElementById(`cfg-${key}`);
+                if (element) {
+                    element.checked = config[key] === true;
+                }
+            });
+
             const playlistsArea = document.getElementById('cfg-Playlists');
             if (playlistsArea && config.Playlists) {
-                playlistsArea.value = Array.isArray(config.Playlists) ? config.Playlists.join('\n') : config.Playlists;
+                playlistsArea.value = Array.isArray(config.Playlists) ?
+                config.Playlists.join('\n') : config.Playlists;
             }
         }
 
@@ -1231,8 +1282,35 @@
                 MaxDownloadThreads: parseInt(document.getElementById('cfg-MaxDownloadThreads').value) || 3,
                 ScannerSleepIntervalSec: parseInt(document.getElementById('cfg-ScannerSleepIntervalSec').value) || 60,
                 ChronDaemonSleepSec: parseInt(document.getElementById('cfg-ChronDaemonSleepSec').value) || 1800,
+                
+                // Split-interval configuration capture
+                NormalIntervalSec: parseInt(document.getElementById('cfg-NormalIntervalSec').value) || 1800,
+                CleanIntervalSec: parseInt(document.getElementById('cfg-CleanIntervalSec').value) || 604800,
+                
+                // Flag properties metrics tracking arrays
+                NormalStep1: document.getElementById('cfg-NormalStep1').checked,
+                NormalStep2: document.getElementById('cfg-NormalStep2').checked,
+                NormalStep3: document.getElementById('cfg-NormalStep3').checked,
+                NormalStep4: document.getElementById('cfg-NormalStep4').checked,
+                NormalStep5: document.getElementById('cfg-NormalStep5').checked,
+                NormalStep6: document.getElementById('cfg-NormalStep6').checked,
+                
+                CleanSweepDownload: document.getElementById('cfg-CleanSweepDownload').checked,
+                CleanSweepLyrics: document.getElementById('cfg-CleanSweepLyrics').checked,
+                CleanSweepCompress: document.getElementById('cfg-CleanSweepCompress').checked,
+                
                 Playlists: playlistsArray
             };
+
+            // Keep hidden operational tracking parameters safe from over-writing defaults
+            if (fullProfilesObjectContainer[targetProfile]) {
+                if (fullProfilesObjectContainer[targetProfile].LastNormalRunEpoch !== undefined) {
+                    compiledConfigObject.LastNormalRunEpoch = fullProfilesObjectContainer[targetProfile].LastNormalRunEpoch;
+                }
+                if (fullProfilesObjectContainer[targetProfile].LastCleanRunEpoch !== undefined) {
+                    compiledConfigObject.LastCleanRunEpoch = fullProfilesObjectContainer[targetProfile].LastCleanRunEpoch;
+                }
+            }
 
             fetch('/profiles/save', {
                 method: 'POST',

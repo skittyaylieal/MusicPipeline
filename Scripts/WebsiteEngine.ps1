@@ -243,13 +243,64 @@ function Start-AutomatedChronDaemon {
     Get-Job -Name "ChronDaemon" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
     
     $ChronScript = {
-        param($TargetPort, $Delay)
+        param($TargetPort, $Delay, $PFile)
+        
         while ($true) {
+            # Run calculations every minute
             Start-Sleep -Seconds $Delay 
-            try { Invoke-RestMethod -Uri "http://127.0.0.1:$TargetPort/run?type=Automated" -Method Post } catch {} 
+            
+            if (-not (Test-Path $PFile)) { continue }
+            
+            try {
+                # Read latest profile values dynamically to adapt to dashboard savings live
+                $Raw = Get-Content -LiteralPath $PFile -Raw | ConvertFrom-Json
+                $Act = $Raw.activeProfile
+                $Prof = $Raw.profiles.$Act
+                
+                $CurrentEpoch = [DateTimeOffset]::Now.ToUnixTimeSeconds()
+                
+                # Establish timestamps
+                $LastNormal = if ($Prof.LastNormalRunEpoch) { [long]$Prof.LastNormalRunEpoch } else { 0 }
+                $LastClean  = if ($Prof.LastCleanRunEpoch) { [long]$Prof.LastCleanRunEpoch } else { 0 }
+                
+                $IntervalNormal = if ($Prof.NormalIntervalSec) { [long]$Prof.NormalIntervalSec } else { 1800 }
+                $IntervalClean  = if ($Prof.CleanIntervalSec) { [long]$Prof.CleanIntervalSec } else { 604800 }
+                
+                $TriggerClean  = ($CurrentEpoch - $LastClean) -ge $IntervalClean
+                $TriggerNormal = ($CurrentEpoch - $LastNormal) -ge $IntervalNormal
+                
+                # Priorities Check: Always prioritize the heavy maintenance run if both hit limits concurrently
+                if ($TriggerClean) {
+                    # Construct query string options based on mapped configuration matrix profile settings
+                    $URI = "http://127.0.0.1:$TargetPort/run?type=AutomatedClean" +
+                           "&cleanDownload=$($Prof.CleanSweepDownload)" +
+                           "&cleanLyrics=$($Prof.CleanSweepLyrics)" +
+                           "&cleanCompress=$($Prof.CleanSweepCompress)"
+                           
+                    Invoke-RestMethod -Uri $URI -Method Post | Out-Null
+                }
+                elseif ($TriggerNormal) {
+                    # Map inverted custom routing steps directly out of your dashboard profile checklist fields
+                    $Skip1 = if ($Prof.NormalStep1 -eq $true) { "false" } else { "true" }
+                    $Skip2 = if ($Prof.NormalStep2 -eq $true) { "false" } else { "true" }
+                    $Skip3 = if ($Prof.NormalStep3 -eq $true) { "false" } else { "true" }
+                    $Skip4 = if ($Prof.NormalStep4 -eq $true) { "false" } else { "true" }
+                    $Skip5 = if ($Prof.NormalStep5 -eq $true) { "false" } else { "true" }
+                    $Skip6 = if ($Prof.NormalStep6 -eq $true) { "false" } else { "true" }
+                    
+                    $URI = "http://127.0.0.1:$TargetPort/run?type=AutomatedNormal" +
+                           "&skip1=$Skip1&skip2=$Skip2&skip3=$Skip3&skip4=$Skip4&skip5=$Skip5&skip6=$Skip6"
+                           
+                    Invoke-RestMethod -Uri $URI -Method Post | Out-Null
+                }
+            } 
+            catch {
+                # Fallback capture to prevent the script background engine thread runspace from collapsing
+            }
         }
     }
-    $Job = Start-Job -Name "ChronDaemon" -ScriptBlock $ChronScript -ArgumentList $RuntimePort, $LoopInterval 
+    # Pass down the absolute Profiles path location context safely into the thread job parameters structure
+    $Job = Start-Job -Name "ChronDaemon" -ScriptBlock $ChronScript -ArgumentList $RuntimePort, 60, $ProfilesFile 
 }
 
 # -----------------------------------------------------------------
@@ -981,16 +1032,74 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
                 $Response.OutputStream.Close()
             }
-            elseif ($UrlPath -eq "/run" -and $Method -eq "POST") { 
-                $IsSweepRequested = $false
-                if ($null -ne $Request.Url.Query) { $IsSweepRequested = [bool]($Request.Url.Query -match "sweep=true") }
+            # --- CONTEXT AUTOMATION & SCHEDULING DISPATCH DEPLOYMENT ROUTER ---
+            elseif ($UrlPath.StartsWith("/run") -and $Method -eq "POST") { 
+                if ($Global:IsPipelineRunning) {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline engine is currently locked in an active run state."}')
+                    $Response.StatusCode = 423
+                    $Response.ContentType = "application/json"
+                    $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                    $Response.OutputStream.Close()
+                    continue
+                }
+
+                # Unpack and parse query parameters manually
+                $QueryString = $Request.Url.Query
+                $Params = @{}
+                if (-not [string]::IsNullOrEmpty($QueryString)) {
+                    $QueryString.TrimStart('?').Split('&') | ForEach-Object {
+                        $Pair = $_.Split('=')
+                        if ($Pair.Count -eq 2) { $Params[$Pair[0]] = [System.Web.HttpUtility]::UrlDecode($Pair[1]) }
+                    }
+                }
+
+                $RunContext = if ($Params.ContainsKey("type")) { $Params["type"] } else { "Manual" }
                 
-                $RunContext = "Manual" 
-                if ($Request.Url.Query -match "type=Automated") { $RunContext = "Automated" } 
-                if ($IsSweepRequested) { $RunContext = "Clean Sweep" } 
+                # Baseline routing configurations switches layout definitions
+                $IsSweepRequested  = [bool]($Params["sweep"] -eq "true")
+                $SkipStep1         = [bool]($Params["skip1"] -eq "true")
+                $SkipStep2         = [bool]($Params["skip2"] -eq "true")
+                $SkipStep3         = [bool]($Params["skip3"] -eq "true")
+                $SkipStep4         = [bool]($Params["skip4"] -eq "true")
+                $SkipStep5         = [bool]($Params["skip5"] -eq "true")
+                $SkipStep6         = [bool]($Params["skip6"] -eq "true")
                 
-                Invoke-PipelineExecution -CleanSweep $IsSweepRequested -TriggerType $RunContext 
-                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}') 
+                $CleanDownload     = [bool]($Params["cleanDownload"] -eq "true")
+                $CleanLyrics       = [bool]($Params["cleanLyrics"] -eq "true")
+                $CleanCompress     = [bool]($Params["cleanCompress"] -eq "true")
+
+                # Asynchronously trigger core pipeline engine processes
+                Invoke-PipelineExecution -TriggerType $RunContext `
+                                         -CleanSweep $IsSweepRequested `
+                                         -SkipStep1 $SkipStep1 -SkipStep2 $SkipStep2 -SkipStep3 $SkipStep3 `
+                                         -SkipStep4 $SkipStep4 -SkipStep5 $SkipStep5 -SkipStep6 $SkipStep6 `
+                                         -CleanSweepDownload $CleanDownload `
+                                         -CleanSweepLyrics $CleanLyrics `
+                                         -CleanSweepCompress $CleanCompress
+
+                # Persist the current epoch milestone inside configuration file parameters array
+                try {
+                    $RawConfig = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
+                    $Act = $RawConfig.activeProfile
+                    $CurrentEpoch = [DateTimeOffset]::Now.ToUnixTimeSeconds()
+
+                    if ($RunContext -eq "AutomatedNormal") {
+                        $RawConfig.profiles.$Act.LastNormalRunEpoch = $CurrentEpoch
+                        Log-Engine "⏰ Timed tracking anchor updated successfully for Normal Routine Track Run." "36"
+                    }
+                    elseif ($RunContext -eq "AutomatedClean") {
+                        $RawConfig.profiles.$Act.LastCleanRunEpoch = $CurrentEpoch
+                        Log-Engine "🧹 Timed tracking anchor updated successfully for Maintenance Clean Sweep Run." "35"
+                    }
+
+                    $RawConfig | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
+                    Load-ProfileContext
+                }
+                catch {
+                    Log-Engine "⚠️ Failed to sync running epoch tracking markers back to profiles json array storage: $_" "33"
+                }
+
+                $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched","mode":"' + $RunContext + '"}') 
                 $Response.ContentType = "application/json" 
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
                 $Response.OutputStream.Close()
@@ -1004,7 +1113,6 @@ try {
                     $Reader = New-Object System.IO.StreamReader($Request.InputStream)
                     $JSONPayload = $Reader.ReadToEnd() | ConvertFrom-Json
                     
-                    # Convert incoming step tracking objects to clean runtime switch mappings
                     $CustomRuntimeContext = @{
                         TriggerType        = "Custom"
                         SkipStep1          = [bool](-not $JSONPayload.steps.s1)
@@ -1018,7 +1126,6 @@ try {
                         CleanSweepCompress = [bool]($JSONPayload.cleanModes.s5)
                     }
 
-                    # Safely pass explicit switch flags down to our asynchronous execution handler
                     Invoke-PipelineExecution @CustomRuntimeContext
                     
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Custom step execution initialization accepted cleanly."}')
