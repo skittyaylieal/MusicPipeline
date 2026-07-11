@@ -47,22 +47,21 @@ function Load-ProfileContext {
                     CacheFile               = "C:\MusicTools\MusicPipeline\Config\dashboard_cache.json"
                     TimingFile              = "C:\MusicTools\MusicPipeline\Config\timing_history.json"
                     CookieFile              = "C:\MusicTools\MusicPipeline\Config\cookies.txt"
-                    HistoryFile             = "C:\MusicTools\MusicPipeline\Config\history.txt"
-                    YTDLPExe                = "C:\MusicTools\MusicPipeline\Tools\yt-dlp.exe"
-                    FFmpegExe               = "C:\MusicTools\MusicPipeline\Tools\ffmpeg.exe"
+                    HistoryFile             = "C:\MusicTools\MusicPipeline\Config\downloaded_history.txt"
+                    YTDLPExe                = "C:\MusicTools\yt-dlp.exe"
+                    FFmpegExe               = "C:\MusicTools\ffmpeg.exe"
                     FirefoxExe              = "C:\Program Files\Mozilla Firefox\firefox.exe"
-                    CheckURL                = "https://www.youtube.com"
+                    CheckURL                = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
                     SleepInterval           = 4
                     MaxSleepInterval        = 12
                     SleepRequests           = 3
-                    MaxCompressThreads      = 4
+                    MaxCompressThreads      = 3
                     MaxDownloadThreads      = 3
                     ScannerSleepIntervalSec = 60
-                    ChronDaemonSleepSec     = 60 # Set to 60s to check the automated intervals accurately
+                    ChronDaemonSleepSec     = 1800 
                     
-                    # Split-Daemon Routing Track Parameters
-                    NormalIntervalSec       = 1800     # 30 Minutes
-                    CleanIntervalSec        = 604800   # 7 Days
+                    NormalIntervalSec       = 1800     
+                    CleanIntervalSec        = 604800   
                     
                     NormalStep1             = $true
                     NormalStep2             = $true
@@ -71,16 +70,18 @@ function Load-ProfileContext {
                     NormalStep5             = $true
                     NormalStep6             = $true
                     
-                    CleanSweepDownload      = $false
+                    CleanSweepDownload      = $true
                     CleanSweepLyrics        = $true
                     CleanSweepCompress      = $true
                     
-                    # Core Runtime Milestone State Captures
                     LastNormalRunEpoch      = 0
                     LastCleanRunEpoch       = 0
                     
                     Playlists               = @(
-                        "https://www.youtube.com/playlist?list=PLw-VjHDlEOgs658g796bZ69uBfS809GfF"
+                        "https://www.youtube.com/playlist?list=PLqcuYaDDgyacWpBG6ib-2EKOuQa6aGjZJ",
+                        "https://www.youtube.com/playlist?list=PLqcuYaDDgyaeHKssVjz_Nw3qUDwfrwL09",
+                        "https://www.youtube.com/playlist?list=PLqcuYaDDgyad_i19iLheoQJLLKJUtwlAr",
+                        "https://www.youtube.com/playlist?list=PLqcuYaDDgyach02bt_8R8G7AzE9zSAOkS"
                     )
                 }
             }
@@ -295,29 +296,46 @@ function Start-AutomatedChronDaemon {
     $ChronScript = {
         param($TargetPort, $Delay, $PFile)
         
+        # Pure Mathematical Timeline Anchor: Monday, January 3, 2000 @ Midnight Local Time
+        # Moving the anchor to a Monday ensures all weekly intervals snap to Mondays, 
+        # daily intervals snap to midnight, and minute intervals snap to the hour mark perfectly.
+        $AnchorDate = [DateTime]::new(2000, 1, 3, 0, 0, 0)
+        $AnchorEpoch = [DateTimeOffset]::new($AnchorDate).ToUnixTimeSeconds()
+        
         while ($true) {
-            # Sleep step interval tracking loops
             Start-Sleep -Seconds $Delay 
-            
             if (-not (Test-Path $PFile)) { continue }
             
             try {
-                # Load profile details dynamically to match config alterations on the fly
+                # Read profiles dynamically (allows changing intervals inside the JSON on-the-fly)
                 $Raw = Get-Content -LiteralPath $PFile -Raw | ConvertFrom-Json
                 $Act = $Raw.activeProfile
                 $Prof = $Raw.profiles.$Act
                 
-                $CurrentEpoch = [DateTimeOffset]::Now.ToUnixTimeSeconds()
-                
-                # Fetch relative calculation checkpoints out of configuration properties
                 $LastNormal = if ($Prof.LastNormalRunEpoch) { [long]$Prof.LastNormalRunEpoch } else { 0 }
                 $LastClean  = if ($Prof.LastCleanRunEpoch) { [long]$Prof.LastCleanRunEpoch } else { 0 }
                 
-                $IntervalNormal = if ($Prof.NormalIntervalSec) { [long]$Prof.NormalIntervalSec } else { 1800 }
-                $IntervalClean  = if ($Prof.CleanIntervalSec) { [long]$Prof.CleanIntervalSec } else { 604800 }
+                # Pull whatever seconds configuration intervals are active in the profile
+                $NormalInterval = if ($Prof.NormalIntervalSec) { [long]$Prof.NormalIntervalSec } else { 1800 }
+                $CleanInterval  = if ($Prof.CleanIntervalSec) { [long]$Prof.CleanIntervalSec } else { 604800 }
                 
-                $TriggerClean  = ($CurrentEpoch - $LastClean) -ge $IntervalClean
-                $TriggerNormal = ($CurrentEpoch - $LastNormal) -ge $IntervalNormal
+                $CurrentEpoch = [DateTimeOffset]::Now.ToUnixTimeSeconds()
+                
+                # ---------------------------------------------------------
+                # PURE MATHEMATICAL QUANTIZATION (GRID ALIGNMENT)
+                # ---------------------------------------------------------
+                # 1. Determine how many entire chunks have occurred since the year 2000 anchor
+                $NormalBlocksElapsed = [Math]::Floor(($CurrentEpoch - $AnchorEpoch) / $NormalInterval)
+                $CleanBlocksElapsed  = [Math]::Floor(($CurrentEpoch - $AnchorEpoch) / $CleanInterval)
+                
+                # 2. Multiply back out to calculate the exact start epoch of the *current* active block
+                $NormalBoundaryEpoch = $AnchorEpoch + ($NormalBlocksElapsed * $NormalInterval)
+                $CleanBoundaryEpoch  = $AnchorEpoch + ($CleanBlocksElapsed * $CleanInterval)
+                
+                # 3. If your last recorded run is older than the current block's boundary, it means 
+                # we've cross into a new block segment and the routine is due.
+                $TriggerClean  = ($LastClean -lt $CleanBoundaryEpoch)
+                $TriggerNormal = ($LastNormal -lt $NormalBoundaryEpoch)
                 
                 if ($TriggerClean) {
                     $URI = "http://127.0.0.1:$TargetPort/run?type=AutomatedClean" +
@@ -328,7 +346,6 @@ function Start-AutomatedChronDaemon {
                     Invoke-RestMethod -Uri $URI -Method Post | Out-Null
                 }
                 elseif ($TriggerNormal) {
-                    # Map structural inversion parameters directly relative to checkbox configuration settings
                     $Skip1 = if ($Prof.NormalStep1 -eq $true) { "false" } else { "true" }
                     $Skip2 = if ($Prof.NormalStep2 -eq $true) { "false" } else { "true" }
                     $Skip3 = if ($Prof.NormalStep3 -eq $true) { "false" } else { "true" }
@@ -343,11 +360,10 @@ function Start-AutomatedChronDaemon {
                 }
             } 
             catch {
-                # Safeguard against structural engine dropouts
+                # Defend background daemon thread loop against processing disruptions
             }
         }
     }
-    # Track execution checks every minute (60s) to securely map scheduled tracks
     $Job = Start-Job -Name "ChronDaemon" -ScriptBlock $ChronScript -ArgumentList $RuntimePort, 60, $ProfilesFile 
 }
 
@@ -500,7 +516,7 @@ function Invoke-PipelineExecution {
                         BackupDir        = $EnvMap.BackupDir
                         MobileDir        = $EnvMap.MobileDir
                         FFmpegPath       = $EnvMap.FFmpegExe
-                        MaxThreads       = [int]$EnvMap.CompressThreads
+                        MaxThreads       = [int]$EnvMap.MaxCompressThreads  # Fixed variable target misalignment here
                         ForceCleanSweep  = [bool]$EnvMap.CleanSweepCompress
                     }
                     
