@@ -22,7 +22,7 @@ function Get-TrackUUID([string]$Artist, [string]$Album, [string]$Title) {
 }
 
 # Logging function
-function Invoke-LogMsg([string]$Text [bool]$Successful = $False) {
+function Invoke-LogMsg([string]$Text, [bool]$Successful = $False) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return }
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
     $ESC = [char]27
@@ -31,7 +31,7 @@ function Invoke-LogMsg([string]$Text [bool]$Successful = $False) {
     # Base colour for fixer
     $ColorCode = "38;5;36" # Blue
 
-    if $Successful -eq $True {
+    if ($Successful -eq $True) {
         $ColorCode = "32" # Green
     }
 
