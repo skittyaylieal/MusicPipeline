@@ -6,7 +6,7 @@ Param (
     [string]$CookiePath = "C:\MusicTools\MusicPipeline\Config\cookies.txt",
     [string]$BackupDir = "C:\Users\filip\Music\YT_Music_Backup",
     [string]$ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe",
-    [string]$GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
+    [string]$GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log",
     [bool]$AutoRecover = $false
 )
 
