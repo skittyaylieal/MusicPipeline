@@ -70,7 +70,7 @@ function Load-ProfileContext {
                     NormalStep5             = $true
                     NormalStep6             = $true
                     
-                    CleanSweepDownload      = $true
+                    CleanDownload      = $true
                     CleanSweepLyrics        = $true
                     CleanSweepCompress      = $true
                     
@@ -339,7 +339,7 @@ function Start-AutomatedChronDaemon {
                 
                 if ($TriggerClean) {
                     $URI = "http://127.0.0.1:$TargetPort/run?type=AutomatedClean" +
-                           "&cleanDownload=$($Prof.CleanSweepDownload)" +
+                           "&cleanDownload=$($Prof.CleanDownload)" +
                            "&cleanLyrics=$($Prof.CleanSweepLyrics)" +
                            "&cleanCompress=$($Prof.CleanSweepCompress)"
                            
@@ -380,7 +380,7 @@ function Invoke-PipelineExecution {
         [bool]$SkipStep4 = $false,
         [bool]$SkipStep5 = $false,
         [bool]$SkipStep6 = $false,
-        [bool]$CleanSweepDownload = $false,
+        [bool]$CleanDownload = $false,
         [bool]$CleanSweepLyrics = $false,
         [bool]$CleanSweepCompress = $false
     )
@@ -394,7 +394,7 @@ function Invoke-PipelineExecution {
         Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
 
     # If the user hit the default global Clean Sweep button, pass it along down to step 2's parameter fallback explicitly
-    $EffectiveCleanDownload = if ($CleanSweep) { $true } else { $CleanSweepDownload }
+    $EffectiveCleanDownload = if ($CleanSweep) { $true } else { $CleanDownload }
 
     $ContextBundle = @{
         ScriptDir          = $ScriptDir 
@@ -517,7 +517,7 @@ function Invoke-PipelineExecution {
                         MobileDir        = $EnvMap.MobileDir
                         FFmpegPath       = $EnvMap.FFmpegExe
                         MaxThreads       = [int]$EnvMap.MaxCompressThreads  # Fixed variable target misalignment here
-                        ForceCleanSweep  = [bool]$EnvMap.CleanSweepCompress
+                        ForceCleanSweep  = [bool]$EnvMap.CleanCompress
                     }
                     
                     # Execute compressor engine with non-destructive tracking arguments
@@ -1142,7 +1142,7 @@ try {
                                          -CleanSweep $IsSweepRequested `
                                          -SkipStep1 $SkipStep1 -SkipStep2 $SkipStep2 -SkipStep3 $SkipStep3 `
                                          -SkipStep4 $SkipStep4 -SkipStep5 $SkipStep5 -SkipStep6 $SkipStep6 `
-                                         -CleanSweepDownload $CleanDownload `
+                                         -CleanDownload $CleanDownload `
                                          -CleanSweepLyrics $CleanLyrics `
                                          -CleanSweepCompress $CleanCompress
 
@@ -1192,7 +1192,7 @@ try {
                         SkipStep4          = [bool](-not $JSONPayload.steps.s4)
                         SkipStep5          = [bool](-not $JSONPayload.steps.s5)
                         SkipStep6          = [bool](-not $JSONPayload.steps.s6)
-                        CleanSweepDownload = [bool]($JSONPayload.cleanModes.s2)
+                        CleanDownload = [bool]($JSONPayload.cleanModes.s2)
                         CleanSweepLyrics   = [bool]($JSONPayload.cleanModes.s4)
                         CleanSweepCompress = [bool]($JSONPayload.cleanModes.s5)
                     }
