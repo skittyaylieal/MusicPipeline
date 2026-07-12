@@ -390,7 +390,7 @@ function Invoke-PipelineExecution {
     $Global:IsPipelineRunning = $true 
     
     Log-Engine "=================================================================" "1;35"
-    Log-Engine "[SYSTEM] ($TriggerType Run) Initializing Custom Sequence Flow Framework..." "[1;36m"
+    Log-Engine "[SYSTEM] ($TriggerType Run) Initializing Custom Sequence Flow Framework..." "[1;36"
 
     # If the user hit the default global Clean Sweep button, pass it along down to step 2's parameter fallback explicitly
     $EffectiveCleanDownload = $CleanSweep -or $CleanSweepDownload
@@ -1103,6 +1103,37 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
                 $Response.OutputStream.Close()
             }
+            # --- TARGETED CUSTOM CONFIGURATION RUNTIME ENDPOINT ---
+            elseif ($UrlPath -eq "/run-custom" -and $Method -eq "POST") {
+                if ($Global:IsPipelineRunning) {
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline engine is currently locked in an active run state."}')
+                    $Response.StatusCode = 423
+                } else {
+                    $Reader = New-Object System.IO.StreamReader($Request.InputStream)
+                    $JSONPayload = $Reader.ReadToEnd() | ConvertFrom-Json
+                    
+                    $CustomRuntimeContext = @{
+                        TriggerType        = "Custom"
+                        SkipStep1          = [bool](-not $JSONPayload.steps.s1)
+                        SkipStep2          = [bool](-not $JSONPayload.steps.s2)
+                        SkipStep3          = [bool](-not $JSONPayload.steps.s3)
+                        SkipStep4          = [bool](-not $JSONPayload.steps.s4)
+                        SkipStep5          = [bool](-not $JSONPayload.steps.s5)
+                        SkipStep6          = [bool](-not $JSONPayload.steps.s6)
+                        CleanSweepDownload = [bool]($JSONPayload.cleanModes.s2)
+                        CleanSweepLyrics   = [bool]($JSONPayload.cleanModes.s4)
+                        CleanSweepCompress = [bool]($JSONPayload.cleanModes.s5)
+                    }
+
+                    Invoke-PipelineExecution @CustomRuntimeContext
+                    
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Custom step execution initialization accepted cleanly."}')
+                    $Response.StatusCode = 200
+                }
+                $Response.ContentType = "application/json"
+                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
+                $Response.OutputStream.Close()
+            }
             # --- CONTEXT AUTOMATION & SCHEDULING DISPATCH DEPLOYMENT ROUTER ---
             elseif ($UrlPath.StartsWith("/run") -and $Method -eq "POST") { 
                 if ($Global:IsPipelineRunning) {
@@ -1176,37 +1207,7 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length) 
                 $Response.OutputStream.Close()
             }
-            # --- TARGETED CUSTOM CONFIGURATION RUNTIME ENDPOINT ---
-            elseif ($UrlPath -eq "/run-custom" -and $Method -eq "POST") {
-                if ($Global:IsPipelineRunning) {
-                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline engine is currently locked in an active run state."}')
-                    $Response.StatusCode = 423
-                } else {
-                    $Reader = New-Object System.IO.StreamReader($Request.InputStream)
-                    $JSONPayload = $Reader.ReadToEnd() | ConvertFrom-Json
-                    
-                    $CustomRuntimeContext = @{
-                        TriggerType        = "Custom"
-                        SkipStep1          = [bool](-not $JSONPayload.steps.s1)
-                        SkipStep2          = [bool](-not $JSONPayload.steps.s2)
-                        SkipStep3          = [bool](-not $JSONPayload.steps.s3)
-                        SkipStep4          = [bool](-not $JSONPayload.steps.s4)
-                        SkipStep5          = [bool](-not $JSONPayload.steps.s5)
-                        SkipStep6          = [bool](-not $JSONPayload.steps.s6)
-                        CleanSweepDownload = [bool]($JSONPayload.cleanModes.s2)
-                        CleanSweepLyrics   = [bool]($JSONPayload.cleanModes.s4)
-                        CleanSweepCompress = [bool]($JSONPayload.cleanModes.s5)
-                    }
-
-                    Invoke-PipelineExecution @CustomRuntimeContext
-                    
-                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Custom step execution initialization accepted cleanly."}')
-                    $Response.StatusCode = 200
-                }
-                $Response.ContentType = "application/json"
-                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-                $Response.OutputStream.Close()
-            }
+            
             elseif ($UrlPath -eq "/stop" -and $Method -eq "POST") {
                 try {
                     $DownloadJob = Get-Job -Name "ActiveMusicDownloader" -ErrorAction SilentlyContinue
