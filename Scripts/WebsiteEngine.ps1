@@ -11,7 +11,7 @@ $HtmlFile      = "$ScriptDir\dashboard.html"
 # -----------------------------------------------------------------
 # CENTRALIZED SERVER LOGGING ROUTINE (Captures framework output)
 # -----------------------------------------------------------------
-function Log-Engine([string]$Message, [string]$AnsiStyle = "37") {
+function Log-Engine([string]$Message, [string]$AnsiStyle = "1;36") {
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
     $Payload = "`e[${AnsiStyle}m[$Timestamp] [SERVER] $Message`e[0m"
     
@@ -137,7 +137,7 @@ if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Forc
 if (-not (Test-Path $Global:TimingFile)) { "[]" | Out-File $Global:TimingFile -Encoding utf8 } 
 
 # Append a session initialization marker instead of deleting the file
-"`n`e[1;32m[SYSTEM] Website Engine Core Session Initialized.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
+Log-Engine " Website Engine Core Session Initialized." "1;32"
 
 
 
@@ -390,7 +390,7 @@ function Invoke-PipelineExecution {
     $Global:IsPipelineRunning = $true 
     
     Log-Engine "=================================================================" "1;35"
-    Log-Engine "[SYSTEM] ($TriggerType Run) Initializing Custom Sequence Flow Framework..." "[1;36"
+    Log-Engine "($TriggerType Run) Initializing Custom Sequence Flow Framework..." "1;36"
 
     # If the user hit the default global Clean Sweep button, pass it along down to step 2's parameter fallback explicitly
     $EffectiveCleanDownload = $CleanSweep -or $CleanSweepDownload
@@ -1092,7 +1092,7 @@ try {
             elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") { 
                 try {
                     # Force overwrite with a clean initialization marker instead of clearing content raw
-                    "`e[1;36m[SYSTEM] Console logs manually cleared.`e[0m" | Out-File -FilePath $Global:DiagLogFile -Encoding utf8 -Force -ErrorAction Stop 
+                    Log-Engine "Console logs manually cleared." "1;36"
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"cleared"}') 
                     $Response.StatusCode = 200 
                 } catch {
