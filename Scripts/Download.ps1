@@ -37,7 +37,7 @@ if (-not (Test-Path -LiteralPath $BackupDir)) {
     New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
 }
 
-$OutputTemplate = "$BackupDir/%(artist|uploader)s/%(album|playlist)s/%(title)s.%(ext)s"
+$OutputTemplate = "$BackupDir/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s"
 
 # Safe parenthetical array compilation
 $SanitizedURLs = $(foreach ($URL in $PlaylistURLs) {
