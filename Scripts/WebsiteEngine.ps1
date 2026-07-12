@@ -389,13 +389,13 @@ function Invoke-PipelineExecution {
     if ($Global:IsPipelineRunning) { return } 
     $Global:IsPipelineRunning = $true 
     
-    "`n`e[1;35m=================================================================`e[0m" |
-        Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
-    "`e[1;36m[SYSTEM] ($TriggerType Run) Initializing Custom Sequence Flow Framework...`e[0m" |
-        Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
+    Log-Engine "=================================================================" "1;35"
+    Log-Engine "[SYSTEM] ($TriggerType Run) Initializing Custom Sequence Flow Framework..." "[1;36m"
 
     # If the user hit the default global Clean Sweep button, pass it along down to step 2's parameter fallback explicitly
     $EffectiveCleanDownload = $CleanSweep -or $CleanSweepDownload
+
+    Log-Engine "[DEBUG] GlobalCS: $CleanSweep | Step2CS: $CleanSweepDownload | EffectiveS2: $EffectiveCleanDownload"
 
     $ContextBundle = @{
         ScriptDir          = $ScriptDir 
