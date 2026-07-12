@@ -371,6 +371,7 @@ function Start-AutomatedChronDaemon {
 # 2. PROCESS MANAGEMENT & PERFORMANCE PARSER
 # -----------------------------------------------------------------
 function Invoke-PipelineExecution {
+    [CmdletBinding()] # Better method of parameter binding; might help
     param(
         [bool]$CleanSweep = $false,
         [string]$TriggerType = "Manual",
@@ -394,7 +395,7 @@ function Invoke-PipelineExecution {
         Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 
 
     # If the user hit the default global Clean Sweep button, pass it along down to step 2's parameter fallback explicitly
-    $EffectiveCleanDownload = if ($CleanSweep) { $true } else { $CleanSweepDownload }
+    $EffectiveCleanDownload = $CleanSweep -or $CleanSweepDownload
 
     $ContextBundle = @{
         ScriptDir          = $ScriptDir 
