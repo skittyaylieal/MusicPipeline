@@ -1091,7 +1091,7 @@ try {
             }
             elseif ($UrlPath -eq "/clear-logs" -and $Method -eq "POST") { 
                 try {
-                    # Force overwrite with a clean initialization marker instead of clearing content raw
+                    Clear-Content $Global:DiagLogFile
                     Log-Engine "Console logs manually cleared." "1;36"
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"cleared"}') 
                     $Response.StatusCode = 200 
