@@ -1,44 +1,82 @@
 Param (
-    [string]$CookiePath,
-    [string]$YTDLPPath,
-    [string]$TestURL
+    [string]$ProfilesFile
 )
+
+function Log-Engine([string]$Message, [string]$AnsiStyle = "1;32") {
+    $Timestamp = (Get-Date).ToString("HH:mm:ss")
+    $Payload = "`e[${AnsiStyle}m[$Timestamp] [SERVER] $Message`e[0m"
+    
+    # 1. Attempt to append to the log file safely
+    try {
+        $Payload | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 -ErrorAction Stop
+    } catch {
+        # Fallback silently to terminal if the file is transiently locked or busy
+        Write-Host "`e[1;31m[LOG LOCK] Could not write to web stream log file: $_`e[0m"
+    }
+    
+    # 2. Mirror it to your running terminal session so you see it live
+    Write-Host $Payload
+}
+
+# profile loader
+function Load-ProfileContext {
+    try {
+        $Global:ProfileData = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
+        $Active = $Global:ProfileData.activeProfile
+        $Global:ActiveConfig = $Global:ProfileData.profiles.$Active
+
+        $Global:DiagLogFile             = $Global:ActiveConfig.DiagLogFile
+        $Global:CookieFile              = $Global:ActiveConfig.CookieFile
+        $Global:YTDLPExe                = $Global:ActiveConfig.YTDLPExe
+        $Global:CheckURL                = $Global:ActiveConfig.CheckURL
+
+        $Global:Profile                 = $Global:ActiveConfig
+
+        Log-Engine "Loaded configuration profile: [$Active]" "32"
+    }
+    catch {
+        Log-Engine "🛑 Critical breakdown loading profiles json architecture context: $_" "1;31"
+        Exit 1
+    }
+}
+
+
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 try {
     Clear-Host
 } catch {}
 
-Write-Output "============================================="
-Write-Output "    PowerShell Module: Cookie Validator"
-Write-Output "============================================="
+Log-Engine "============================================="
+Log-Engine "    PowerShell Module: Cookie Validator"
+Log-Engine "============================================="
 
 if (-not (Test-Path -LiteralPath $CookiePath -PathType Leaf)) {
-    Write-Output "[ERROR] Target cookie file couldn't be found"
+    Log-Engine "[ERROR] Target cookie file couldn't be found"
     Exit 1
 }
 
 if (-not (Test-Path -LiteralPath $YTDLPPath -PathType Leaf)) {
-    Write-Output "[ERROR] yt-dlp executable couldn't be found"
+    Log-Engine "[ERROR] yt-dlp executable couldn't be found"
     Exit 1
 }
 
-Write-Output "[+] Cookie and yt-dlp files located successfully"
-Write-Output "[*] Testing YouTube cookie status"
+Log-Engine "[+] Cookie and yt-dlp files located successfully"
+Log-Engine "[*] Testing YouTube cookie status"
 
 & $YTDLPPath --cookies "$CookiePath" --simulate --quiet $TestURL 2>$null
 
 if ($LastExitCode -ne 0) {
-    Write-Output "============================================="
-    Write-Output "[ERROR] YouTube authentication failed!"
-    Write-Output "The cookies.txt has expired or is invalid."
-    Write-Output "============================================="
+    Log-Engine "============================================="
+    Log-Engine "[ERROR] YouTube authentication failed!"
+    Log-Engine "The cookies.txt has expired or is invalid."
+    Log-Engine "============================================="
     Exit 1
 }
 
-Write-Output "[+] Cookies authenticated successfully."
+Log-Engine "[+] Cookies authenticated successfully."
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Write-Output "[METRIC] $Elapsed"
-Write-Output "============================================="
+Log-Engine "[METRIC] $Elapsed"
+Log-Engine "============================================="
 Exit 0
