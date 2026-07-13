@@ -8,7 +8,7 @@ function Log-Engine([string]$Message, [string]$AnsiStyle = "1;32") {
     
     # 1. Attempt to append to the log file safely
     try {
-        $Payload | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8 -ErrorAction Stop
+        $Payload | Out-File -FilePath $Global:OutputLogFile -Append -Encoding utf8 -ErrorAction Stop
     } catch {
         # Fallback silently to terminal if the file is transiently locked or busy
         Write-Host "`e[1;31m[LOG LOCK] Could not write to web stream log file: $_`e[0m"
@@ -25,10 +25,10 @@ function Load-ProfileContext {
         $Active = $Global:ProfileData.activeProfile
         $Global:ActiveConfig = $Global:ProfileData.profiles.$Active
 
-        $Global:DiagLogFile             = $Global:ActiveConfig.DiagLogFile
-        $Global:CookieFile              = $Global:ActiveConfig.CookieFile
-        $Global:YTDLPExe                = $Global:ActiveConfig.YTDLPExe
-        $Global:CheckURL                = $Global:ActiveConfig.CheckURL
+        $Global:OutputLogFile             = $Global:ActiveConfig.DiagLogFile
+        $Global:CookiePath              = $Global:ActiveConfig.CookieFile
+        $Global:YTDLPPath                = $Global:ActiveConfig.YTDLPExe
+        $Global:TestURL                = $Global:ActiveConfig.CheckURL
 
         $Global:Profile                 = $Global:ActiveConfig
 
@@ -51,12 +51,12 @@ Log-Engine "============================================="
 Log-Engine "    PowerShell Module: Cookie Validator"
 Log-Engine "============================================="
 
-if (-not (Test-Path -LiteralPath $CookiePath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $Global:CookiePath -PathType Leaf)) {
     Log-Engine "[ERROR] Target cookie file couldn't be found"
     Exit 1
 }
 
-if (-not (Test-Path -LiteralPath $YTDLPPath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $Global:YTDLPPath -PathType Leaf)) {
     Log-Engine "[ERROR] yt-dlp executable couldn't be found"
     Exit 1
 }
@@ -64,7 +64,7 @@ if (-not (Test-Path -LiteralPath $YTDLPPath -PathType Leaf)) {
 Log-Engine "[+] Cookie and yt-dlp files located successfully"
 Log-Engine "[*] Testing YouTube cookie status"
 
-& $YTDLPPath --cookies "$CookiePath" --simulate --quiet $TestURL 2>$null
+& $YTDLPPath --cookies "$Global:CookiePath" --simulate --quiet $Global:TestURL 2>$null
 
 if ($LastExitCode -ne 0) {
     Log-Engine "============================================="
