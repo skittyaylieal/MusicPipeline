@@ -11,7 +11,8 @@ Param (
     [int]$SleepRequests,
     [int]$MaxDownloadThreads = 1,
     [switch]$CleanSweep,
-    [int]$Index
+    [int]$Index,
+    [bool]$RouteViaVPN = $false # NEW: Added to Params
 )
 
 # THREADING SAFETIES (Root Context Map)
@@ -34,17 +35,22 @@ $ProtonVpnPath = "C:\Program Files\Proton\VPN\ProtonVPN.exe"
 $VpnProcessName = "ProtonVPN"
 $VpnLaunched = $false
 
-if (Test-Path -LiteralPath $ProtonVpnPath) {
-    Write-Output "============================================="
-    Write-Output "[VPN] Launching Proton VPN Desktop Application..."
-    Write-Output "============================================="
-    Start-Process -FilePath $ProtonVpnPath -WindowStyle Minimized
-    $VpnLaunched = $true
-    Write-Output "[VPN] Sleeping 12s to allow secure connection establishment..."
-    Start-Sleep -Seconds 12
+# NEW: Wrap lifecycle in the toggle conditional
+if ($RouteViaVPN) {
+    if (Test-Path -LiteralPath $ProtonVpnPath) {
+        Write-Output "============================================="
+        Write-Output "[VPN] Launching Proton VPN Desktop Application..."
+        Write-Output "============================================="
+        Start-Process -FilePath $ProtonVpnPath -WindowStyle Minimized
+        $VpnLaunched = $true
+        Write-Output "[VPN] Sleeping 12s to allow secure connection establishment..."
+        Start-Sleep -Seconds 12
+    } else {
+        Write-Output "[VPN] Warning: Proton VPN GUI was not found at '$ProtonVpnPath'."
+        Write-Output "[VPN] Continuing download execution without automatic VPN protection."
+    }
 } else {
-    Write-Output "[VPN] Warning: Proton VPN GUI was not found at '$ProtonVpnPath'."
-    Write-Output "[VPN] Continuing download execution without automatic VPN protection."
+    Write-Output "[VPN] Standard routing active (VPN override disabled for this run)."
 }
 
 try {

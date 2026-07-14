@@ -260,6 +260,9 @@
                     <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #8BE9FD; cursor: pointer; font-weight: 500;">
                         <input type="checkbox" id="chk-clean-s5" style="accent-color: #8BE9FD; cursor: pointer;"> Clean Sweep Compression (Force Full Re-Transcode)
                     </label>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #F1FA8C; cursor: pointer; font-weight: 700; border-left: 1px solid #3F3F46; padding-left: 15px;">
+                        <input type="checkbox" id="chk-vpn-override" style="accent-color: #F1FA8C; cursor: pointer;"> 🌐 Force ProtonVPN Route
+                    </label>
                 </div>
 
                 <div class="btn-group">
@@ -1106,6 +1109,8 @@
                     s4: document.getElementById('chk-clean-s4').checked,
                     s5: document.getElementById('chk-clean-s5').checked
                 }
+
+                useVpn: document.getElementById('chk-vpn-override').checked
             };
 
             // Switches UI view directly to the console stream tab to monitor the execution

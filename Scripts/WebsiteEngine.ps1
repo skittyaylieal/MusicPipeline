@@ -798,9 +798,6 @@ try {
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
                 $Response.OutputStream.Close()
             }
-            # -----------------------------
-            # streamLINES RESOLVE SONG ENDPOINT (REMOVES DEPRECATED PROTON VPN CLI JOBS)
-            # -----------------------------
             elseif ($UrlPath -eq "/resolve-song" -and $Method -eq "POST") {
                 $Reader = New-Object System.IO.StreamReader($Request.InputStream)
                 $Payload = $Reader.ReadToEnd() | ConvertFrom-Json
@@ -809,14 +806,29 @@ try {
                 if ($SongId -and (Test-Path $Global:Profile.BrokenSongsFile)) {
                     $CurrentList = Get-Content -LiteralPath $Global:Profile.BrokenSongsFile -Raw | ConvertFrom-Json
                     
-                    # Excised the old geo_vpn_fix CLI execution branch completely.
-                    # Updates the broken songs dataset and processes fallback history.
-                    $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
-                    $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $Global:Profile.BrokenSongsFile -Encoding utf8 -Force
-                    if ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
+                    if ($Action -eq "geo_vpn_fix" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
+                        # 1. Trigger targeted standalone yt-dlp download via Proxy/VPN for this specific ID
+                        Log-Engine "🌐 Dispatching targeted VPN bypass extraction for Video ID: $VideoID" "1;35"
+                        
+                        # NOTE: Replace 'socks5://127.0.0.1:1080' with your actual ProtonVPN local proxy port or headless command
+                        $TargetUrl = "https://youtube.com/watch?v=$VideoID"
+                        $ProxyArg = "--proxy socks5://127.0.0.1:1080" 
+                        
+                        # Spin up a background job so it doesn't block the web server
+                        Start-Job -ScriptBlock {
+                            param($Exe, $Url, $Proxy, $OutPath)
+                            & $Exe $Url $Proxy -x --audio-format flac -o "$OutPath\%(title)s.%(ext)s"
+                        } -ArgumentList $Global:Profile.YTDLPExe, $TargetUrl, $ProxyArg, $Global:Profile.BackupDir
+                    }
+                    elseif ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
                         $ArchiveLine = "youtube $VideoID"
                         [System.IO.File]::AppendAllText($Global:Profile.HistoryFile, ($ArchiveLine + [System.Environment]::NewLine))
                     }
+
+                    # Remove the resolved track from the broken songs dataset
+                    $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
+                    $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $Global:Profile.BrokenSongsFile -Encoding utf8 -Force
+                    
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success"}')
                     $Response.StatusCode = 200
                 } else {
@@ -1012,6 +1024,7 @@ try {
                         CleanSweepDownload = [bool]($JSONPayload.cleanModes.s2)
                         CleanSweepLyrics   = [bool]($JSONPayload.cleanModes.s4)
                         CleanSweepCompress = [bool]($JSONPayload.cleanModes.s5)
+                        RouteViaVPN        = [bool]($JSONPayload.useVpn)
                     }
 
                     Invoke-PipelineExecution @CustomRuntimeContext
