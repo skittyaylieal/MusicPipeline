@@ -377,7 +377,8 @@ function Invoke-PipelineExecution {
         [bool]$SkipStep6 = $false,
         [bool]$CleanSweepDownload = $false,
         [bool]$CleanSweepLyrics = $false,
-        [bool]$CleanSweepCompress = $false
+        [bool]$CleanSweepCompress = $false,
+        [bool]$RouteViaVPN = $false # NEW: Catch the VPN payload flag
     )
 
     if ($Global:IsPipelineRunning) { return } 
@@ -419,6 +420,7 @@ function Invoke-PipelineExecution {
         CleanDownload      = $EffectiveCleanDownload
         CleanLyrics        = $CleanSweepLyrics
         CleanCompress      = $CleanSweepCompress
+        RouteViaVPN        = $RouteViaVPN # NEW: Add to thread-safe map
         
         LogFile            = $Global:DiagLogFile 
         TimingFile         = $Global:TimingFile 
@@ -470,12 +472,15 @@ function Invoke-PipelineExecution {
                         SleepRequests       = $EnvMap.SleepRequests
                         MaxDownloadThreads  = $EnvMap.MaxDownloadThreads
                         CleanSweep          = $EnvMap.CleanDownload
+                        RouteViaVPN         = $EnvMap.RouteViaVPN # NEW: Pass down to Download.ps1
                     }
                     & $S2ScriptPath @S2Params 2>&1 
                 } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
                 $S2Watch.Stop()
                 $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
             } else { Log-Progress "`e[90m[STEP 2/6] Explicitly bypassed via step toggle directive.`e[0m"; $S2Time = "00:00:00" }
+            
+            # ... (Steps 3, 4, 5, 6 remain entirely identical) ...
             
             if (-not $EnvMap.SkipStep3) {
                 Log-Progress "`e[1;33m[STEP 3/6]`e[0m Running Error Log Analysis..." 
