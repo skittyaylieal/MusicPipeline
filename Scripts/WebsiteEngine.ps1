@@ -297,8 +297,6 @@ function Start-AutomatedChronDaemon {
         param($TargetPort, $Delay, $PFile)
         
         # Pure Mathematical Timeline Anchor: Monday, January 3, 2000 @ Midnight Local Time
-        # Moving the anchor to a Monday ensures all weekly intervals snap to Mondays, 
-        # daily intervals snap to midnight, and minute intervals snap to the hour mark perfectly.
         $AnchorDate = [DateTime]::new(2000, 1, 3, 0, 0, 0)
         $AnchorEpoch = [DateTimeOffset]::new($AnchorDate).ToUnixTimeSeconds()
         
@@ -324,16 +322,12 @@ function Start-AutomatedChronDaemon {
                 # ---------------------------------------------------------
                 # PURE MATHEMATICAL QUANTIZATION (GRID ALIGNMENT)
                 # ---------------------------------------------------------
-                # 1. Determine how many entire chunks have occurred since the year 2000 anchor
                 $NormalBlocksElapsed = [Math]::Floor(($CurrentEpoch - $AnchorEpoch) / $NormalInterval)
                 $CleanBlocksElapsed  = [Math]::Floor(($CurrentEpoch - $AnchorEpoch) / $CleanInterval)
                 
-                # 2. Multiply back out to calculate the exact start epoch of the *current* active block
                 $NormalBoundaryEpoch = $AnchorEpoch + ($NormalBlocksElapsed * $NormalInterval)
                 $CleanBoundaryEpoch  = $AnchorEpoch + ($CleanBlocksElapsed * $CleanInterval)
                 
-                # 3. If your last recorded run is older than the current block's boundary, it means 
-                # we've cross into a new block segment and the routine is due.
                 $TriggerClean  = ($LastClean -lt $CleanBoundaryEpoch)
                 $TriggerNormal = ($LastNormal -lt $NormalBoundaryEpoch)
                 
@@ -371,7 +365,7 @@ function Start-AutomatedChronDaemon {
 # 2. PROCESS MANAGEMENT & PERFORMANCE PARSER
 # -----------------------------------------------------------------
 function Invoke-PipelineExecution {
-    [CmdletBinding()] # Better method of parameter binding; might help
+    [CmdletBinding()]
     param(
         [bool]$CleanSweep = $false,
         [string]$TriggerType = "Manual",
@@ -392,7 +386,6 @@ function Invoke-PipelineExecution {
     Log-Engine "=================================================================" "1;35"
     Log-Engine "($TriggerType Run) Initializing Custom Sequence Flow Framework..." "1;36"
 
-    # If the user hit the default global Clean Sweep button, pass it along down to step 2's parameter fallback explicitly
     $EffectiveCleanDownload = $CleanSweep -or $CleanSweepDownload
 
     Log-Engine "[DEBUG] GlobalCS: $CleanSweep | Step2CS: $CleanSweepDownload | EffectiveS2: $EffectiveCleanDownload"
@@ -435,10 +428,8 @@ function Invoke-PipelineExecution {
     $MasterPipelineJob = {
         param($EnvMap)
 
-        #$env:PYTHONUNBUFFERED = "1" 
         $env:YTDLP_UNBUFFERED = "1" 
         $ProgressPreference = 'SilentlyContinue'
-
 
         function Log-Progress([string]$Msg) {
             $Timestamp = (Get-Date).ToString("HH:mm:ss") 
@@ -460,6 +451,7 @@ function Invoke-PipelineExecution {
                 $S1Watch.Stop()
                 $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
             } else { Log-Progress "`e[90m[STEP 1/6] Explicitly bypassed via step toggle directive.`e[0m"; $S1Time = "00:00:00" }
+            
             if (-not $EnvMap.SkipStep2) {
                 Log-Progress "`e[1;33m[STEP 2/6]`e[0m Running Native Pipeline Downloader..." 
                 $S2Watch = [System.Diagnostics.Stopwatch]::StartNew() 
@@ -484,6 +476,7 @@ function Invoke-PipelineExecution {
                 $S2Watch.Stop()
                 $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
             } else { Log-Progress "`e[90m[STEP 2/6] Explicitly bypassed via step toggle directive.`e[0m"; $S2Time = "00:00:00" }
+            
             if (-not $EnvMap.SkipStep3) {
                 Log-Progress "`e[1;33m[STEP 3/6]`e[0m Running Error Log Analysis..." 
                 $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
@@ -495,6 +488,7 @@ function Invoke-PipelineExecution {
                 $S3Watch.Stop()
                 $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
             } else { Log-Progress "`e[90m[STEP 3/6] Explicitly bypassed via step toggle directive.`e[0m"; $S3Time = "00:00:00" }
+            
             if (-not $EnvMap.SkipStep4) {
                 Log-Progress "`e[1;33m[STEP 4/6]`e[0m Syncing Local Lyrics Databases..." 
                 $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
@@ -507,6 +501,7 @@ function Invoke-PipelineExecution {
                 $S4Watch.Stop()
                 $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
             } else { Log-Progress "`e[90m[STEP 4/6] Explicitly bypassed via step toggle directive.`e[0m"; $S4Time = "00:00:00" }
+            
             if (-not $EnvMap.SkipStep5) {
                 Log-Progress "`e[1;35m[STEP 5/6]`e[0m Syncing and Compressing Mobile M4A Library Track Array..."
                 $S5Watch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -521,15 +516,17 @@ function Invoke-PipelineExecution {
                         ForceCleanSweep  = [bool]$EnvMap.CleanSweepCompress
                     }
                     
-                    # Execute compressor engine with non-destructive tracking arguments
                     & $S5ScriptPath @S5Params 2>&1 | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
                 } else {
                     Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping."
                 }
                 $S5Watch.Stop()
                 $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed)
-            } else {Log-Progress "`e[90m[STEP 5/6] Disabled by explicit configuration profile bypass.`e[0m"
-            $S5Time = "00:00:00"}
+            } else {
+                Log-Progress "`e[90m[STEP 5/6] Disabled by explicit configuration profile bypass.`e[0m"
+                $S5Time = "00:00:00"
+            }
+            
             if (-not $EnvMap.SkipStep6) {
                 Log-Progress "`e[1;33m[STEP 6/6]`e[0m Compiling Track Telemetry & Analytics..." 
                 $S6Watch = [System.Diagnostics.Stopwatch]::StartNew() 
@@ -561,7 +558,7 @@ function Invoke-PipelineExecution {
                 total     = $TotalTime 
             }
             $HistoryDB += $NewMetricRecord 
-            $HistoryDB | ConvertTo-Json -Depth 4 | Out-File -FilePath $EnvMap.TimingFile -Encoding utf8 -Force 
+            $HistoryDB | ConvertTo-Json -Depth 4 | Out-File -FilePath $EnvMap.TimingFile -Encoding utf8 -Force
         }
         catch { Log-Progress "`e[1;31m[CRITICAL ERROR] Pipeline execution collapsed: $_`e[0m" }
     }
@@ -611,7 +608,6 @@ function Invoke-HotReload {
 # 3. ADAPTIVE NETWORK ENGINE ROUTER ROUTINE
 # -----------------------------------------------------------------
 
-# 🟢 Memory Salvage: Clear out any heavy historical errors pinned in the console memory
 $Error.Clear()
 [System.GC]::Collect()
 
@@ -626,11 +622,9 @@ while ($true) {
     $TargetPort++ 
 }
 
-# Wrap the ENTIRE initialization routine in a safe, memory-insulated try block
 try {
     Log-Engine "🔗 Aligning fresh Windows port proxy map: 80 ---> $TargetPort" "36"
     
-    # Track exit code safely without letting a heavy error stream build up
     $NetshOut = netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=$TargetPort connectaddress=127.0.0.1 2>&1
     if ($LASTEXITCODE -ne 0) { throw "netsh registration failed: $NetshOut" }
 
@@ -650,23 +644,17 @@ try {
     Start-AsyncLibraryScanner 
     Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
     
-    # --- FIXED: STATEFUL ASYNCHRONOUS ENGINE LOOP ---
     $AsyncResult = $null
     while ($true) {
         try {
-            # Only allocate a fresh async request context if we aren't already waiting on one
             if ($null -eq $AsyncResult) {
                 $AsyncResult = $Listener.BeginGetContext($null, $null)
             }
             
-            # Non-blocking pause: wait up to 1 second for a new request.
-            # If no request hits, drop out and stay responsive to process kills/signals,
-            # but keep the active handle intact for the next loop pass!
             if (-not $AsyncResult.AsyncWaitHandle.WaitOne(1000)) {
                 continue
             }
 
-            # A connection landed! Consume the handle and clear the tracking variable
             $Context = $Listener.EndGetContext($AsyncResult) 
             $AsyncResult = $null
             
@@ -811,6 +799,8 @@ try {
                 $Response.OutputStream.Close()
             }
             # -----------------------------
+            # streamLINES RESOLVE SONG ENDPOINT (REMOVES DEPRECATED PROTON VPN CLI JOBS)
+            # -----------------------------
             elseif ($UrlPath -eq "/resolve-song" -and $Method -eq "POST") {
                 $Reader = New-Object System.IO.StreamReader($Request.InputStream)
                 $Payload = $Reader.ReadToEnd() | ConvertFrom-Json
@@ -818,109 +808,20 @@ try {
 
                 if ($SongId -and (Test-Path $Global:Profile.BrokenSongsFile)) {
                     $CurrentList = Get-Content -LiteralPath $Global:Profile.BrokenSongsFile -Raw | ConvertFrom-Json
-                    $TargetSong = $CurrentList | Where-Object { $_.id -eq $SongId }
                     
-                    if ($Action -eq "geo_vpn_fix" -and $TargetSong) {
-                        $Global:IsPipelineRunning = $true
-                        
-                        $SingleJobBlock = {
-                            param($Log, $Backup, $Cfg, $Vid, $Sid, $DbFile, $HistFile, $YTDLP, $Cookies)
-                            $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
-                            
-                            "`e[1;35m[SYSTEM] Targeted VPN Link Established for ID: $Vid...`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
-                            & $ProtonCLI c --cc US 2>&1 | Out-Null
-                            Start-Sleep -Seconds 8
-                            
-                            $TargetUrl = "https://www.youtube.com/watch?v=$Vid"
-                            & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
-                            $Status = $LASTEXITCODE
-                            
-                            & $ProtonCLI d 2>&1 | Out-Null
-                            if ($Status -eq 0) {
-                                "`e[1;32m[SUCCESS] Track successfully resolved over VPN.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
-                                $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
-                                $ReloadDb | Where-Object { $_.id -ne $Sid } | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
-                            } else {
-                                "`e[1;31m[ERROR] Extraction failed over active VPN adapter link.`e[0m" | Out-File -FilePath $Log -Append -Encoding utf8
-                            }
-                        }
-                        $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $SingleJobBlock -ArgumentList $Global:DiagLogFile, $Global:Profile.BackupDir, $ConfigDir, $TargetSong.videoId, $SongId, $Global:Profile.BrokenSongsFile, $Global:Profile.HistoryFile, $Global:Profile.YTDLPExe, $Global:Profile.CookieFile
-                        $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success","message":"Dispatched targeted single VPN route"}')
-                    } else {
-                        $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
-                        $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $Global:Profile.BrokenSongsFile -Encoding utf8 -Force
-                        if ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
-                            $ArchiveLine = "youtube $VideoID"
-                            [System.IO.File]::AppendAllText($Global:Profile.HistoryFile, ($ArchiveLine + [System.Environment]::NewLine))
-                        }
-                        $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success"}')
+                    # Excised the old geo_vpn_fix CLI execution branch completely.
+                    # Updates the broken songs dataset and processes fallback history.
+                    $UpdatedList = $CurrentList | Where-Object { $_.id -ne $SongId }
+                    $UpdatedList | ConvertTo-Json -Depth 4 | Out-File -FilePath $Global:Profile.BrokenSongsFile -Encoding utf8 -Force
+                    if ($Action -eq "write_history" -and -not [string]::IsNullOrWhiteSpace($VideoID)) {
+                        $ArchiveLine = "youtube $VideoID"
+                        [System.IO.File]::AppendAllText($Global:Profile.HistoryFile, ($ArchiveLine + [System.Environment]::NewLine))
                     }
+                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"success"}')
                     $Response.StatusCode = 200
                 } else {
                     $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Invalid request target"}')
                     $Response.StatusCode = 400
-                }
-                $Response.ContentType = "application/json"
-                $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
-                $Response.OutputStream.Close()
-            }
-            elseif ($UrlPath -eq "/run-geo-recovery" -and $Method -eq "POST") {
-                if ($Global:IsPipelineRunning) {
-                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"error","message":"Pipeline active"}')
-                    $Response.StatusCode = 409
-                } else {
-                    $Global:IsPipelineRunning = $true
-                    "`e[1;35m[SYSTEM] Initializing Safe Asynchronous ProtonVPN Geo-Recovery Loop...`e[0m" | Out-File -FilePath $Global:DiagLogFile -Append -Encoding utf8
-
-                    $RecoveryJobBlock = {
-                        param($Log, $Backup, $Cfg, $DbFile, $YTDLP, $Cookies)
-                        function Log-VpnProgress([string]$M) {
-                            $T = (Get-Date).ToString("HH:mm:ss")
-                            "`e[90m[$T]`e[0m $M" | Out-File -FilePath $Log -Append -Encoding utf8
-                        }
-
-                        $ProtonCLI = "C:\Program Files\Proton\VPN\ProtonVPN.Backend.CLI.exe"
-
-                        if (-not (Test-Path $DbFile)) { Log-VpnProgress "🛑 Error database missing."; return }
-                        $Db = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
-                        $GeoTracks = $Db | Where-Object { $_.reason -match "available in your country|GeoRestrictedError|not made this video available|sign in to confirm" }
-
-                        if ($null -eq $GeoTracks -or $GeoTracks.Count -eq 0) {
-                            Log-VpnProgress "🔍 Clean analytics match. Zero songs are currently blocked behind geo-restrictions."
-                            return
-                        }
-
-                        Log-VpnProgress "`e[1;33m[*] Routing connection... Forcing USA safe exit node.`e[0m"
-                        & $ProtonCLI c --cc US 2>&1 | Out-Null
-                        Start-Sleep -Seconds 8
-
-                        $SuccessTracks = @()
-                        foreach ($Track in $GeoTracks) {
-                            $TargetUrl = "https://www.youtube.com/watch?v=$($Track.videoId)"
-                            Log-VpnProgress "🚀 Pulling track through secure tunnel: $TargetUrl"
-                            & $YTDLP --no-colors --embed-metadata --embed-thumbnail --convert-thumbnails jpg -f "ba[ext=m4a]/ba" --cookies $Cookies -P $Backup $TargetUrl 2>&1 | Out-File -FilePath $Log -Append -Encoding utf8
-                            if ($LASTEXITCODE -eq 0) {
-                                Log-VpnProgress "[+] Download Success: $($Track.videoId)"
-                                $SuccessTracks += $Track.videoId
-                            } else {
-                                Log-VpnProgress "🛑 Dynamic tunnel breakdown or failure on ID: $($Track.videoId)"
-                            }
-                        }
-
-                        Log-VpnProgress "`e[1;31m[*] Terminating active routing adapters... Closing VPN connection.`e[0m"
-                        & $ProtonCLI d 2>&1 | Out-Null
-
-                        if ($SuccessTracks.Count -gt 0) {
-                            $ReloadDb = Get-Content -LiteralPath $DbFile -Raw | ConvertFrom-Json
-                            $CleanedDb = $ReloadDb | Where-Object { $SuccessTracks -notcontains $_.videoId }
-                            $CleanedDb | ConvertTo-Json -Depth 4 | Out-File -FilePath $DbFile -Encoding utf8 -Force
-                            Log-VpnProgress "`e[1;32m[SUCCESS] Removed ($($SuccessTracks.Count)) anomalies from broken_songs.json!`e[0m"
-                        }
-                    }
-                    $Job = Start-Job -Name "ActiveMusicDownloader" -ScriptBlock $RecoveryJobBlock -ArgumentList $Global:DiagLogFile, $Global:Profile.BackupDir, $ConfigDir, $Global:Profile.BrokenSongsFile, $Global:Profile.YTDLPExe, $Global:Profile.CookieFile
-                    
-                    $Buffer = [System.Text.Encoding]::UTF8.GetBytes('{"status":"dispatched"}')
-                    $Response.StatusCode = 200
                 }
                 $Response.ContentType = "application/json"
                 $Response.OutputStream.Write($Buffer, 0, $Buffer.Length)
@@ -979,14 +880,12 @@ try {
                     }
                 }
 
-                # Robust Array casting to handle nested property translation safely
                 if ($null -eq $MetricsObj["alerts"]) {
                     $MetricsObj["alerts"] = @()
                 } else {
                     $MetricsObj["alerts"] = @($MetricsObj["alerts"])
                 }
 
-                # --- 512MB PASSIVE CONSOLE WARNING CEILING ---
                 if (Test-Path $Global:DiagLogFile) {
                     $LogSizeBytes = (Get-Item -LiteralPath $Global:DiagLogFile).Length
                     if ($LogSizeBytes -gt 512MB) {
@@ -1033,11 +932,9 @@ try {
 
                 if (Test-Path $Global:DiagLogFile) { 
                     try {
-                        # Open via shared file stream to handle parallel background pipeline writes safely
                         $FileStream = [System.IO.File]::Open($Global:DiagLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
                         $StreamReader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
                         
-                        # Optimization: Avoid the O(N^2) line-by-line loop array append operation. Read bulk, split instantly.
                         $FullStringContent = $StreamReader.ReadToEnd()
                         $StreamReader.Close(); $FileStream.Close()
                         
@@ -1046,14 +943,9 @@ try {
                             $TotalLinesCount = $AllLines.Count
                             
                             if ($TotalLinesCount -gt 0 -and $SkipCount -lt $TotalLinesCount) {
-                                # FIX: Cap the return payload to 3000 lines max.
-                                # This keeps JSON serialization instant and eliminates network socket timeouts.
                                 $MaxLinesToReturn = 3000
                                 $EndIndex = [math]::Min(($TotalLinesCount - 1), ($SkipCount + $MaxLinesToReturn - 1))
-                                
                                 $CurrentLogs = $AllLines[$SkipCount..$EndIndex]
-                                
-                                # Advance the pointer to the end of this batch so the client catches up incrementally
                                 $NextPointer = $EndIndex + 1
                             } else {
                                 $NextPointer = $TotalLinesCount
@@ -1078,9 +970,6 @@ try {
                     $Global:IsPipelineRunning = $false 
                 } 
 
-                # FIX: Pass $NextPointer as totalLines. 
-                # Your frontend JS uses data.totalLines to set its next skip parameter,
-                # meaning it will now gracefully page through huge backlogs 300 lines at a time every 1.2s!
                 $JsonPayload = @{ running = $Global:IsPipelineRunning; logs = $CurrentLogs; totalLines = $NextPointer } | ConvertTo-Json -Compress 
                 if ([string]::IsNullOrWhiteSpace($JsonPayload)) { $JsonPayload = "{}" }
                 
@@ -1145,7 +1034,6 @@ try {
                     continue
                 }
 
-                # Extract URL parameters manually from query string inputs
                 $QueryString = $Request.Url.Query
                 $Params = @{}
                 if (-not [string]::IsNullOrEmpty($QueryString)) {
@@ -1169,7 +1057,6 @@ try {
                 $CleanLyrics       = [bool]($Params["cleanLyrics"] -eq "true")
                 $CleanCompress     = [bool]($Params["cleanCompress"] -eq "true")
 
-                # Asynchronously pass the parameters down to execution pipelines
                 Invoke-PipelineExecution -TriggerType $RunContext `
                                          -CleanSweep $IsSweepRequested `
                                          -SkipStep1 $SkipStep1 -SkipStep2 $SkipStep2 -SkipStep3 $SkipStep3 `
@@ -1178,19 +1065,16 @@ try {
                                          -CleanSweepLyrics $CleanLyrics `
                                          -CleanSweepCompress $CleanCompress
 
-                # Persist execution completion timestamps right back inside profiles data layout configurations
                 try {
                     $RawConfig = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
                     $Act = $RawConfig.activeProfile
                     $CurrentEpoch = [DateTimeOffset]::Now.ToUnixTimeSeconds()
 
                     if ($RunContext -eq "AutomatedNormal") {
-                        # REPLACE THE OLD DOT ASSIGNMENT WITH THIS:
                         $RawConfig.profiles.$Act | Add-Member -MemberType NoteProperty -Name "LastNormalRunEpoch" -Value $CurrentEpoch -Force
                         Log-Engine "⏰ Timed tracking anchor updated successfully for Normal Routine Track Run." "36"
                     }
                     elseif ($RunContext -eq "AutomatedClean") {
-                        # REPLACE THE OLD DOT ASSIGNMENT WITH THIS:
                         $RawConfig.profiles.$Act | Add-Member -MemberType NoteProperty -Name "LastCleanRunEpoch" -Value $CurrentEpoch -Force
                         Log-Engine "🧹 Timed tracking anchor updated successfully for Maintenance Clean Sweep Run." "35"
                     }
@@ -1247,7 +1131,6 @@ try {
         } 
         catch {
             Log-Engine "⚠️ Request Parsing Context Exception: $_" "33"
-            # Force-clear the tracking state so a broken handle doesn't wedge the loop
             $AsyncResult = $null
             try { 
                 if ($null -ne $Context) { $Context.Response.Abort() } 
@@ -1257,7 +1140,6 @@ try {
     }
 }
 catch {
-    # 🟢 SAFE: Extract only the literal text message string instead of serializing the entire object graph
     $ExceptionMessage = if ($_.Exception) { $_.Exception.Message } else { $_.ToString() }
     Log-Engine "🛑 Fatal HTTP Core Listener Breakdown: $ExceptionMessage" "1;31"
 }
