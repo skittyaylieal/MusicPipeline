@@ -39,7 +39,7 @@ function Load-ProfileContext {
         Exit 1
     }
 }
-
+Load-ProfileContext
 
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()

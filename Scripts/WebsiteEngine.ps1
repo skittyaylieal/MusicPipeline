@@ -131,6 +131,7 @@ function Load-ProfileContext {
 # Initial Context Engine Boot up Sequence
 Load-ProfileContext
 $Global:IsPipelineRunning = $false
+$Global:ProfilesFile = $ProfilesFile
 
 # Ensure the config directory exists before trying to write logs
 if (-not (Test-Path $ConfigDir)) { New-Item $ConfigDir -ItemType Directory -Force | Out-Null } 
@@ -394,6 +395,7 @@ function Invoke-PipelineExecution {
     $ContextBundle = @{
         ScriptDir          = $ScriptDir 
         ConfigDir          = $ConfigDir 
+        ProfilesFile       = $Global:ProfilesFile
         CacheDir           = Join-Path $ConfigDir ".cache" 
         BackupDir          = $Global:Profile.BackupDir 
         MobileDir          = $Global:Profile.MobileDir 
@@ -446,7 +448,7 @@ function Invoke-PipelineExecution {
                 $S1Watch = [System.Diagnostics.Stopwatch]::StartNew() 
                 $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1" 
                 if (Test-Path $S1ScriptPath) {
-                    $S1Params = @{ CookiePath = $EnvMap.CookieFile; YTDLPPath = $EnvMap.YTDLPExe; TestURL = $EnvMap.CheckURL } 
+                    $S1Params = @{ ProfilesFile = $EnvMap.ProfilesFile } 
                     $Step1Result = & $S1ScriptPath @S1Params 2>&1 
                     $Step1Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
                 } else { Log-Progress "⚠️ CookieCheck.ps1 missing. Skipping." }
