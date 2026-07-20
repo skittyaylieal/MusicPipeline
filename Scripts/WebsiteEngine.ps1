@@ -642,8 +642,14 @@ try {
     $Listener.Prefixes.Add("http://127.0.0.1:$TargetPort/") 
     $Listener.Start() 
 
-    $LocalIPs = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Wi-Fi','Ethernet' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPAddress 
-    $PrimaryIP = if ($LocalIPs) { $LocalIPs[0] } else { "127.0.0.1" } 
+    $ActiveIPs = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | 
+        Where-Object { $_.OperationalStatus -eq 'Up' -and $_.NetworkInterfaceType -ne 'Loopback' } | 
+        ForEach-Object { $_.GetIPProperties().UnicastAddresses } | 
+        Where-Object { $_.Address.AddressFamily -eq 'InterNetwork' } | 
+        Select-Object -ExpandProperty Address | 
+        Select-Object -ExpandProperty IPAddressToString
+
+    $PrimaryIP = if ($ActiveIPs) { $ActiveIPs[0] } else { "127.0.0.1" }
 
     Log-Engine "--------------------------------------------------" "32" 
     Log-Engine " SERVER LIVE AND ADAPTIVELY MAPPED!" "1;32"
