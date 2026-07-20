@@ -147,6 +147,12 @@
             line-height: 1.6; max-height: 550px; overflow-y: auto; white-space: pre-wrap; color: #A1A1AA;
             box-shadow: inset 0 4px 20px rgba(0,0,0,0.8);
         }
+        #terminal-feed-short {
+            background: #09090B; border: 1px solid #1E1E22; border-radius: 12px;
+            padding: 20px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            line-height: 1.6; max-height: 150px; overflow-y: auto; white-space: pre-wrap; color: #A1A1AA;
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.8);
+        }
 
         /* Badge Pills Contexts */
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; }
@@ -214,6 +220,8 @@
                 <div class="metric-sub" id="m-lrc-coverage">0% Coverage Rate Across Local Repository</div>
             </div>
         </div>
+
+        <div id="terminal-feed-short">Initializing active network stdout trace modules...</div>
 
         <div class="control-panel">
             <h3 class="panel-title">⚡ Operational Directives Framework</h3>
@@ -863,8 +871,6 @@
                 .then(data => {
                     if (data.status === 'dispatched') {
                         switchPage('pane-console', 'link-console');
-                        const feed = document.getElementById('terminal-feed');
-                        if (feed) feed.innerHTML += `\n<span style="color:#BD93F9; font-weight:bold;">[System] Headless ProtonVPN Recovery Loop dispatched successfully. Monitoring stream logs...</span>`;
                     }
                 })
                 .catch(() => alert("Failed to contact geo-recovery server endpoint."))
@@ -883,6 +889,7 @@
                 .then(data => {
                     errorCount = 0; 
                     const feed = document.getElementById('terminal-feed');
+                    const shortFeed = document.getElementById('terminal-feed-short');
                     const badge = document.getElementById('pipeline-status-badge');
 
                     if (data.running) {
@@ -894,11 +901,11 @@
                     }
 
                     if (data.logs && data.logs.length > 0) {
-                        if (activeLogLinePointer === 0) feed.innerHTML = '';
+                        if (activeLogLinePointer === 0) feed.innerHTML = ''; shortFeed.innerHTML = '';
                         
                         // --- FIX 1: Check if the user is currently anchored near the bottom ---
                         // We allow a 50px buffer zone for scrolling comfort
-                        const isUserAtBottom = (feed.scrollHeight - feed.scrollTop - feed.clientHeight) < 50;
+                        const isUserAtBottom = ((feed.scrollHeight - feed.scrollTop - feed.clientHeight) < 50)||((shortFeed.scrollHeight - shortFeed.scrollTop - shortFeed.clientHeight) < 50);
 
                         let batchedHTML = '';
                         const colorCodes = ['30', '31', '32', '33', '34', '35', '36', '90'];
@@ -942,20 +949,26 @@
                         });
 
                         feed.insertAdjacentHTML('beforeend', batchedHTML);
+                        shortFeed.insertAdjacentHTML('beforeend', batchedHTML);
                         activeLogLinePointer = data.totalLines;
 
                         // --- FIX 2: Give the history buffer breathing room ---
                         // 500 lines is too shallow when yt-dlp spits out dozens of download updates.
-                        // Upping this to 4000 lines lets you look back significantly farther without a performance hit.
-                        const maxLinesAllowed = 4000;
+                        // Upping this to 16000 lines lets you look back significantly farther without a performance hit.
+                        const maxLinesAllowed = 16000;
+                        const maxShortLinesAllowed = 8;
                         while (feed.children.length > maxLinesAllowed) {
                             feed.removeChild(feed.firstChild);
+                        }
+                        while (shortFeed.children.length > maxShortLinesAllowed) {
+                            shortFeed.removeChild(shortFeed.firstChild);
                         }
 
                         // --- FIX 3: Conditional Auto-Scroll ---
                         // Only snap down if they were already watching the live trace
                         if (isUserAtBottom) {
                             feed.scrollTop = feed.scrollHeight;
+                            shortFeed.scrollTop = shortFeed.scrollHeight;
                         }
                     }
                     setTimeout(runLogStreamer, 1200);
@@ -1149,6 +1162,7 @@
                     if (data.status === 'cleared') {
                         activeLogLinePointer = 0;
                         document.getElementById('terminal-feed').innerHTML = '';
+                        document.getElementById('terminal-feed-short').innerHTML = '';
                     }
                 })
                 .catch(e => console.error("Failed to clear logs", e));
