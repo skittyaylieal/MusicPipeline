@@ -482,8 +482,6 @@ function Invoke-PipelineExecution {
                 $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
             } else { Log-Progress "`e[90m[STEP 2/6] Explicitly bypassed via step toggle directive.`e[0m"; $S2Time = "00:00:00" }
             
-            # ... (Steps 3, 4, 5, 6 remain entirely identical) ...
-            
             if (-not $EnvMap.SkipStep3) {
                 Log-Progress "`e[1;33m[STEP 3/6]`e[0m Running Error Log Analysis..." 
                 $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
@@ -520,10 +518,10 @@ function Invoke-PipelineExecution {
                         MobileDir        = $EnvMap.MobileDir
                         FFmpegPath       = $EnvMap.FFmpegExe
                         MaxThreads       = [int]$EnvMap.MaxCompressThreads
-                        ForceCleanSweep  = [bool]$EnvMap.CleanSweepCompress
+                        ForceCleanSweep  = [bool]$EnvMap.CleanCompress
                     }
                     
-                    & $S5ScriptPath @S5Params 2>&1 | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8
+                    & $S5ScriptPath @S5Params 2>&1
                 } else {
                     Log-Progress "⚠️ CompressMusic.ps1 missing. Skipping."
                 }
