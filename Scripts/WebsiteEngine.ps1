@@ -617,19 +617,33 @@ function Invoke-HotReload {
 
 $Error.Clear()
 [System.GC]::Collect()
+
 Log-Engine "🧼 Flushing old proxy tables and cleaning session jobs..." "33"
 netsh interface portproxy reset | Out-Null 
 Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
 
 $TargetPort = 50001 
 
-# Fetch active listeners via .NET (instant and immune to WMI/VPN hangs)
+# Probes both raw TCP sockets AND HTTP.sys URL prefix reservations to bypass ghost 503 listeners
 while ($true) {
-    $ActiveListeners = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners().Port
-    if ($ActiveListeners -notcontains $TargetPort) { 
-        break 
+    try {
+        # 1. Test raw TCP socket availability
+        $TestSocket = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $TargetPort)
+        $TestSocket.Start()
+        $TestSocket.Stop()
+
+        # 2. Test HTTP.sys URL prefix registration (catches ghost HTTP listeners)
+        $TestListener = New-Object System.Net.HttpListener
+        $TestListener.Prefixes.Add("http://127.0.0.1:$TargetPort/")
+        $TestListener.Start()
+        $TestListener.Stop()
+        $TestListener.Close()
+
+        # Port is confirmed 100% free and available!
+        break
+    } catch {
+        $TargetPort++
     }
-    $TargetPort++
 }
 
 try {
@@ -659,7 +673,7 @@ try {
     
     Start-AsyncLibraryScanner 
     Start-AutomatedChronDaemon -RuntimePort $TargetPort -LoopInterval $Global:Profile.ChronDaemonSleepSec
-    
+
     $AsyncResult = $null
     while ($true) {
         try {
