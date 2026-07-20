@@ -519,7 +519,7 @@ function Invoke-PipelineExecution {
                         BackupDir        = $EnvMap.BackupDir
                         MobileDir        = $EnvMap.MobileDir
                         FFmpegPath       = $EnvMap.FFmpegExe
-                        MaxThreads       = [int]$EnvMap.CompressThreads
+                        MaxThreads       = [int]$EnvMap.MaxCompressThreads
                         ForceCleanSweep  = [bool]$EnvMap.CleanSweepCompress
                     }
                     
