@@ -222,6 +222,7 @@
                 <button class="btn-primary" id="btn-run-standard" onclick="dispatchPipeline('/run')">🚀 Execute Core Synchronization Pipeline</button>
                 <button class="btn-accent" id="btn-run-sweep" onclick="dispatchPipeline('/run?sweep=true')">🧹 Dispatch Forced Clean Sweep Sequence</button>
                 <button class="btn-danger" id="btn-stop" onclick="dispatchStopPipeline()">🛑 Terminate Active Pipeline Subprocesses</button>
+                <button class="btn-danger" onclick="dispatchClearLogs()">🧹 Wipe Log Buffers</button>
             </div>
 
             <div style="border-top: 1px solid #1E1E22; padding-top: 15px; margin-top: 10px;">
@@ -1111,7 +1112,7 @@
                 },
                 useVpn: document.getElementById('chk-vpn-override').checked
             };
-            
+
             // Switches UI view directly to the console stream tab to monitor the execution
             switchPage('pane-console', 'link-console');
 
