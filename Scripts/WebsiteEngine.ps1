@@ -617,16 +617,19 @@ function Invoke-HotReload {
 
 $Error.Clear()
 [System.GC]::Collect()
-
 Log-Engine "🧼 Flushing old proxy tables and cleaning session jobs..." "33"
 netsh interface portproxy reset | Out-Null 
 Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
 
 $TargetPort = 49152 
-while ($true) { 
-    $Conflict = Get-NetTCPConnection -LocalPort $TargetPort -ErrorAction SilentlyContinue 
-    if (-not $Conflict) { break } 
-    $TargetPort++ 
+
+# Fetch active listeners via .NET (instant and immune to WMI/VPN hangs)
+while ($true) {
+    $ActiveListeners = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners().Port
+    if ($ActiveListeners -notcontains $TargetPort) { 
+        break 
+    }
+    $TargetPort++
 }
 
 try {

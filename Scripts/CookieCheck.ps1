@@ -51,12 +51,12 @@ Log-Engine "============================================="
 Log-Engine "    PowerShell Module: Cookie Validator"
 Log-Engine "============================================="
 
-if (-not (Test-Path -Path $Global:CookiePath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $Global:CookiePath -PathType Leaf)) {
     Log-Engine "[ERROR] Target cookie file couldn't be found"
     Exit 1
 }
 
-if (-not (Test-Path -Path $Global:YTDLPPath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $Global:YTDLPPath -PathType Leaf)) {
     Log-Engine "[ERROR] yt-dlp executable couldn't be found"
     Exit 1
 }
