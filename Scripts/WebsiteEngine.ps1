@@ -661,7 +661,7 @@ try {
         Select-Object -ExpandProperty Address | 
         Select-Object -ExpandProperty IPAddressToString
 
-    $PrimaryIP = if ($ActiveIPs) { $ActiveIPs[0] } else { "127.0.0.1" }
+    $PrimaryIP = if ($ActiveIPs) { $ActiveIPs[1] } else { "127.0.0.1" }
 
     Log-Engine "--------------------------------------------------" "32" 
     Log-Engine " SERVER LIVE AND ADAPTIVELY MAPPED!" "1;32"
