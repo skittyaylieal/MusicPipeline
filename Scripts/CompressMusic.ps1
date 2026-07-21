@@ -171,7 +171,7 @@ $Queue | ForEach-Object -Parallel {
     }
 
     $Msg = "[LAUNCH] $($_.Name) -> Mobile M4A"
-    $Timestamp = (Get-Date).ToString("HH:mm:ss")
+    $Timestamp = [DateTime]::Now.ToString("HH:mm:ss")
     $ESC = [char]27
     $FormattedLine = "$ESC[35m[$Timestamp] [Compressor]$ESC[0m $Msg"
     
@@ -195,6 +195,7 @@ $Queue | ForEach-Object -Parallel {
 
     $FFmpegArgs = @(
         "-y", "-loglevel", "error",
+        "-threads", "1",
         "-i", $_.Source,
         "-c:a", "aac", "-vbr", "4",
         "-map", "0:a",
