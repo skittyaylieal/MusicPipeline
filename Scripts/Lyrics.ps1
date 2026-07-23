@@ -59,7 +59,7 @@ Invoke-LogMsg "============================================="
 # Real-Time Execution Handler for tracking sub-Python tasks (Fixed asynchronous stream evaluation)
 function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList) {
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName                = $Executable
+    $psi.FileName               = $Executable
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError  = $true 
     $psi.RedirectStandardInput  = $true 
@@ -115,7 +115,7 @@ if (-not (Test-Path -LiteralPath $BackupDir -PathType Container)) {
 }
 
 if ($ForceFullRefresh) {
-    Invoke-LogMsg "🧹 [CLEAN SWEEP REFRESH] Forcing deep query over every track. Local skips will be bypassed."
+    Invoke-LogMsg "🧹 [CLEAN SWEEP REFRESH] Forcing deep query over every track. Stale local .lrc files will be purged."
 }
 
 Invoke-LogMsg "[*] Initializing ultra-fast deep database scan across: $BackupDir"
@@ -155,6 +155,11 @@ foreach ($FilePath in $AudioFiles) {
     $LrcFile = Join-Path $DirName "$($FileInfo.BaseName).lrc"
     $TxtFile = Join-Path $DirName "$($FileInfo.BaseName).txt"
     
+    # PURGE CHECK: If forcing a full refresh, wipe existing .lrc to guarantee clean-slate fetching
+    if ($ForceFullRefresh -and (Test-Path -LiteralPath $LrcFile)) {
+        Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue
+    }
+
     if (-not $ForceFullRefresh -and (Test-Path -LiteralPath $LrcFile)) {
          Invoke-LogMsg "    [-] Synced .lrc companion already exists on disk. Skipping."
          Invoke-LogMsg "---------------------------------------------"
@@ -284,7 +289,11 @@ sys.exit(0) # Exit 0 = Not Instrumental
     Remove-Item $TmpPyInstCheck -Force -ErrorAction SilentlyContinue
 
     if ($IsInstrumentalExit -eq 1) {
-        Invoke-LogMsg "    [+] Confirmed Instrumental via MusicBrainz! Tags stamped. Skipping lyric search."
+        Invoke-LogMsg "    [+] Confirmed Instrumental via MusicBrainz! Tags stamped."
+        # PURGE CHECK: Delete bad/mismatched .lrc file if it existed previously
+        if (Test-Path -LiteralPath $LrcFile) { 
+            Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue 
+        }
         Invoke-LogMsg "---------------------------------------------"
         continue
     }
