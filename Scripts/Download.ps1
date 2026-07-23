@@ -154,6 +154,8 @@ try {
                 "--convert-thumbnails", "jpg",
                 "--ppa", "EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih",
                 "--embed-metadata",
+                "--parse-metadata", "title:%(artist)s - %(title)s",
+                "--parse-metadata", "uploader:%(artist)s",
                 "--no-keep-video",
                 "--force-overwrites",
                 "--cookies", $using:LocalCookiePath,
