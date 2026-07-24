@@ -282,7 +282,7 @@ $TrackObjects | ForEach-Object -Parallel {
             }
         }
 
-        # STEP 1: Metadata Extraction
+        # STEP 1: Metadata Extraction (With Multi-Tag Artist Fallbacks)
         $PreCheckPython = @"
 import sys, mutagen, json
 from mutagen.mp4 import MP4
@@ -295,23 +295,25 @@ artist, title, is_inst, has_lyrics = "", "", False, False
 try:
     audio = mutagen.File(file_path)
     if audio is not None:
-        if isinstance(audio, FLAC):
-            artist = audio.get('artist', [''])[0]
+        if isinstance(audio, MP4):
+            artist = audio.get('\xa9ART', [''])[0] if '\xa9ART' in audio else (audio.get('aART', [''])[0] if 'aART' in audio else '')
+            title = audio.get('\xa9nam', [''])[0] if '\xa9nam' in audio else ''
+            comment = audio.get('\xa9cmt', [''])[0].lower() if '\xa9cmt' in audio else ''
+            if 'instrumental' in comment: is_inst = True
+            if '\xa9lyr' in audio and audio['\xa9lyr']: has_lyrics = True
+
+        elif isinstance(audio, FLAC):
+            artist = audio.get('artist', [''])[0] or audio.get('albumartist', [''])[0]
             title = audio.get('title', [''])[0]
             lang = audio.get('language', [''])[0].lower()
             comment = audio.get('comment', [''])[0].lower()
             if lang == 'zxx' or 'instrumental' in comment: is_inst = True
             if 'lyrics' in audio and audio['lyrics']: has_lyrics = True
 
-        elif isinstance(audio, MP4):
-            artist = audio.get('\xa9ART', [''])[0] if '\xa9ART' in audio else ''
-            title = audio.get('\xa9nam', [''])[0] if '\xa9nam' in audio else ''
-            comment = audio.get('\xa9cmt', [''])[0].lower() if '\xa9cmt' in audio else ''
-            if 'instrumental' in comment: is_inst = True
-            if '\xa9lyr' in audio and audio['\xa9lyr']: has_lyrics = True
-
         elif isinstance(audio, ID3) or (audio.tags and hasattr(audio.tags, 'getall')):
             if audio.tags.getall('TPE1'): artist = audio.tags.getall('TPE1')[0].text[0]
+            elif audio.tags.getall('TPE2'): artist = audio.tags.getall('TPE2')[0].text[0]
+            
             if audio.tags.getall('TIT2'): title = audio.tags.getall('TIT2')[0].text[0]
             if audio.tags.getall('TLAN') and audio.tags.getall('TLAN')[0].text[0].lower() == 'zxx': is_inst = True
             for comm in audio.tags.getall('COMM'):
@@ -338,15 +340,41 @@ except Exception as e:
 
         $HasUnsyncedLyrics = if ($ForceFullRefresh) { $false } else { [bool]$Meta.has_lyrics }
 
-        # STEP 2: Formulate Multi-Tier Search Queries
+        # STEP 2: Formulate Multi-Tier Search Queries with Path Parsing
         $ArtistTag = $Meta.artist
         $TitleTag  = $Meta.title
-        
+
+        # Fallback A: If Artist missing, check if Filename has "Artist - Title"
+        if ([string]::IsNullOrWhiteSpace($ArtistTag) -and $FileInfo.BaseName -match '^(.+?)\s*-\s*(.+)$') {
+            $PossibleArtist = $Matches[1] -replace '^\d+[\s-]*', ''
+            $PossibleTitle  = $Matches[2]
+            if ($PossibleArtist -and $PossibleArtist -notmatch '^\d+$') {
+                $ArtistTag = $PossibleArtist.Trim()
+                if ([string]::IsNullOrWhiteSpace($TitleTag)) { $TitleTag = $PossibleTitle.Trim() }
+            }
+        }
+
+        # Fallback B: Infer Artist from Path Hierarchy (YT_Music_Backup/Artist/Album/Track.m4a)
+        if ([string]::IsNullOrWhiteSpace($ArtistTag)) {
+            $ArtistDir = if ($FileInfo.Directory.Parent) { $FileInfo.Directory.Parent.Name } else { "" }
+            
+            # Blacklist known roots / misdownload directories
+            $IgnoredFolders = '^(uploader|playlist|YT_Music_Backup|Backup|Music|Downloads|Temp)$'
+            if ($ArtistDir -and $ArtistDir -notmatch $IgnoredFolders) {
+                $ArtistTag = $ArtistDir.Trim()
+            }
+        }
+
+        # Fallback C: Clean Title if missing
+        if ([string]::IsNullOrWhiteSpace($TitleTag)) {
+            $TitleTag = ($FileInfo.BaseName -replace '^\d+[\s\.-]+', '' -replace '\s+', ' ').Trim()
+        }
+
         $QueriesToTry = [System.Collections.Generic.List[string]]::new()
-        
+
         if (-not [string]::IsNullOrWhiteSpace($ArtistTag) -and -not [string]::IsNullOrWhiteSpace($TitleTag)) {
             # Pass 1: Raw metadata query
-            $RawQuery = "$ArtistTag - $TitleTag"
+            $RawQuery = "$ArtistTag - $TitleTag".Trim()
             $QueriesToTry.Add($RawQuery)
 
             # Pass 2: Cleaned normalized query (strips demos, remasters, bonus tags, feat. etc.)
@@ -358,14 +386,26 @@ except Exception as e:
                 $QueriesToTry.Add($CleanQuery)
             }
         }
-        
-        # Pass 3: Filename fallback
-        $FileQuery = ($FileInfo.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' ').Trim()
-        if (-not $QueriesToTry.Contains($FileQuery)) {
-            $QueriesToTry.Add($FileQuery)
+
+        # STRICT SAFETY GUARD: Ensure query contains both Artist and Title separated by " - "
+        $SafeQueries = [System.Collections.Generic.List[string]]::new()
+        foreach ($q in $QueriesToTry) {
+            if ($q -match '^\s*(.+?)\s+-\s+(.+?)\s*$') {
+                $qArtist = $Matches[1].Trim()
+                $qTitle  = $Matches[2].Trim()
+                if ($qArtist.Length -ge 2 -and $qTitle.Length -ge 1 -and -not $SafeQueries.Contains($q)) {
+                    $SafeQueries.Add($q)
+                }
+            }
         }
 
-        Invoke-LogMsg "    [*] Precision queries generated: ($($QueriesToTry -join ' | '))" $TrackIndex
+        if ($SafeQueries.Count -eq 0) {
+            Invoke-LogMsg "    [!] 🛑 SAFETY ABORT: Could not identify a reliable Artist for this track. Aborting API queries to prevent false song matches." $TrackIndex
+            Invoke-LogMsg "---------------------------------------------" $TrackIndex
+            return
+        }
+
+        Invoke-LogMsg "    [*] Precision queries validated: ($($SafeQueries -join ' | '))" $TrackIndex
 
         # STEP 3: MusicBrainz Instrumental Check
         $MBPython = @"
@@ -412,7 +452,7 @@ if check_mb(query):
     sys.exit(1)
 sys.exit(0)
 "@
-        $IsInstrumentalExit = Invoke-ThreadNativeProcess "python" @("-", $QueriesToTry[0], $FilePath) -InputScript $MBPython
+        $IsInstrumentalExit = Invoke-ThreadNativeProcess "python" @("-", $SafeQueries[0], $FilePath) -InputScript $MBPython
 
         if ($IsInstrumentalExit -eq 1) {
             Invoke-LogMsg "    [+] Confirmed Instrumental via MusicBrainz! Tags stamped." $TrackIndex
@@ -422,13 +462,13 @@ sys.exit(0)
             return
         }
 
-        # STEP 4: Query Lyric APIs Across Query Variations
+        # STEP 4: Query Lyric APIs Across Safe Queries
         $TimedProviders = @("lrclib", "musixmatch", "netease", "megalobiz")
         $LrcFound       = $false
 
-        foreach ($QueryTarget in $QueriesToTry) {
+        foreach ($QueryTarget in $SafeQueries) {
             if ($LrcFound) { break }
-            Invoke-LogMsg "    [*] Initiating provider sweep for search target: '$QueryTarget'" $TrackIndex
+            Invoke-LogMsg "    [*] Initiating provider sweep for target: '$QueryTarget'" $TrackIndex
 
             foreach ($Provider in $TimedProviders) {
                 Invoke-LogMsg "    [*] Querying source: [$Provider]" $TrackIndex
@@ -458,9 +498,9 @@ sys.exit(0)
             return 
         }
 
-        # STEP 5: Genius Fallback Scraper (Iterates Query Targets)
+        # STEP 5: Genius Fallback Scraper (Iterates Safe Queries)
         if (-not (Test-Path -LiteralPath $TxtFile) -and -not $HasUnsyncedLyrics) {
-            foreach ($QueryTarget in $QueriesToTry) {
+            foreach ($QueryTarget in $SafeQueries) {
                 Invoke-LogMsg "    [!] Timed matrix missing. Scraping Genius for target: '$QueryTarget'" $TrackIndex
                 $FallbackArgs = @("-m", "syncedlyrics", $QueryTarget, "-o", $LrcFile, "-p", "genius")
                 $FallbackExitCode = Invoke-ThreadNativeProcess "python" $FallbackArgs
