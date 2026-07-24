@@ -61,6 +61,15 @@ function Test-IsSyncedLrc ([string]$FilePath) {
     }
 }
 
+# Diagnostic Helper: Captures current PowerShell process RAM & OS handle usage
+function Get-MemorySnapshot {
+    $Proc = [System.Diagnostics.Process]::GetCurrentProcess()
+    $WorkingSetMB  = [math]::Round($Proc.WorkingSet64 / 1MB, 2)
+    $PrivateBytesMB = [math]::Round($Proc.PrivateMemorySize64 / 1MB, 2)
+    $Handles        = $Proc.HandleCount
+    return "RAM (WS): ${WorkingSetMB}MB | RAM (Private): ${PrivateBytesMB}MB | Handles: $Handles"
+}
+
 Invoke-LogMsg "============================================="
 Invoke-LogMsg "    PowerShell Module: Headless Lyric Engine & Tag Embedder"
 Invoke-LogMsg "============================================="
@@ -117,7 +126,9 @@ function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList, [sw
         }
 
         if ($CaptureOutput) {
-            return [PSCustomObject]@{ ExitCode = $proc.ExitCode; Output = $stdoutBuilder.ToString() }
+            $OutText = $stdoutBuilder.ToString()
+            $stdoutBuilder.Clear()
+            return [PSCustomObject]@{ ExitCode = $proc.ExitCode; Output = $OutText }
         }
         return $proc.ExitCode
     } catch {
@@ -172,14 +183,22 @@ $ScannedCount = 0
 foreach ($FilePath in $AudioFiles) {
     $ScannedCount++
     
-    if ($ScannedCount % 50 -eq 0) {
+    # Accelerated Garbage Collection Sweep (Runs every 10 tracks with memory delta reporting)
+    if ($ScannedCount % 10 -eq 0) {
+        $RamBefore = [math]::Round(([System.Diagnostics.Process]::GetCurrentProcess().WorkingSet64 / 1MB), 2)
         [System.GC]::Collect()
         [System.GC]::WaitForPendingFinalizers()
+        [System.GC]::Collect() # Double-pass to clean lingering handles
+        $RamAfter = [math]::Round(([System.Diagnostics.Process]::GetCurrentProcess().WorkingSet64 / 1MB), 2)
+        $Freed    = [math]::Round($RamBefore - $RamAfter, 2)
+        
+        Invoke-LogMsg "🧹 [GC SWEEP] Track $ScannedCount | Before: ${RamBefore}MB -> After: ${RamAfter}MB (Freed: ${Freed}MB) | $(Get-MemorySnapshot)"
     }
 
     $FileInfo = [System.IO.FileInfo]::new($FilePath)
     
     Invoke-LogMsg "[*] [$ScannedCount/$($AudioFiles.Count)] Evaluating: $($FileInfo.FullName)"
+    Invoke-LogMsg "    🔍 [MEM CHECK] $(Get-MemorySnapshot)"
     
     $DirName = $FileInfo.DirectoryName
     $LrcFile = Join-Path $DirName "$($FileInfo.BaseName).lrc"
@@ -418,6 +437,14 @@ except Exception as e:
     if (Test-Path -LiteralPath $TxtFile) {
         Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue
     }
+
+    # Scope Variable Purge to Prevent PowerShell Object Retention Leaks
+    $PreCheckPython = $null
+    $MetaResult     = $null
+    $MetaJsonRaw    = $null
+    $Meta           = $null
+    $MBPython       = $null
+    $PythonCode     = $null
 
     Invoke-LogMsg "---------------------------------------------"
 }
