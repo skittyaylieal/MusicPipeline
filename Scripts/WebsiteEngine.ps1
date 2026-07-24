@@ -502,7 +502,7 @@ function Invoke-PipelineExecution {
                 $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
                 $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
                 if (Test-Path $S4ScriptPath) {
-                    $S4Params = @{ BackupDir = $EnvMap.BackupDir ThrottleLimit = $EnvMap.MaxLyricThreads }
+                    $S4Params = @{ BackupDir = $EnvMap.BackupDir, ThrottleLimit = $EnvMap.MaxLyricThreads }
                     if ($EnvMap.CleanLyrics) { $S4Params.ForceFullRefresh = $true } 
                     & $S4ScriptPath @S4Params 2>&1 
                 } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
