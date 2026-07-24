@@ -453,6 +453,7 @@
                         <div class="config-group"><label>Throttling Burst Limit (SleepRequests)</label><input type="text" id="cfg-SleepRequests"></div>
                         <div class="config-group"><label>FFmpeg Transcode Worker Limit (MaxCompressThreads)</label><input type="text" id="cfg-MaxCompressThreads"></div>
                         <div class="config-group"><label>Parallelised Playlist Worker Limit (MaxDownloadThreads)</label><input type="text" id="cfg-MaxDownloadThreads"></div>
+                        <div class="config-group"><label>Parallel Lyric Fetcher Limit (MaxLyricThreads)</label><input type="text" id="cfg-MaxLyricThreads"></div>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -1237,7 +1238,7 @@
                 'BackupDir', 'MobileDir', 'BrokenSongsFile', 'DiagLogFile', 'CacheFile',
                 'TimingFile', 'CookieFile', 'HistoryFile', 'YTDLPExe', 'FFmpegExe',
                 'FirefoxExe', 'CheckURL', 'SleepInterval', 'MaxSleepInterval',
-                'SleepRequests', 'MaxCompressThreads', 'MaxDownloadThreads', 
+                'SleepRequests', 'MaxCompressThreads', 'MaxDownloadThreads', 'MaxLyricThreads',
                 'ScannerSleepIntervalSec', 'ChronDaemonSleepSec',
                 'NormalIntervalSec', 'CleanIntervalSec'
             ];
@@ -1316,6 +1317,7 @@
                 SleepRequests: parseInt(document.getElementById('cfg-SleepRequests').value) || 3,
                 MaxCompressThreads: parseInt(document.getElementById('cfg-MaxCompressThreads').value) || 3,
                 MaxDownloadThreads: parseInt(document.getElementById('cfg-MaxDownloadThreads').value) || 3,
+                MaxLyricThreads: parseInt(document.getElementById('cfg-MaxLyricThreads').value) || 3,
                 ScannerSleepIntervalSec: parseInt(document.getElementById('cfg-ScannerSleepIntervalSec').value) || 60,
                 ChronDaemonSleepSec: parseInt(document.getElementById('cfg-ChronDaemonSleepSec').value) || 1800,
                 
