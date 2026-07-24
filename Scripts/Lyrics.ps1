@@ -6,18 +6,16 @@ Param (
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 $env:PYTHONIOENCODING = "utf-8"
-try {
-    Clear-Host
-} catch {}
+try { Clear-Host } catch {}
 
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
-# Main Thread Logger (used during initialization and summary)
+# Main Thread Logger
 function Invoke-MainLogMsg([string]$Text) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return }
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
-    $ESC = [char]27
-    $Reset = "$ESC[0m"
+    $ESC       = [char]27
+    $Reset     = "$ESC[0m"
     $ColorPrefix   = "$ESC[34m[$Timestamp] [LyricsEngine]$Reset"
     $FormattedLine = "$ColorPrefix $Text"
     
@@ -27,7 +25,7 @@ function Invoke-MainLogMsg([string]$Text) {
     }
 }
 
-# Top-level Native Process Handler for dependency checks
+# Top-level Native Process Handler
 function Invoke-MainNativeProcess ([string]$Executable, [string[]]$ArgumentList) {
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName               = $Executable
@@ -51,7 +49,7 @@ function Invoke-MainNativeProcess ([string]$Executable, [string[]]$ArgumentList)
 }
 
 Invoke-MainLogMsg "============================================="
-Invoke-MainLogMsg "    PowerShell Module: Headless Lyric Engine & Tag Embedder (Parallel)"
+Invoke-MainLogMsg "    PowerShell Module: Max Quality Lyric Engine & Tag Embedder"
 Invoke-MainLogMsg "============================================="
 
 Invoke-MainLogMsg "[*] Verifying background Python dependencies..."
@@ -67,7 +65,7 @@ if ($ForceFullRefresh) {
     Invoke-MainLogMsg "🧹 [CLEAN SWEEP REFRESH] Forcing deep query over every track. Stale local .lrc files will be purged."
 }
 
-Invoke-MainLogMsg "[*] Initializing ultra-fast deep database scan across: $BackupDir"
+Invoke-MainLogMsg "[*] Initializing deep database scan across: $BackupDir"
 
 try {
     $AllFiles = [System.IO.Directory]::EnumerateFiles($BackupDir, "*.*", [System.IO.SearchOption]::AllDirectories)
@@ -90,11 +88,10 @@ if ($AudioFiles.Count -eq 0) {
     Exit 0
 }
 
-Invoke-MainLogMsg "[+] Deep scan complete. Found $($AudioFiles.Count) total track(s) to verify."
+Invoke-MainLogMsg "[+] Deep scan complete. Found $($AudioFiles.Count) total track(s) to process."
 Invoke-MainLogMsg "[*] Spawning parallel worker pool (Max Threads: $ThrottleLimit)..."
 Invoke-MainLogMsg "---------------------------------------------"
 
-# Structure tracks with sequential indices for thread color assignment
 $TrackObjects = [System.Collections.Generic.List[PSCustomObject]]::new()
 for ($i = 0; $i -lt $AudioFiles.Count; $i++) {
     $TrackObjects.Add([PSCustomObject]@{
@@ -116,7 +113,7 @@ $TrackObjects | ForEach-Object -Parallel {
     $ForceFullRefresh = $using:ForceFullRefresh
 
     try {
-        # Thread-Safe Color-Coded Logger Matrix (12-Color Expanded Palette)
+        # Thread-Safe Logger
         function Invoke-LogMsg([string]$Text, [int]$Idx) {
             if ([string]::IsNullOrWhiteSpace($Text)) { return }
             $Timestamp = (Get-Date).ToString("HH:mm:ss")
@@ -150,34 +147,30 @@ $TrackObjects | ForEach-Object -Parallel {
             
             if (Test-Path -LiteralPath $GlobalLogFile) {
                 $RetryCount = 0
-                $MaxRetries = 15
-                $Success    = $false
-                while (-not $Success -and $RetryCount -lt $MaxRetries) {
+                while ($RetryCount -lt 15) {
                     try {
                         [System.IO.File]::AppendAllText($GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
-                        $Success = $true
+                        break
                     } catch [System.IO.IOException] {
                         $RetryCount++
                         [System.Threading.Thread]::Sleep(50)
-                    } catch {
-                        break
-                    }
+                    } catch { break }
                 }
             }
         }
 
-        # Thread-isolated helper: Check .lrc synced timestamps
+        # Enhanced Validator: Requires at least 3 timestamped lines to count as valid synced .lrc
         function Test-IsSyncedLrc ([string]$File) {
             if (-not (Test-Path -LiteralPath $File)) { return $false }
             try {
-                $Content = [System.IO.File]::ReadAllText($File)
-                return ($Content -match '\[\d{1,3}:\d{2}')
+                $Lines = [System.IO.File]::ReadAllLines($File)
+                $TimestampMatches = ($Lines | Where-Object { $_ -match '\[\d{1,3}:\d{2}' }).Count
+                return ($TimestampMatches -ge 3)
             } catch {
                 return $false
             }
         }
 
-        # Thread-isolated helper: RAM & Handle Snapshot
         function Get-MemorySnapshot {
             $Proc           = [System.Diagnostics.Process]::GetCurrentProcess()
             $WorkingSetMB   = [math]::Round($Proc.WorkingSet64 / 1MB, 2)
@@ -186,7 +179,6 @@ $TrackObjects | ForEach-Object -Parallel {
             return "RAM (WS): ${WorkingSetMB}MB | Private: ${PrivateBytesMB}MB | Handles: $Handles"
         }
 
-        # Optimized executor: STDIN streaming + Hard Handle/Memory Disposal
         function Invoke-ThreadNativeProcess ([string]$Executable, [string[]]$ArgumentList, [string]$InputScript, [switch]$CaptureOutput) {
             $psi = [System.Diagnostics.ProcessStartInfo]::new()
             $psi.FileName               = $Executable
@@ -224,7 +216,9 @@ $TrackObjects | ForEach-Object -Parallel {
                     }
                     while (-not $proc.StandardError.EndOfStream) {
                         $ErrLine = $proc.StandardError.ReadLine()
-                        if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex }
+                        if ($ErrLine -and $ErrLine -notmatch "ConnectTimeoutError|Max retries exceeded") { 
+                            Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex 
+                        }
                     }
                 }
 
@@ -237,12 +231,13 @@ $TrackObjects | ForEach-Object -Parallel {
                 }
                 while (-not $proc.StandardError.EndOfStream) {
                     $ErrLine = $proc.StandardError.ReadLine()
-                    if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex }
+                    if ($ErrLine -and $ErrLine -notmatch "ConnectTimeoutError|Max retries exceeded") { 
+                        Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex 
+                    }
                 }
 
                 if ($CaptureOutput) {
-                    $OutText = $stdoutBuilder.ToString()
-                    return [PSCustomObject]@{ ExitCode = $proc.ExitCode; Output = $OutText }
+                    return [PSCustomObject]@{ ExitCode = $proc.ExitCode; Output = $stdoutBuilder.ToString() }
                 }
                 return $proc.ExitCode
             } catch {
@@ -250,10 +245,7 @@ $TrackObjects | ForEach-Object -Parallel {
                 if ($CaptureOutput) { return [PSCustomObject]@{ ExitCode = -1; Output = "" } }
                 return -1
             } finally {
-                if ($null -ne $stdoutBuilder) {
-                    $stdoutBuilder.Clear()
-                    $stdoutBuilder = $null
-                }
+                if ($null -ne $stdoutBuilder) { $stdoutBuilder.Clear(); $stdoutBuilder = $null }
                 if ($null -ne $proc) {
                     try { $proc.Close() } catch {}
                     try { $proc.Dispose() } catch {}
@@ -285,12 +277,12 @@ $TrackObjects | ForEach-Object -Parallel {
                 Invoke-LogMsg "---------------------------------------------" $TrackIndex
                 return
             } else {
-                Invoke-LogMsg "    [!] Existing .lrc lacks timestamps (unsynced text). Staging for tag embedding." $TrackIndex
+                Invoke-LogMsg "    [!] Existing .lrc lacks timestamps or is incomplete. Staging for re-query." $TrackIndex
                 Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
             }
         }
 
-        # STEP 1: Extract Metadata via STDIN Streamed Python
+        # STEP 1: Metadata Extraction
         $PreCheckPython = @"
 import sys, mutagen, json
 from mutagen.mp4 import MP4
@@ -298,10 +290,7 @@ from mutagen.flac import FLAC
 from mutagen.id3 import ID3
 
 file_path = sys.argv[1]
-artist = ""
-title = ""
-is_inst = False
-has_lyrics = False
+artist, title, is_inst, has_lyrics = "", "", False, False
 
 try:
     audio = mutagen.File(file_path)
@@ -337,8 +326,7 @@ except Exception as e:
         
         $MetaResult  = Invoke-ThreadNativeProcess "python" @("-", $FilePath) -InputScript $PreCheckPython -CaptureOutput
         $MetaJsonRaw = $MetaResult.Output
-
-        $Meta = $null
+        $Meta        = $null
         try { $Meta = $MetaJsonRaw | ConvertFrom-Json } catch {}
 
         if (-not $ForceFullRefresh -and $Meta.is_inst) {
@@ -350,20 +338,36 @@ except Exception as e:
 
         $HasUnsyncedLyrics = if ($ForceFullRefresh) { $false } else { [bool]$Meta.has_lyrics }
 
-        # STEP 2: Construct Search Target
+        # STEP 2: Formulate Multi-Tier Search Queries
         $ArtistTag = $Meta.artist
         $TitleTag  = $Meta.title
         
+        $QueriesToTry = [System.Collections.Generic.List[string]]::new()
+        
         if (-not [string]::IsNullOrWhiteSpace($ArtistTag) -and -not [string]::IsNullOrWhiteSpace($TitleTag)) {
-            $SearchQuery = "$ArtistTag - $TitleTag"
-        } else {
-            $SearchQuery = $FileInfo.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' '
+            # Pass 1: Raw metadata query
+            $RawQuery = "$ArtistTag - $TitleTag"
+            $QueriesToTry.Add($RawQuery)
+
+            # Pass 2: Cleaned normalized query (strips demos, remasters, bonus tags, feat. etc.)
+            $CleanTitle  = $TitleTag -replace '\s*[\(\[\{].*?(demo|live|remaster|pre-production|version|edit|bonus|mix|deluxe|acoustic).*?[\)\]\}]', '' -replace '\s+feat\..*', '' -replace '\s+', ' '
+            $CleanArtist = $ArtistTag -replace '\s+feat\..*', ''
+            $CleanQuery  = "$CleanArtist - $CleanTitle".Trim()
+
+            if ($CleanQuery -and $CleanQuery -ne $RawQuery) {
+                $QueriesToTry.Add($CleanQuery)
+            }
+        }
+        
+        # Pass 3: Filename fallback
+        $FileQuery = ($FileInfo.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' ').Trim()
+        if (-not $QueriesToTry.Contains($FileQuery)) {
+            $QueriesToTry.Add($FileQuery)
         }
 
-        Invoke-LogMsg "    [*] Precision query formulated: '$SearchQuery'" $TrackIndex
+        Invoke-LogMsg "    [*] Precision queries generated: ($($QueriesToTry -join ' | '))" $TrackIndex
 
-        # STEP 3: MusicBrainz Instrumental Check via STDIN Streamed Python
-        Invoke-LogMsg "    [*] Querying MusicBrainz for Instrumental classification..." $TrackIndex
+        # STEP 3: MusicBrainz Instrumental Check
         $MBPython = @"
 import sys, urllib.request, json, urllib.parse, mutagen
 from mutagen.mp4 import MP4
@@ -408,7 +412,7 @@ if check_mb(query):
     sys.exit(1)
 sys.exit(0)
 "@
-        $IsInstrumentalExit = Invoke-ThreadNativeProcess "python" @("-", $SearchQuery, $FilePath) -InputScript $MBPython
+        $IsInstrumentalExit = Invoke-ThreadNativeProcess "python" @("-", $QueriesToTry[0], $FilePath) -InputScript $MBPython
 
         if ($IsInstrumentalExit -eq 1) {
             Invoke-LogMsg "    [+] Confirmed Instrumental via MusicBrainz! Tags stamped." $TrackIndex
@@ -418,28 +422,32 @@ sys.exit(0)
             return
         }
 
-        # STEP 4: Query Lyric APIs
-        Invoke-LogMsg "    [*] Querying timeline sync index sequence..." $TrackIndex
+        # STEP 4: Query Lyric APIs Across Query Variations
         $TimedProviders = @("lrclib", "musixmatch", "netease", "megalobiz")
-        $LrcFound = $false
+        $LrcFound       = $false
 
-        foreach ($Provider in $TimedProviders) {
-            Invoke-LogMsg "    [*] Querying matrix source: [$Provider]" $TrackIndex
-            $LrcArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "-p", $Provider)
-            $LrcExitCode = Invoke-ThreadNativeProcess "python" $LrcArgs
-            
-            if (Test-Path -LiteralPath $LrcFile) {
-                if (Test-IsSyncedLrc $LrcFile) {
-                    Invoke-LogMsg "     [+] Timed .lrc timeline successfully committed via [$Provider]." $TrackIndex
-                    if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
-                    $LrcFound = $true
-                    break
-                } else {
-                    if (-not (Test-Path -LiteralPath $TxtFile)) {
-                        Invoke-LogMsg "     [!] [$Provider] returned unsynced text. Staging as fallback..." $TrackIndex
-                        Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
+        foreach ($QueryTarget in $QueriesToTry) {
+            if ($LrcFound) { break }
+            Invoke-LogMsg "    [*] Initiating provider sweep for search target: '$QueryTarget'" $TrackIndex
+
+            foreach ($Provider in $TimedProviders) {
+                Invoke-LogMsg "    [*] Querying source: [$Provider]" $TrackIndex
+                $LrcArgs = @("-m", "syncedlyrics", $QueryTarget, "-o", $LrcFile, "-p", $Provider)
+                $LrcExitCode = Invoke-ThreadNativeProcess "python" $LrcArgs
+                
+                if (Test-Path -LiteralPath $LrcFile) {
+                    if (Test-IsSyncedLrc $LrcFile) {
+                        Invoke-LogMsg "     [+] Valid timed .lrc successfully retrieved via [$Provider]!" $TrackIndex
+                        if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
+                        $LrcFound = $true
+                        break
                     } else {
-                        Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue
+                        if (-not (Test-Path -LiteralPath $TxtFile)) {
+                            Invoke-LogMsg "     [!] [$Provider] returned unsynced/partial text. Staging as fallback..." $TrackIndex
+                            Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
+                        } else {
+                            Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue
+                        }
                     }
                 }
             }
@@ -450,18 +458,21 @@ sys.exit(0)
             return 
         }
 
-        # STEP 5: Genius Fallback Scraper
+        # STEP 5: Genius Fallback Scraper (Iterates Query Targets)
         if (-not (Test-Path -LiteralPath $TxtFile) -and -not $HasUnsyncedLyrics) {
-            Invoke-LogMsg "    [!] Timed matrix missing. Scraping Genius Engine for untimed lyrics..." $TrackIndex
-            $FallbackArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "-p", "genius")
-            $FallbackExitCode = Invoke-ThreadNativeProcess "python" $FallbackArgs
+            foreach ($QueryTarget in $QueriesToTry) {
+                Invoke-LogMsg "    [!] Timed matrix missing. Scraping Genius for target: '$QueryTarget'" $TrackIndex
+                $FallbackArgs = @("-m", "syncedlyrics", $QueryTarget, "-o", $LrcFile, "-p", "genius")
+                $FallbackExitCode = Invoke-ThreadNativeProcess "python" $FallbackArgs
 
-            if (Test-Path -LiteralPath $LrcFile) {
-                Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
+                if (Test-Path -LiteralPath $LrcFile) {
+                    Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
+                    break
+                }
             }
         }
 
-        # STEP 6: Untimed Tag Embedding via STDIN Streamed Python
+        # STEP 6: Untimed Tag Embedding
         if (Test-Path -LiteralPath $TxtFile) {
             Invoke-LogMsg "     [+] Plain text lyrics found. Embedding into container tags..." $TrackIndex
             
@@ -504,7 +515,6 @@ except Exception as e:
 
         Invoke-LogMsg "---------------------------------------------" $TrackIndex
     } finally {
-        # Per-track forced garbage collection keeps thread RAM flat (~100MB - 200MB max)
         [System.GC]::Collect()
         [System.GC]::WaitForPendingFinalizers()
         [System.GC]::Collect()
