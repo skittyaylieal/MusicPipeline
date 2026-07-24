@@ -1,6 +1,7 @@
 Param (
     [string]$BackupDir,
-    [switch]$ForceFullRefresh
+    [switch]$ForceFullRefresh,
+    [int]$ThrottleLimit = 4
 )
 
 $MetricStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -11,154 +12,59 @@ try {
 
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
-# Unified Thread-Safe Logger matching the Downloader Engine
-function Invoke-LogMsg([string]$Text) {
+# Main Thread Logger (used during initialization and summary)
+function Invoke-MainLogMsg([string]$Text) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return }
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
     $ESC = [char]27
     $Reset = "$ESC[0m"
-    
-    $ColorCode = "34" # Blue
-    
-    if ($Text -match '🛑|error:|ERROR:|Usage:|\[!\]') {
-        $ColorCode = "1;31" # Bold Red
-    } elseif ($Text -match '\[\+\]') {
-        $ColorCode = "32" # Green for successful writes/finds
-    }
-
-    $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [LyricsEngine]$Reset"
+    $ColorPrefix   = "$ESC[34m[$Timestamp] [LyricsEngine]$Reset"
     $FormattedLine = "$ColorPrefix $Text"
     
     Write-Host $FormattedLine
-    
     if (Test-Path -LiteralPath $GlobalLogFile) {
-        $RetryCount = 0
-        $MaxRetries = 15
-        $Success    = $false
-        
-        while (-not $Success -and $RetryCount -lt $MaxRetries) {
-            try {
-                [System.IO.File]::AppendAllText($GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
-                $Success = $true
-            } catch [System.IO.IOException] {
-                $RetryCount++
-                [System.Threading.Thread]::Sleep(50)
-            } catch {
-                break
-            }
-        }
+        try { [System.IO.File]::AppendAllText($GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine)) } catch {}
     }
 }
 
-# Helper to verify if an .lrc file contains valid synced timestamps [mm:ss]
-function Test-IsSyncedLrc ([string]$FilePath) {
-    if (-not (Test-Path -LiteralPath $FilePath)) { return $false }
-    try {
-        $Content = [System.IO.File]::ReadAllText($FilePath)
-        return ($Content -match '\[\d{1,3}:\d{2}')
-    } catch {
-        return $false
-    }
-}
-
-# Diagnostic Helper: Captures current PowerShell process RAM & OS handle usage
-function Get-MemorySnapshot {
-    $Proc = [System.Diagnostics.Process]::GetCurrentProcess()
-    $WorkingSetMB  = [math]::Round($Proc.WorkingSet64 / 1MB, 2)
-    $PrivateBytesMB = [math]::Round($Proc.PrivateMemorySize64 / 1MB, 2)
-    $Handles        = $Proc.HandleCount
-    return "RAM (WS): ${WorkingSetMB}MB | RAM (Private): ${PrivateBytesMB}MB | Handles: $Handles"
-}
-
-Invoke-LogMsg "============================================="
-Invoke-LogMsg "    PowerShell Module: Headless Lyric Engine & Tag Embedder"
-Invoke-LogMsg "============================================="
-
-# Leak-Free Native Process Execution Handler
-function Invoke-NativeProcess ([string]$Executable, [string[]]$ArgumentList, [switch]$CaptureOutput) {
+# Top-level Native Process Handler for dependency checks
+function Invoke-MainNativeProcess ([string]$Executable, [string[]]$ArgumentList) {
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName               = $Executable
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError  = $true 
-    $psi.RedirectStandardInput  = $true 
     $psi.UseShellExecute        = $false
     $psi.CreateNoWindow         = $true
-    
-    $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
-    $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
-    
-    $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
-
     foreach ($arg in $ArgumentList) { $psi.ArgumentList.Add($arg) }
-
-    $proc = $null
-    $stdoutBuilder = [System.Text.StringBuilder]::new()
-
-    try {
-        $proc = [System.Diagnostics.Process]::Start($psi)
-        $proc.StandardInput.Close()
-
-        while (-not $proc.HasExited) {
-            [System.Threading.Thread]::Sleep(20)
-            while (-not $proc.StandardOutput.EndOfStream) {
-                $Line = $proc.StandardOutput.ReadLine()
-                if ($Line) { 
-                    if ($CaptureOutput) { [void]$stdoutBuilder.AppendLine($Line) }
-                    else { Invoke-LogMsg "    [Python STDOUT] $Line" }
-                }
-            }
-            while (-not $proc.StandardError.EndOfStream) {
-                $ErrLine = $proc.StandardError.ReadLine()
-                if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" }
-            }
-        }
-
-        while (-not $proc.StandardOutput.EndOfStream) {
-            $Line = $proc.StandardOutput.ReadLine()
-            if ($Line) { 
-                if ($CaptureOutput) { [void]$stdoutBuilder.AppendLine($Line) }
-                else { Invoke-LogMsg "    [Python STDOUT] $Line" }
-            }
-        }
-        while (-not $proc.StandardError.EndOfStream) {
-            $ErrLine = $proc.StandardError.ReadLine()
-            if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" }
-        }
-
-        if ($CaptureOutput) {
-            $OutText = $stdoutBuilder.ToString()
-            $stdoutBuilder.Clear()
-            return [PSCustomObject]@{ ExitCode = $proc.ExitCode; Output = $OutText }
-        }
-        return $proc.ExitCode
-    } catch {
-        Invoke-LogMsg "[🛑 PROCESS PANIC] Failed execution framework: $_"
-        if ($CaptureOutput) { return [PSCustomObject]@{ ExitCode = -1; Output = "" } }
-        return -1
-    } finally {
-        if ($null -ne $proc) { $proc.Dispose() }
-    }
+    
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    $proc.WaitForExit()
+    return $proc.ExitCode
 }
 
-Invoke-LogMsg "[*] Verifying background Python dependencies..."
-$PipExit = Invoke-NativeProcess "pip" @("install", "--upgrade", "syncedlyrics", "mutagen", "--quiet")
-Invoke-LogMsg "[*] Pip verification routine complete (Exit Code: $PipExit)."
+Invoke-MainLogMsg "============================================="
+Invoke-MainLogMsg "    PowerShell Module: Headless Lyric Engine & Tag Embedder (Parallel)"
+Invoke-MainLogMsg "============================================="
+
+Invoke-MainLogMsg "[*] Verifying background Python dependencies..."
+$PipExit = Invoke-MainNativeProcess "pip" @("install", "--upgrade", "syncedlyrics", "mutagen", "--quiet")
+Invoke-MainLogMsg "[*] Pip verification routine complete (Exit Code: $PipExit)."
 
 if (-not (Test-Path -LiteralPath $BackupDir -PathType Container)) {
-    Invoke-LogMsg "[ERROR] Target backup directory could not be found: $BackupDir"
+    Invoke-MainLogMsg "[ERROR] Target backup directory could not be found: $BackupDir"
     Exit 1
 }
 
 if ($ForceFullRefresh) {
-    Invoke-LogMsg "🧹 [CLEAN SWEEP REFRESH] Forcing deep query over every track. Stale local .lrc files will be purged."
+    Invoke-MainLogMsg "🧹 [CLEAN SWEEP REFRESH] Forcing deep query over every track. Stale local .lrc files will be purged."
 }
 
-Invoke-LogMsg "[*] Initializing ultra-fast deep database scan across: $BackupDir"
+Invoke-MainLogMsg "[*] Initializing ultra-fast deep database scan across: $BackupDir"
 
 try {
     $AllFiles = [System.IO.Directory]::EnumerateFiles($BackupDir, "*.*", [System.IO.SearchOption]::AllDirectories)
 } catch {
-    Invoke-LogMsg "[ERROR] Failed to initialize deep directory enumeration: $_"
+    Invoke-MainLogMsg "[ERROR] Failed to initialize deep directory enumeration: $_"
     Exit 1
 }
 
@@ -170,60 +76,204 @@ foreach ($File in $AllFiles) {
 }
 
 if ($AudioFiles.Count -eq 0) {
-    Invoke-LogMsg "[+] No audio tracks found across the system array."
+    Invoke-MainLogMsg "[+] No audio tracks found across the system array."
     $MetricStopwatch.Stop()
-    Invoke-LogMsg "[METRIC] 00:00:00"
+    Invoke-MainLogMsg "[METRIC] 00:00:00"
     Exit 0
 }
 
-Invoke-LogMsg "[+] Deep scan complete. Found $($AudioFiles.Count) total track(s) to verify."
-Invoke-LogMsg "---------------------------------------------"
+Invoke-MainLogMsg "[+] Deep scan complete. Found $($AudioFiles.Count) total track(s) to verify."
+Invoke-MainLogMsg "[*] Spawning parallel worker pool (Max Threads: $ThrottleLimit)..."
+Invoke-MainLogMsg "---------------------------------------------"
 
-$ScannedCount = 0
-foreach ($FilePath in $AudioFiles) {
-    $ScannedCount++
-    
-    # Accelerated Garbage Collection Sweep (Runs every 10 tracks with memory delta reporting)
-    if ($ScannedCount % 10 -eq 0) {
-        $RamBefore = [math]::Round(([System.Diagnostics.Process]::GetCurrentProcess().WorkingSet64 / 1MB), 2)
-        [System.GC]::Collect()
-        [System.GC]::WaitForPendingFinalizers()
-        [System.GC]::Collect() # Double-pass to clean lingering handles
-        $RamAfter = [math]::Round(([System.Diagnostics.Process]::GetCurrentProcess().WorkingSet64 / 1MB), 2)
-        $Freed    = [math]::Round($RamBefore - $RamAfter, 2)
+# Structure tracks with sequential indices for thread color assignment
+$TrackObjects = [System.Collections.Generic.List[PSCustomObject]]::new()
+for ($i = 0; $i -lt $AudioFiles.Count; $i++) {
+    $TrackObjects.Add([PSCustomObject]@{
+        Index = $i + 1
+        Path  = $AudioFiles[$i]
+    })
+}
+
+$TotalTracks = $AudioFiles.Count
+
+# =========================================================================
+# PARALLEL WORKER ENGINE
+# =========================================================================
+$TrackObjects | ForEach-Object -Parallel {
+    $TrackIndex       = $_.Index
+    $FilePath         = $_.Path
+    $TotalCount       = $using:TotalTracks
+    $GlobalLogFile    = $using:GlobalLogFile
+    $ForceFullRefresh = $using:ForceFullRefresh
+    $ThreadGuid       = [System.Guid]::NewGuid().Guid
+
+    # Thread-Safe Color-Coded Logger Matrix (12-Color Expanded Palette)
+    function Invoke-LogMsg([string]$Text, [int]$Idx) {
+        if ([string]::IsNullOrWhiteSpace($Text)) { return }
+        $Timestamp = (Get-Date).ToString("HH:mm:ss")
+        $ESC       = [char]27
+        $Reset     = "$ESC[0m"
         
-        Invoke-LogMsg "🧹 [GC SWEEP] Track $ScannedCount | Before: ${RamBefore}MB -> After: ${RamAfter}MB (Freed: ${Freed}MB) | $(Get-MemorySnapshot)"
+        # Expanded 256-Color Palette based on Download.ps1
+        $ColorCode = switch (($Idx - 1) % 12) {
+            0  { "38;5;51" }   # Cyan
+            1  { "38;5;201" }  # Magenta
+            2  { "33" }        # Yellow
+            3  { "38;5;135" }  # Purple
+            4  { "38;5;208" }  # Orange
+            5  { "38;5;217" }  # Peach
+            6  { "38;5;75" }   # Sky Blue
+            7  { "38;5;118" }  # Bright Lime
+            8  { "38;5;213" }  # Orchid Pink
+            9  { "38;5;37" }   # Teal
+            10 { "38;5;203" }  # Coral Red
+            11 { "38;5;141" }  # Lavender
+            default { "32" }   # Fallback Green
+        }
+        
+        if ($Text -match '🛑|THREAD DEBUG ALERT|error:|ERROR:|Usage:|\[!\]') {
+            $ColorCode = "1;31" # Bold Red override for errors
+        }
+
+        $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Track $Idx]$Reset"
+        $FormattedLine = "$ColorPrefix $Text"
+        
+        Write-Output $FormattedLine
+        
+        if (Test-Path -LiteralPath $using:GlobalLogFile) {
+            $RetryCount = 0
+            $MaxRetries = 15
+            $Success    = $false
+            while (-not $Success -and $RetryCount -lt $MaxRetries) {
+                try {
+                    [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
+                    $Success = $true
+                } catch [System.IO.IOException] {
+                    $RetryCount++
+                    [System.Threading.Thread]::Sleep(50)
+                } catch {
+                    break
+                }
+            }
+        }
     }
 
+    # Thread-isolated helper: Check .lrc synced timestamps
+    function Test-IsSyncedLrc ([string]$File) {
+        if (-not (Test-Path -LiteralPath $File)) { return $false }
+        try {
+            $Content = [System.IO.File]::ReadAllText($File)
+            return ($Content -match '\[\d{1,3}:\d{2}')
+        } catch {
+            return $false
+        }
+    }
+
+    # Thread-isolated helper: RAM & Handle Snapshot
+    function Get-MemorySnapshot {
+        $Proc           = [System.Diagnostics.Process]::GetCurrentProcess()
+        $WorkingSetMB   = [math]::Round($Proc.WorkingSet64 / 1MB, 2)
+        $PrivateBytesMB = [math]::Round($Proc.PrivateMemorySize64 / 1MB, 2)
+        $Handles        = $Proc.HandleCount
+        return "RAM (WS): ${WorkingSetMB}MB | Private: ${PrivateBytesMB}MB | Handles: $Handles"
+    }
+
+    # Thread-isolated process executor with unbuffered STDOUT/STDERR capture
+    function Invoke-ThreadNativeProcess ([string]$Executable, [string[]]$ArgumentList, [switch]$CaptureOutput) {
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName               = $Executable
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError  = $true 
+        $psi.RedirectStandardInput  = $true 
+        $psi.UseShellExecute        = $false
+        $psi.CreateNoWindow         = $true
+        
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding  = [System.Text.Encoding]::UTF8
+        $psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"
+
+        foreach ($arg in $ArgumentList) { $psi.ArgumentList.Add($arg) }
+
+        $proc = $null
+        $stdoutBuilder = [System.Text.StringBuilder]::new()
+
+        try {
+            $proc = [System.Diagnostics.Process]::Start($psi)
+            $proc.StandardInput.Close()
+
+            while (-not $proc.HasExited) {
+                [System.Threading.Thread]::Sleep(20)
+                while (-not $proc.StandardOutput.EndOfStream) {
+                    $Line = $proc.StandardOutput.ReadLine()
+                    if ($Line) { 
+                        if ($CaptureOutput) { [void]$stdoutBuilder.AppendLine($Line) }
+                        else { Invoke-LogMsg "    [Python STDOUT] $Line" $using:TrackIndex }
+                    }
+                }
+                while (-not $proc.StandardError.EndOfStream) {
+                    $ErrLine = $proc.StandardError.ReadLine()
+                    if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" $using:TrackIndex }
+                }
+            }
+
+            while (-not $proc.StandardOutput.EndOfStream) {
+                $Line = $proc.StandardOutput.ReadLine()
+                if ($Line) { 
+                    if ($CaptureOutput) { [void]$stdoutBuilder.AppendLine($Line) }
+                    else { Invoke-LogMsg "    [Python STDOUT] $Line" $using:TrackIndex }
+                }
+            }
+            while (-not $proc.StandardError.EndOfStream) {
+                $ErrLine = $proc.StandardError.ReadLine()
+                if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" $using:TrackIndex }
+            }
+
+            if ($CaptureOutput) {
+                $OutText = $stdoutBuilder.ToString()
+                $stdoutBuilder.Clear()
+                return [PSCustomObject]@{ ExitCode = $proc.ExitCode; Output = $OutText }
+            }
+            return $proc.ExitCode
+        } catch {
+            Invoke-LogMsg "[🛑 PROCESS PANIC] Execution failure: $_" $using:TrackIndex
+            if ($CaptureOutput) { return [PSCustomObject]@{ ExitCode = -1; Output = "" } }
+            return -1
+        } finally {
+            if ($null -ne $proc) { $proc.Dispose() }
+        }
+    }
+
+    # ---------------------------------------------------------------------
+    # TRACK PROCESSING LOGIC
+    # ---------------------------------------------------------------------
     $FileInfo = [System.IO.FileInfo]::new($FilePath)
     
-    Invoke-LogMsg "[*] [$ScannedCount/$($AudioFiles.Count)] Evaluating: $($FileInfo.FullName)"
-    Invoke-LogMsg "    🔍 [MEM CHECK] $(Get-MemorySnapshot)"
+    Invoke-LogMsg "[*] [$TrackIndex/$TotalCount] Evaluating: $($FileInfo.FullName)" $TrackIndex
+    Invoke-LogMsg "    🔍 [MEM CHECK] $(Get-MemorySnapshot)" $TrackIndex
     
     $DirName = $FileInfo.DirectoryName
     $LrcFile = Join-Path $DirName "$($FileInfo.BaseName).lrc"
     $TxtFile = Join-Path $DirName "$($FileInfo.BaseName).txt"
     
-    # PURGE CHECK: If forcing a full refresh, wipe existing .lrc to guarantee clean-slate fetching
     if ($ForceFullRefresh) {
         if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue }
         if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
     }
 
-    # EXISTING .LRC VALIDATION: Ensure existing .lrc file actually has timed timestamps
     if (-not $ForceFullRefresh -and (Test-Path -LiteralPath $LrcFile)) {
         if (Test-IsSyncedLrc $LrcFile) {
-            Invoke-LogMsg "    [-] Valid synced .lrc companion already exists on disk. Skipping."
-            Invoke-LogMsg "---------------------------------------------"
-            continue
+            Invoke-LogMsg "    [-] Valid synced .lrc companion already exists on disk. Skipping." $TrackIndex
+            Invoke-LogMsg "---------------------------------------------" $TrackIndex
+            return
         } else {
-            Invoke-LogMsg "    [!] Existing .lrc lacks timestamps (unsynced plain text). Staging for tag embedding."
+            Invoke-LogMsg "    [!] Existing .lrc lacks timestamps (unsynced text). Staging for tag embedding." $TrackIndex
             Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
         }
     }
 
-    # STEP 1: Extract Artist + Title Metadata & Check Existing Instrumental/Lyric Tags
-    $TmpPyCheck = Join-Path $env:TEMP "mutagen_extract.py"
+    # STEP 1: Extract Metadata via Isolated GUID Temp Python Script
+    $TmpPyCheck = Join-Path $env:TEMP "mutagen_extract_$ThreadGuid.py"
     $PreCheckPython = @"
 import mutagen, sys, json
 from mutagen.mp4 import MP4
@@ -268,7 +318,7 @@ except Exception as e:
 "@
     $PreCheckPython | Out-File $TmpPyCheck -Encoding utf8NoBOM
     
-    $MetaResult = Invoke-NativeProcess "python" @($TmpPyCheck) -CaptureOutput
+    $MetaResult  = Invoke-ThreadNativeProcess "python" @($TmpPyCheck) -CaptureOutput
     $MetaJsonRaw = $MetaResult.Output
     Remove-Item $TmpPyCheck -Force -ErrorAction SilentlyContinue
 
@@ -276,15 +326,15 @@ except Exception as e:
     try { $Meta = $MetaJsonRaw | ConvertFrom-Json } catch {}
 
     if (-not $ForceFullRefresh -and $Meta.is_inst) {
-        Invoke-LogMsg "    [-] Track explicitly marked as Instrumental. Skipping API engine."
+        Invoke-LogMsg "    [-] Track explicitly marked as Instrumental. Skipping API engine." $TrackIndex
         if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
-        Invoke-LogMsg "---------------------------------------------"
-        continue
+        Invoke-LogMsg "---------------------------------------------" $TrackIndex
+        return
     }
 
     $HasUnsyncedLyrics = if ($ForceFullRefresh) { $false } else { [bool]$Meta.has_lyrics }
 
-    # STEP 2: Construct Precision Search Target (Artist + Title)
+    # STEP 2: Construct Search Target
     $ArtistTag = $Meta.artist
     $TitleTag  = $Meta.title
     
@@ -294,11 +344,11 @@ except Exception as e:
         $SearchQuery = $FileInfo.BaseName -replace '^\d+[\s-]*', '' -replace '\s+', ' '
     }
 
-    Invoke-LogMsg "    [*] Formulated precision search query: '$SearchQuery'"
+    Invoke-LogMsg "    [*] Precision query formulated: '$SearchQuery'" $TrackIndex
 
-    # STEP 3: Check MusicBrainz FIRST
-    Invoke-LogMsg "    [*] Running MusicBrainz validation for explicit Instrumental classification..."
-    $TmpPyInstCheck = Join-Path $env:TEMP "musicbrainz_check.py"
+    # STEP 3: MusicBrainz Instrumental Check
+    Invoke-LogMsg "    [*] Querying MusicBrainz for Instrumental classification..." $TrackIndex
+    $TmpPyInstCheck = Join-Path $env:TEMP "musicbrainz_check_$ThreadGuid.py"
     $MBPython = @"
 import sys, urllib.request, json, urllib.parse, mutagen
 from mutagen.mp4 import MP4
@@ -341,41 +391,38 @@ if check_mb(r"""$SearchQuery"""):
 sys.exit(0)
 "@
     $MBPython | Out-File $TmpPyInstCheck -Encoding utf8NoBOM
-    $IsInstrumentalExit = Invoke-NativeProcess "python" @($TmpPyInstCheck)
+    $IsInstrumentalExit = Invoke-ThreadNativeProcess "python" @($TmpPyInstCheck)
     Remove-Item $TmpPyInstCheck -Force -ErrorAction SilentlyContinue
 
     if ($IsInstrumentalExit -eq 1) {
-        Invoke-LogMsg "    [+] Confirmed Instrumental via MusicBrainz! Tags stamped."
+        Invoke-LogMsg "    [+] Confirmed Instrumental via MusicBrainz! Tags stamped." $TrackIndex
         if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue }
         if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
-        Invoke-LogMsg "---------------------------------------------"
-        continue
+        Invoke-LogMsg "---------------------------------------------" $TrackIndex
+        return
     }
 
-    # STEP 4: Query Lyric APIs for Real Synced Timelines
-    Invoke-LogMsg "    [*] Launching global timeline sync index query sequence..."
+    # STEP 4: Query Lyric APIs
+    Invoke-LogMsg "    [*] Querying timeline sync index sequence..." $TrackIndex
     $TimedProviders = @("lrclib", "musixmatch", "netease", "megalobiz")
     $LrcFound = $false
 
     foreach ($Provider in $TimedProviders) {
-        Invoke-LogMsg "    [*] Querying matrix source: [$Provider]"
+        Invoke-LogMsg "    [*] Querying matrix source: [$Provider]" $TrackIndex
         $LrcArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "-p", $Provider)
-        $LrcExitCode = Invoke-NativeProcess "python" $LrcArgs
+        $LrcExitCode = Invoke-ThreadNativeProcess "python" $LrcArgs
         
         if (Test-Path -LiteralPath $LrcFile) {
             if (Test-IsSyncedLrc $LrcFile) {
-                Invoke-LogMsg "     [+] Pristine timed timelines (.lrc) successfully committed via [$Provider]."
-                # Synced lyrics win! Trash any previously staged unsynced fallback
+                Invoke-LogMsg "     [+] Timed .lrc timeline successfully committed via [$Provider]." $TrackIndex
                 if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
                 $LrcFound = $true
                 break
             } else {
-                # Unsynced plain text returned before Genius
                 if (-not (Test-Path -LiteralPath $TxtFile)) {
-                    Invoke-LogMsg "     [!] Provider [$Provider] returned unsynced text. Staging as fallback while continuing search for synced lyrics..."
+                    Invoke-LogMsg "     [!] [$Provider] returned unsynced text. Staging as fallback..." $TrackIndex
                     Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
                 } else {
-                    Invoke-LogMsg "     [!] Provider [$Provider] returned unsynced text. Discarding (already have a staged fallback)."
                     Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue
                 }
             }
@@ -383,26 +430,26 @@ sys.exit(0)
     }
     
     if ($LrcFound) { 
-        Invoke-LogMsg "---------------------------------------------"
-        continue 
+        Invoke-LogMsg "---------------------------------------------" $TrackIndex
+        return 
     }
 
-    # STEP 5: Untimed Fallback (Genius Scraper & Plain Text Embedding)
-    # Only query Genius if we don't ALREADY have staged unsynced text from an earlier provider
+    # STEP 5: Genius Fallback Scraper
     if (-not (Test-Path -LiteralPath $TxtFile) -and -not $HasUnsyncedLyrics) {
-        Invoke-LogMsg "    [!] Timed matrix missing and no earlier fallback staged. Scraping Genius Engine for untimed lyrics..."
+        Invoke-LogMsg "    [!] Timed matrix missing. Scraping Genius Engine for untimed lyrics..." $TrackIndex
         $FallbackArgs = @("-m", "syncedlyrics", $SearchQuery, "-o", $LrcFile, "-p", "genius")
-        $FallbackExitCode = Invoke-NativeProcess "python" $FallbackArgs
+        $FallbackExitCode = Invoke-ThreadNativeProcess "python" $FallbackArgs
 
         if (Test-Path -LiteralPath $LrcFile) {
             Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
         }
     }
 
+    # STEP 6: Untimed Tag Embedding
     if (Test-Path -LiteralPath $TxtFile) {
-        Invoke-LogMsg "     [+] Plain text lyrics found. Embedding directly into container tags for Samsung Music..."
+        Invoke-LogMsg "     [+] Plain text lyrics found. Embedding into container tags..." $TrackIndex
         
-        $TmpPyEmbed = Join-Path $env:TEMP "mutagen_embed.py"
+        $TmpPyEmbed = Join-Path $env:TEMP "mutagen_embed_$ThreadGuid.py"
         $PythonCode = @"
 import os, mutagen, sys
 from mutagen.mp4 import MP4
@@ -429,28 +476,22 @@ except Exception as e:
     sys.exit(1)
 "@
         $PythonCode | Out-File $TmpPyEmbed -Encoding utf8NoBOM
-        $EmbedExitCode = Invoke-NativeProcess "python" @($TmpPyEmbed)
+        $EmbedExitCode = Invoke-ThreadNativeProcess "python" @($TmpPyEmbed)
         Remove-Item $TmpPyEmbed -Force -ErrorAction SilentlyContinue
     }
     
-    # GUARANTEED CLEANUP: Ensure .txt is NEVER left on disk after processing
     if (Test-Path -LiteralPath $TxtFile) {
         Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue
     }
 
-    # Scope Variable Purge to Prevent PowerShell Object Retention Leaks
-    $PreCheckPython = $null
-    $MetaResult     = $null
-    $MetaJsonRaw    = $null
-    $Meta           = $null
-    $MBPython       = $null
-    $PythonCode     = $null
+    Invoke-LogMsg "---------------------------------------------" $TrackIndex
+} -ThrottleLimit $ThrottleLimit
 
-    Invoke-LogMsg "---------------------------------------------"
-}
-
+# =========================================================================
+# FINAL METRICS & TEARDOWN
+# =========================================================================
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Invoke-LogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
-Invoke-LogMsg "============================================="
+Invoke-MainLogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
+Invoke-MainLogMsg "============================================="
 Exit 0
