@@ -10,6 +10,11 @@ try { Clear-Host } catch {}
 
 $GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
+# Thread-Synchronized Global State for Rate Limiting / Cooldown
+$GlobalState = [hashtable]::Synchronized(@{
+    CooldownUntil = [datetime]::MinValue
+})
+
 # Main Thread Logger
 function Invoke-MainLogMsg([string]$Text) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return }
@@ -111,6 +116,7 @@ $TrackObjects | ForEach-Object -Parallel {
     $TotalCount       = $using:TotalTracks
     $GlobalLogFile    = $using:GlobalLogFile
     $ForceFullRefresh = $using:ForceFullRefresh
+    $GlobalState      = $using:GlobalState
 
     try {
         # Thread-Safe Logger
@@ -136,7 +142,7 @@ $TrackObjects | ForEach-Object -Parallel {
                 default { "32" }   # Fallback Green
             }
             
-            if ($Text -match '🛑|THREAD DEBUG ALERT|error:|ERROR:|Usage:|\[!\]') {
+            if ($Text -match '🛑|THREAD DEBUG ALERT|error:|ERROR:|Usage:|\[!\]|⏸️') {
                 $ColorCode = "1;31"
             }
 
@@ -159,6 +165,67 @@ $TrackObjects | ForEach-Object -Parallel {
             }
         }
 
+        # Global Cooldown Check Routine
+        function Test-And-WaitCooldown ([int]$Idx) {
+            while ($true) {
+                $Until = $GlobalState.CooldownUntil
+                $Now   = [datetime]::Now
+                if ($Now -lt $Until) {
+                    $Remaining = [math]::Ceiling(($Until - $Now).TotalSeconds)
+                    Invoke-LogMsg "    [⏸️ COOLDOWN ACTIVE] Rate-limit backoff active ($Remainings remaining). Thread sleeping..." $Idx
+                    [System.Threading.Thread]::Sleep(5000)
+                } else {
+                    break
+                }
+            }
+        }
+
+        # Trigger Rate Limit Cooldown & Cleanup Routine
+        function Trigger-RateLimitCooldown ([string]$Reason, [string]$AudioPath, [string]$LrcPath, [string]$TxtPath, [int]$Idx) {
+            $NewUntil = [datetime]::Now.AddSeconds(60)
+            lock ($GlobalState.SyncRoot) {
+                if ($NewUntil -gt $GlobalState.CooldownUntil) {
+                    $GlobalState.CooldownUntil = $NewUntil
+                    Invoke-LogMsg "    [🛑 429 / RATE LIMIT DETECTED] $Reason" $Idx
+                    Invoke-LogMsg "    [⏸️ GLOBAL PAUSE] Triggering 60-second API cooldown across all worker threads..." $Idx
+                }
+            }
+
+            # 1. Delete local temporary files
+            if (Test-Path -LiteralPath $LrcPath) { Remove-Item -LiteralPath $LrcPath -Force -ErrorAction SilentlyContinue }
+            if (Test-Path -LiteralPath $TxtPath) { Remove-Item -LiteralPath $TxtPath -Force -ErrorAction SilentlyContinue }
+
+            # 2. Wipe embedded plain text/synced lyrics tags in container
+            Invoke-LogMsg "    [🧹 TAG PURGE] Wiping embedded lyrics tags from track container..." $Idx
+            $WipePython = @"
+import sys, mutagen
+from mutagen.mp4 import MP4
+from mutagen.flac import FLAC
+from mutagen.id3 import ID3
+
+file_path = sys.argv[1]
+try:
+    audio = mutagen.File(file_path)
+    if audio is not None:
+        if isinstance(audio, MP4):
+            if '\xa9lyr' in audio:
+                del audio['\xa9lyr']
+                audio.save()
+        elif isinstance(audio, FLAC):
+            if 'lyrics' in audio:
+                del audio['lyrics']
+                audio.save()
+        else:
+            try:
+                tags = ID3(file_path)
+                tags.delall('USLT')
+                tags.save(file_path)
+            except Exception: pass
+except Exception: pass
+"@
+            [void](Invoke-ThreadNativeProcess "python" @("-", $AudioPath) -InputScript $WipePython)
+        }
+
         # Enhanced Validator: Requires at least 3 timestamped lines to count as valid synced .lrc
         function Test-IsSyncedLrc ([string]$File) {
             if (-not (Test-Path -LiteralPath $File)) { return $false }
@@ -169,6 +236,18 @@ $TrackObjects | ForEach-Object -Parallel {
             } catch {
                 return $false
             }
+        }
+
+        # Test if an output file contains HTTP 429 or rate limit JSON text
+        function Test-IsRateLimitedFile ([string]$File) {
+            if (-not (Test-Path -LiteralPath $File)) { return $false }
+            try {
+                $Content = [System.IO.File]::ReadAllText($File)
+                if ($Content -match '(?i)429|too many requests|rate limit|throttled|retry-after') {
+                    return $true
+                }
+            } catch {}
+            return $false
         }
 
         function Get-MemorySnapshot {
@@ -196,6 +275,8 @@ $TrackObjects | ForEach-Object -Parallel {
 
             $proc = $null
             $stdoutBuilder = [System.Text.StringBuilder]::new()
+            $isThrottled = $false
+            $ThrottleRegex = '(?i)(429|too many requests|rate limit|throttled|http error 429|429 client error|retry-after)'
 
             try {
                 $proc = [System.Diagnostics.Process]::Start($psi)
@@ -210,14 +291,18 @@ $TrackObjects | ForEach-Object -Parallel {
                     while (-not $proc.StandardOutput.EndOfStream) {
                         $Line = $proc.StandardOutput.ReadLine()
                         if ($Line) { 
+                            if ($Line -match $ThrottleRegex) { $isThrottled = $true }
                             if ($CaptureOutput) { [void]$stdoutBuilder.AppendLine($Line) }
                             else { Invoke-LogMsg "    [Python STDOUT] $Line" $TrackIndex }
                         }
                     }
                     while (-not $proc.StandardError.EndOfStream) {
                         $ErrLine = $proc.StandardError.ReadLine()
-                        if ($ErrLine -and $ErrLine -notmatch "ConnectTimeoutError|Max retries exceeded") { 
-                            Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex 
+                        if ($ErrLine) {
+                            if ($ErrLine -match $ThrottleRegex) { $isThrottled = $true }
+                            if ($ErrLine -notmatch "ConnectTimeoutError|Max retries exceeded") { 
+                                Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex 
+                            }
                         }
                     }
                 }
@@ -225,25 +310,29 @@ $TrackObjects | ForEach-Object -Parallel {
                 while (-not $proc.StandardOutput.EndOfStream) {
                     $Line = $proc.StandardOutput.ReadLine()
                     if ($Line) { 
+                        if ($Line -match $ThrottleRegex) { $isThrottled = $true }
                         if ($CaptureOutput) { [void]$stdoutBuilder.AppendLine($Line) }
                         else { Invoke-LogMsg "    [Python STDOUT] $Line" $TrackIndex }
                     }
                 }
                 while (-not $proc.StandardError.EndOfStream) {
                     $ErrLine = $proc.StandardError.ReadLine()
-                    if ($ErrLine -and $ErrLine -notmatch "ConnectTimeoutError|Max retries exceeded") { 
-                        Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex 
+                    if ($ErrLine) { 
+                        if ($ErrLine -match $ThrottleRegex) { $isThrottled = $true }
+                        if ($ErrLine -notmatch "ConnectTimeoutError|Max retries exceeded") { 
+                            Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex 
+                        }
                     }
                 }
 
-                if ($CaptureOutput) {
-                    return [PSCustomObject]@{ ExitCode = $proc.ExitCode; Output = $stdoutBuilder.ToString() }
+                return [PSCustomObject]@{ 
+                    ExitCode    = $proc.ExitCode
+                    Output      = $stdoutBuilder.ToString()
+                    IsThrottled = $isThrottled
                 }
-                return $proc.ExitCode
             } catch {
                 Invoke-LogMsg "[🛑 PROCESS PANIC] Execution failure: $_" $TrackIndex
-                if ($CaptureOutput) { return [PSCustomObject]@{ ExitCode = -1; Output = "" } }
-                return -1
+                return [PSCustomObject]@{ ExitCode = -1; Output = ""; IsThrottled = $false }
             } finally {
                 if ($null -ne $stdoutBuilder) { $stdoutBuilder.Clear(); $stdoutBuilder = $null }
                 if ($null -ne $proc) {
@@ -257,6 +346,8 @@ $TrackObjects | ForEach-Object -Parallel {
         # ---------------------------------------------------------------------
         # TRACK PROCESSING LOGIC
         # ---------------------------------------------------------------------
+        Test-And-WaitCooldown $TrackIndex
+
         $FileInfo = [System.IO.FileInfo]::new($FilePath)
         
         Invoke-LogMsg "[*] [$TrackIndex/$TotalCount] Evaluating: $($FileInfo.FullName)" $TrackIndex
@@ -377,7 +468,7 @@ except Exception as e:
             $RawQuery = "$ArtistTag - $TitleTag".Trim()
             $QueriesToTry.Add($RawQuery)
 
-            # Pass 2: Cleaned normalized query (strips demos, remasters, bonus tags, feat. etc.)
+            # Pass 2: Cleaned normalized query
             $CleanTitle  = $TitleTag -replace '\s*[\(\[\{].*?(demo|live|remaster|pre-production|version|edit|bonus|mix|deluxe|acoustic).*?[\)\]\}]', '' -replace '\s+feat\..*', '' -replace '\s+', ' '
             $CleanArtist = $ArtistTag -replace '\s+feat\..*', ''
             $CleanQuery  = "$CleanArtist - $CleanTitle".Trim()
@@ -408,6 +499,7 @@ except Exception as e:
         Invoke-LogMsg "    [*] Precision queries validated: ($($SafeQueries -join ' | '))" $TrackIndex
 
         # STEP 3: MusicBrainz Instrumental Check
+        Test-And-WaitCooldown $TrackIndex
         $MBPython = @"
 import sys, urllib.request, json, urllib.parse, mutagen
 from mutagen.mp4 import MP4
@@ -452,9 +544,15 @@ if check_mb(query):
     sys.exit(1)
 sys.exit(0)
 "@
-        $IsInstrumentalExit = Invoke-ThreadNativeProcess "python" @("-", $SafeQueries[0], $FilePath) -InputScript $MBPython
+        $MBResult = Invoke-ThreadNativeProcess "python" @("-", $SafeQueries[0], $FilePath) -InputScript $MBPython
 
-        if ($IsInstrumentalExit -eq 1) {
+        if ($MBResult.IsThrottled) {
+            Trigger-RateLimitCooldown "MusicBrainz query triggered HTTP 429 Throttle" $FilePath $LrcFile $TxtFile $TrackIndex
+            Invoke-LogMsg "---------------------------------------------" $TrackIndex
+            return
+        }
+
+        if ($MBResult.ExitCode -eq 1) {
             Invoke-LogMsg "    [+] Confirmed Instrumental via MusicBrainz! Tags stamped." $TrackIndex
             if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue }
             if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
@@ -471,10 +569,20 @@ sys.exit(0)
             Invoke-LogMsg "    [*] Initiating provider sweep for target: '$QueryTarget'" $TrackIndex
 
             foreach ($Provider in $TimedProviders) {
+                Test-And-WaitCooldown $TrackIndex
+
                 Invoke-LogMsg "    [*] Querying source: [$Provider]" $TrackIndex
-                $LrcArgs = @("-m", "syncedlyrics", $QueryTarget, "-o", $LrcFile, "-p", $Provider)
-                $LrcExitCode = Invoke-ThreadNativeProcess "python" $LrcArgs
+                $LrcArgs   = @("-m", "syncedlyrics", $QueryTarget, "-o", $LrcFile, "-p", $Provider)
+                $LrcResult = Invoke-ThreadNativeProcess "python" $LrcArgs
                 
+                # Check for 429 rate limit or invalid throttle payload in file
+                if ($LrcResult.IsThrottled -or (Test-IsRateLimitedFile $LrcFile)) {
+                    Trigger-RateLimitCooldown "Provider [$Provider] returned 429 / Rate Limit" $FilePath $LrcFile $TxtFile $TrackIndex
+                    $LrcFound = $false
+                    Invoke-LogMsg "---------------------------------------------" $TrackIndex
+                    return
+                }
+
                 if (Test-Path -LiteralPath $LrcFile) {
                     if (Test-IsSyncedLrc $LrcFile) {
                         Invoke-LogMsg "     [+] Valid timed .lrc successfully retrieved via [$Provider]!" $TrackIndex
@@ -501,9 +609,17 @@ sys.exit(0)
         # STEP 5: Genius Fallback Scraper (Iterates Safe Queries)
         if (-not (Test-Path -LiteralPath $TxtFile) -and -not $HasUnsyncedLyrics) {
             foreach ($QueryTarget in $SafeQueries) {
+                Test-And-WaitCooldown $TrackIndex
+
                 Invoke-LogMsg "    [!] Timed matrix missing. Scraping Genius for target: '$QueryTarget'" $TrackIndex
-                $FallbackArgs = @("-m", "syncedlyrics", $QueryTarget, "-o", $LrcFile, "-p", "genius")
-                $FallbackExitCode = Invoke-ThreadNativeProcess "python" $FallbackArgs
+                $FallbackArgs   = @("-m", "syncedlyrics", $QueryTarget, "-o", $LrcFile, "-p", "genius")
+                $FallbackResult = Invoke-ThreadNativeProcess "python" $FallbackArgs
+
+                if ($FallbackResult.IsThrottled -or (Test-IsRateLimitedFile $LrcFile)) {
+                    Trigger-RateLimitCooldown "Genius Scraper returned 429 / Rate Limit" $FilePath $LrcFile $TxtFile $TrackIndex
+                    Invoke-LogMsg "---------------------------------------------" $TrackIndex
+                    return
+                }
 
                 if (Test-Path -LiteralPath $LrcFile) {
                     Move-Item -LiteralPath $LrcFile -Destination $TxtFile -Force
@@ -546,7 +662,7 @@ try:
 except Exception as e:
     sys.exit(1)
 "@
-            $EmbedExitCode = Invoke-ThreadNativeProcess "python" @("-", $TxtFile, $FilePath) -InputScript $PythonCode
+            $EmbedResult = Invoke-ThreadNativeProcess "python" @("-", $TxtFile, $FilePath) -InputScript $PythonCode
         }
         
         if (Test-Path -LiteralPath $TxtFile) {
