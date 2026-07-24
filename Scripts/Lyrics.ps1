@@ -148,13 +148,13 @@ $TrackObjects | ForEach-Object -Parallel {
             
             Write-Output $FormattedLine
             
-            if (Test-Path -LiteralPath $using:GlobalLogFile) {
+            if (Test-Path -LiteralPath $GlobalLogFile) {
                 $RetryCount = 0
                 $MaxRetries = 15
                 $Success    = $false
                 while (-not $Success -and $RetryCount -lt $MaxRetries) {
                     try {
-                        [System.IO.File]::AppendAllText($using:GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
+                        [System.IO.File]::AppendAllText($GlobalLogFile, ($FormattedLine + [System.Environment]::NewLine))
                         $Success = $true
                     } catch [System.IO.IOException] {
                         $RetryCount++
@@ -219,12 +219,12 @@ $TrackObjects | ForEach-Object -Parallel {
                         $Line = $proc.StandardOutput.ReadLine()
                         if ($Line) { 
                             if ($CaptureOutput) { [void]$stdoutBuilder.AppendLine($Line) }
-                            else { Invoke-LogMsg "    [Python STDOUT] $Line" $using:TrackIndex }
+                            else { Invoke-LogMsg "    [Python STDOUT] $Line" $TrackIndex }
                         }
                     }
                     while (-not $proc.StandardError.EndOfStream) {
                         $ErrLine = $proc.StandardError.ReadLine()
-                        if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" $using:TrackIndex }
+                        if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex }
                     }
                 }
 
@@ -232,12 +232,12 @@ $TrackObjects | ForEach-Object -Parallel {
                     $Line = $proc.StandardOutput.ReadLine()
                     if ($Line) { 
                         if ($CaptureOutput) { [void]$stdoutBuilder.AppendLine($Line) }
-                        else { Invoke-LogMsg "    [Python STDOUT] $Line" $using:TrackIndex }
+                        else { Invoke-LogMsg "    [Python STDOUT] $Line" $TrackIndex }
                     }
                 }
                 while (-not $proc.StandardError.EndOfStream) {
                     $ErrLine = $proc.StandardError.ReadLine()
-                    if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" $using:TrackIndex }
+                    if ($ErrLine) { Invoke-LogMsg "    [Python STDERR] $ErrLine" $TrackIndex }
                 }
 
                 if ($CaptureOutput) {
@@ -246,7 +246,7 @@ $TrackObjects | ForEach-Object -Parallel {
                 }
                 return $proc.ExitCode
             } catch {
-                Invoke-LogMsg "[🛑 PROCESS PANIC] Execution failure: $_" $using:TrackIndex
+                Invoke-LogMsg "[🛑 PROCESS PANIC] Execution failure: $_" $TrackIndex
                 if ($CaptureOutput) { return [PSCustomObject]@{ ExitCode = -1; Output = "" } }
                 return -1
             } finally {
