@@ -57,6 +57,7 @@ function Load-ProfileContext {
                     SleepRequests           = 3
                     MaxCompressThreads      = 3
                     MaxDownloadThreads      = 3
+                    MaxLyricThreads         = 3
                     ScannerSleepIntervalSec = 60
                     ChronDaemonSleepSec     = 1800 
                     
@@ -112,6 +113,7 @@ function Load-ProfileContext {
         $Global:SleepRequests           = $Global:ActiveConfig.SleepRequests
         $Global:MaxCompressThreads      = $Global:ActiveConfig.MaxCompressThreads
         $Global:MaxDownloadThreads      = $Global:ActiveConfig.MaxDownloadThreads
+        $Global:MaxLyricThreads         = $Global:ActiveConfig.MaxLyricThreads        
         $Global:ScannerSleepIntervalSec = $Global:ActiveConfig.ScannerSleepIntervalSec
         $Global:ChronDaemonSleepSec     = $Global:ActiveConfig.ChronDaemonSleepSec
         
@@ -403,14 +405,15 @@ function Invoke-PipelineExecution {
         HistoryFile        = $Global:Profile.HistoryFile 
         YTDLPExe           = $Global:Profile.YTDLPExe 
         FFmpegExe          = $Global:Profile.FFmpegExe 
-        FirefoxExe         = $Global:Profile.FirefoxExe 
-        CheckURL           = $Global:Profile.CheckURL 
-        Playlists          = @($Global:Profile.Playlists) 
-        SleepInterval      = [int]$Global:Profile.SleepInterval 
-        MaxSleepInterval   = [int]$Global:Profile.MaxSleepInterval 
-        SleepRequests      = [int]$Global:Profile.SleepRequests 
-        MaxCompressThreads = [int]$Global:Profile.MaxCompressThreads 
-        MaxDownloadThreads = [int]$Global:Profile.MaxDownloadThreads 
+        FirefoxExe         = $Global:Profile.FirefoxExe
+        CheckURL           = $Global:Profile.CheckURL
+        Playlists          = @($Global:Profile.Playlists)
+        SleepInterval      = [int]$Global:Profile.SleepInterval
+        MaxSleepInterval   = [int]$Global:Profile.MaxSleepInterval
+        SleepRequests      = [int]$Global:Profile.SleepRequests
+        MaxCompressThreads = [int]$Global:Profile.MaxCompressThreads
+        MaxDownloadThreads = [int]$Global:Profile.MaxDownloadThreads
+        MaxLyricThreads = [int]$Global:Profile.MaxLyricThreads
         
         # New Execution Controller Directives
         SkipStep1          = $SkipStep1
@@ -499,7 +502,7 @@ function Invoke-PipelineExecution {
                 $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
                 $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
                 if (Test-Path $S4ScriptPath) {
-                    $S4Params = @{ BackupDir = $EnvMap.BackupDir }
+                    $S4Params = @{ BackupDir = $EnvMap.BackupDir ThrottleLimit = $EnvMap.MaxLyricThreads }
                     if ($EnvMap.CleanLyrics) { $S4Params.ForceFullRefresh = $true } 
                     & $S4ScriptPath @S4Params 2>&1 
                 } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }

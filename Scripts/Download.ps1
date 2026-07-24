@@ -9,7 +9,7 @@ Param (
     [int]$SleepInterval,
     [int]$MaxSleepInterval,
     [int]$SleepRequests,
-    [int]$MaxDownloadThreads = 1,
+    [int]$MaxDownloadThreads = 4,
     [switch]$CleanSweep,
     [int]$Index,
     [bool]$RouteViaVPN = $false # NEW: Added to Params
