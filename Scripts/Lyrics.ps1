@@ -183,13 +183,16 @@ $TrackObjects | ForEach-Object -Parallel {
         # Trigger Rate Limit Cooldown & Cleanup Routine
         function Trigger-RateLimitCooldown ([string]$Reason, [string]$AudioPath, [string]$LrcPath, [string]$TxtPath, [int]$Idx) {
             $NewUntil = [datetime]::Now.AddSeconds(60)
-            lock ($GlobalState.SyncRoot) {
-                if ($NewUntil -gt $GlobalState.CooldownUntil) {
-                    $GlobalState.CooldownUntil = $NewUntil
-                    Invoke-LogMsg "    [🛑 429 / RATE LIMIT DETECTED] $Reason" $Idx
-                    Invoke-LogMsg "    [⏸️ GLOBAL PAUSE] Triggering 60-second API cooldown across all worker threads..." $Idx
+            [System.Threading.Monitor]::Enter($GlobalState.SyncRoot)
+                try {
+                    if ($NewUntil -gt $GlobalState.CooldownUntil) {
+                        $GlobalState.CooldownUntil = $NewUntil
+                        Invoke-LogMsg "    [🛑 429 / RATE LIMIT DETECTED] $Reason" $Idx
+                        Invoke-LogMsg "    [⏸️ GLOBAL PAUSE] Triggering 60-second API cooldown across all worker threads..." $Idx
+                    }
+                } finally {
+                    [System.Threading.Monitor]::Exit($GlobalState.SyncRoot)
                 }
-            }
 
             # 1. Delete local temporary files
             if (Test-Path -LiteralPath $LrcPath) { Remove-Item -LiteralPath $LrcPath -Force -ErrorAction SilentlyContinue }
