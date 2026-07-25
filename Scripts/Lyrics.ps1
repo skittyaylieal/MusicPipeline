@@ -492,6 +492,28 @@ except Exception as e:
                 }
             }
         }
+        # Second to try shortened and single artist queries
+        foreach ($q in $QueriesToTry) {
+            if ($q -match '^\s*(.+?)\s+-\s+(.+?)\s*$') {
+                $qArtist = $Matches[1].Trim()
+                $qTitle  = $Matches[2].Trim()
+                $qArtist = $qArtist.Substring(0, $qArtist.IndexOf(","))
+                if ($qArtist.Length -ge 2 -and $qTitle.Length -ge 1 -and -not $SafeQueries.Contains($q)) {
+                    $SafeQueries.Add($q)
+                }
+            }
+        }
+        # Last try for forcibly shortened artist names
+        foreach ($q in $QueriesToTry) {
+            if ($q -match '^\s*(.+?)\s+-\s+(.+?)\s*$') {
+                $qArtist = $Matches[1].Trim()
+                $qTitle  = $Matches[2].Trim()
+                $qArtist = $qArtist.Substring(0,9)
+                if ($qArtist.Length -ge 2 -and $qTitle.Length -ge 1 -and -not $SafeQueries.Contains($q)) {
+                    $SafeQueries.Add($q)
+                }
+            }
+        }
 
         if ($SafeQueries.Count -eq 0) {
             Invoke-LogMsg "    [!] 🛑 SAFETY ABORT: Could not identify a reliable Artist for this track. Aborting API queries to prevent false song matches." $TrackIndex
