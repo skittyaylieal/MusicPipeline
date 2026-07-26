@@ -694,8 +694,7 @@ try {
             $UrlPath = $Request.Url.LocalPath 
             $Method  = $Request.HttpMethod
 
-            $Response.KeepAlive = $false 
-            $Response.Headers.Add("Connection", "close") 
+            $Response.KeepAlive = $true
             $Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate") 
             $Response.Headers.Add("Pragma", "no-cache") 
             $Response.Headers.Add("Expires", "0") 
@@ -966,38 +965,39 @@ try {
             
             # --- FIXED: ULTRA HIGH PERFORMANCE INGESTION ENDPOINT ---
             elseif ($UrlPath -eq "/stream" -and $Method -eq "GET") { 
-                $CurrentLogs = @()
+                $CurrentLogs = [System.Collections.Generic.List[string]]::new()
                 $SkipCount = 0
                 if ($Request.Url.Query -match "skip=(\d+)") { $SkipCount = [int]$Matches[1] }
 
-                $TotalLinesCount = 0
                 $NextPointer = $SkipCount
 
                 if (Test-Path $Global:DiagLogFile) { 
+                    $FileStream = $null
+                    $StreamReader = $null
                     try {
                         $FileStream = [System.IO.File]::Open($Global:DiagLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-                        $StreamReader = New-Object System.IO.StreamReader($FileStream, [System.Text.Encoding]::UTF8)
+                        $StreamReader = [System.IO.StreamReader]::new($FileStream, [System.Text.Encoding]::UTF8)
                         
-                        $FullStringContent = $StreamReader.ReadToEnd()
-                        $StreamReader.Close(); $FileStream.Close()
-                        
-                        if (-not [string]::IsNullOrEmpty($FullStringContent)) {
-                            $AllLines = $FullStringContent -split "`r?`n"
-                            $TotalLinesCount = $AllLines.Count
-                            
-                            if ($TotalLinesCount -gt 0 -and $SkipCount -lt $TotalLinesCount) {
-                                $MaxLinesToReturn = 3000
-                                $EndIndex = [math]::Min(($TotalLinesCount - 1), ($SkipCount + $MaxLinesToReturn - 1))
-                                $CurrentLogs = $AllLines[$SkipCount..$EndIndex]
-                                $NextPointer = $EndIndex + 1
-                            } else {
-                                $NextPointer = $TotalLinesCount
-                            }
+                        $LineCounter = 0
+                        # Fast-forward past skipped lines without allocating memory
+                        while ($LineCounter -lt $SkipCount -and $null -ne $StreamReader.ReadLine()) {
+                            $LineCounter++
                         }
+                        
+                        # Stream only up to 3000 new lines max
+                        $MaxLinesToReturn = 3000
+                        $Line = $null
+                        while ($CurrentLogs.Count -lt $MaxLinesToReturn -and $null -ne ($Line = $StreamReader.ReadLine())) {
+                            $CurrentLogs.Add($Line)
+                            $LineCounter++
+                        }
+                        $NextPointer = $LineCounter
                     } catch { 
-                        $CurrentLogs = @() 
-                        $TotalLinesCount = 0
+                        $CurrentLogs.Clear() 
                         $NextPointer = $SkipCount
+                    } finally {
+                        if ($StreamReader) { $StreamReader.Close() }
+                        if ($FileStream) { $FileStream.Close() }
                     }
                 } 
                 

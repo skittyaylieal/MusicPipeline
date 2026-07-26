@@ -569,7 +569,15 @@ if check_mb(query):
     sys.exit(1)
 sys.exit(0)
 "@
+
+
         $MBResult = Invoke-ThreadNativeProcess "python" @("-", $SafeQueries[0], $FilePath) -InputScript $MBPython
+        if ($MBResult.ExitCode -not -eq 1) {
+            while $MBResult -not -eq 1
+                foreach ($q in $SafeQueries) {
+
+                }
+        }
 
         if ($MBResult.IsThrottled) {
             Trigger-RateLimitCooldown "MusicBrainz query triggered HTTP 429 Throttle" $FilePath $LrcFile $TxtFile $TrackIndex

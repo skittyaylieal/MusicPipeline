@@ -563,11 +563,8 @@
             if (errorCount > 5 || isMetricsActive) return; 
             isMetricsActive = true;
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-
             try {
-                const res = await fetch('/metrics', { signal: controller.signal });
+                const res = await fetch('/metrics'); // Direct fetch, no signal or timer
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 
@@ -611,27 +608,21 @@
                     }
                 }
             } catch (e) {
-                if (e.name !== 'AbortError') {
-                    errorCount++;
-                    if (errorCount === 6) console.warn("Too many errors. Pausing background refreshes.");
-                }
+                errorCount++;
+                if (errorCount === 6) console.warn("Too many errors. Pausing background refreshes.");
             } finally {
-                clearTimeout(timeoutId);
                 isMetricsActive = false;
-                setTimeout(loadMetrics, 3000); // Wait 3 seconds before next request
+                setTimeout(loadMetrics, 3000); // Polls again 3s after server completes
             }
         }
 
-        // --- SAFE TRACK METRICS POLLER ---
+        // --- OPTIMIZED TRACK METRICS POLLER ---
         async function loadTrackMetrics() {
             if (errorCount > 5 || isTrackMetricsActive) return;
             isTrackMetricsActive = true;
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-
             try {
-                const res = await fetch('/track-metrics', { signal: controller.signal });
+                const res = await fetch('/track-metrics');
                 const data = res.ok ? await res.json() : [];
                 
                 globalTrackMetrics = data || [];
@@ -639,11 +630,10 @@
                     renderScatterChart();
                 }
             } catch (e) {
-                if (e.name !== 'AbortError') console.error("Failed to load individual track telemetry.", e);
+                console.error("Failed to load individual track telemetry.", e);
             } finally {
-                clearTimeout(timeoutId);
                 isTrackMetricsActive = false;
-                setTimeout(loadTrackMetrics, 15000); // Wait 15 seconds before next request
+                setTimeout(loadTrackMetrics, 15000);
             }
         }
 
@@ -652,11 +642,8 @@
             if (errorCount > 5 || isAnalyticsActive) return; 
             isAnalyticsActive = true;
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-
             try {
-                const res = await fetch('/analytics', { signal: controller.signal });
+                const res = await fetch('/analytics');
                 if (!res.ok) throw new Error("Server returned " + res.status);
                 const data = await res.json();
                 
@@ -688,13 +675,10 @@
                     }
                 }
             } catch (e) {
-                if (e.name !== 'AbortError') {
-                    errorCount++;
-                }
+                errorCount++;
             } finally {
-                clearTimeout(timeoutId);
                 isAnalyticsActive = false;
-                setTimeout(loadAnalytics, 10000); // Wait 10 seconds before next request
+                setTimeout(loadAnalytics, 10000);
             }
         }
 
@@ -1429,17 +1413,15 @@
 
         // --- Core Initialization ---
         window.addEventListener('load', () => {
-            // Kick off the initial data loads
-            setTimeout(loadMetrics, 100);
-            setTimeout(loadTrackMetrics, 300); 
-            setTimeout(loadAnalytics, 500);
+            // Stagger heavy calls so HttpListener isn't hit by 6 requests at once
+            setTimeout(loadMetrics, 200);
+            setTimeout(loadBrokenSongs, 1200);
+            setTimeout(loadProfilesFrameworkSystem, 2200);
+            setTimeout(loadAnalytics, 3200);
+            setTimeout(loadTrackMetrics, 4200);
             
-            // These don't loop endlessly, so standard delays are fine
-            setTimeout(loadBrokenSongs, 700);
-            setTimeout(loadProfilesFrameworkSystem, 1000);
-
-            // Log streamer handles its own recursive setTimeout inside its function
-            setTimeout(runLogStreamer, 1500);
+            // Streamer starts after initial metrics settle
+            setTimeout(runLogStreamer, 5000);
         });
 
     </script>
