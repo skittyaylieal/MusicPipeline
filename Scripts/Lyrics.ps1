@@ -172,7 +172,7 @@ $TrackObjects | ForEach-Object -Parallel {
                 $Now   = [datetime]::Now
                 if ($Now -lt $Until) {
                     $Remaining = [math]::Ceiling(($Until - $Now).TotalSeconds)
-                    Invoke-LogMsg "    [⏸️ COOLDOWN ACTIVE] Rate-limit backoff active ($Remainings remaining). Thread sleeping..." $Idx
+                    Invoke-LogMsg "    [⏸️ COOLDOWN ACTIVE] Rate-limit backoff active (${Remaining}s remaining). Thread sleeping..." $Idx
                     [System.Threading.Thread]::Sleep(5000)
                 } else {
                     break
@@ -481,8 +481,11 @@ except Exception as e:
             }
         }
 
-        # STRICT SAFETY GUARD: Ensure query contains both Artist and Title separated by " - "
-        $SafeQueries = [System.Collections.Generic.List[string]]::new()
+        # STRICT MULTI-TIER QUERY BUILDER
+        $SafeQueries  = [System.Collections.Generic.List[string]]::new()
+        $ShortQueries = [System.Collections.Generic.List[string]]::new()
+
+        # Tier 1: Primary raw & cleaned full queries
         foreach ($q in $QueriesToTry) {
             if ($q -match '^\s*(.+?)\s+-\s+(.+?)\s*$') {
                 $qArtist = $Matches[1].Trim()
@@ -492,26 +495,41 @@ except Exception as e:
                 }
             }
         }
-        # Second to try shortened and single artist queries
+
+        # Tier 2: First-artist query (split on commas)
         foreach ($q in $QueriesToTry) {
             if ($q -match '^\s*(.+?)\s+-\s+(.+?)\s*$') {
                 $qArtist = $Matches[1].Trim()
                 $qTitle  = $Matches[2].Trim()
-                $qArtist = $qArtist.Substring(0, $qArtist.IndexOf(","))
-                if ($qArtist.Length -ge 2 -and $qTitle.Length -ge 1 -and -not $SafeQueries.Contains($q)) {
-                    $SafeQueries.Add($q)
+                if ($qArtist.Contains(",")) {
+                    $FirstArtist = $qArtist.Substring(0, $qArtist.IndexOf(",")).Trim()
+                    $SingleArtistQuery = "$FirstArtist - $qTitle"
+                    if ($FirstArtist.Length -ge 2 -and -not $SafeQueries.Contains($SingleArtistQuery)) {
+                        $SafeQueries.Add($SingleArtistQuery)
+                    }
                 }
             }
         }
-        # Last try for forcibly shortened artist names
+
+        # Tier 3: Last Resort Shortener (for bloated names/uploaders like 'eminemuploader')
         foreach ($q in $QueriesToTry) {
             if ($q -match '^\s*(.+?)\s+-\s+(.+?)\s*$') {
                 $qArtist = $Matches[1].Trim()
                 $qTitle  = $Matches[2].Trim()
-                $qArtist = $qArtist.Substring(0,9)
-                if ($qArtist.Length -ge 2 -and $qTitle.Length -ge 1 -and -not $SafeQueries.Contains($q)) {
-                    $SafeQueries.Add($q)
+                if ($qArtist.Length -gt 9) {
+                    $ShortArtist = $qArtist.Substring(0, 9).Trim()
+                    $ShortQuery  = "$ShortArtist - $qTitle"
+                    if ($ShortArtist.Length -ge 2 -and -not $SafeQueries.Contains($ShortQuery) -and -not $ShortQueries.Contains($ShortQuery)) {
+                        $ShortQueries.Add($ShortQuery)
+                    }
                 }
+            }
+        }
+
+        # Append shortened last-resort queries to the very end of the queue
+        foreach ($sq in $ShortQueries) {
+            if (-not $SafeQueries.Contains($sq)) {
+                $SafeQueries.Add($sq)
             }
         }
 
@@ -570,7 +588,6 @@ if check_mb(query):
 sys.exit(0)
 "@
 
-
         $MBResult = Invoke-ThreadNativeProcess "python" @("-", $SafeQueries[0], $FilePath) -InputScript $MBPython
         
         if ($MBResult.IsThrottled) {
@@ -589,7 +606,7 @@ sys.exit(0)
 
         # STEP 4: Query Lyric APIs Across Safe Queries
         $TimedProviders = @("lrclib", "musixmatch", "netease", "megalobiz")
-        $LrcFound       = $false
+        $LrcFound        = $false
 
         foreach ($QueryTarget in $SafeQueries) {
             if ($LrcFound) { break }
