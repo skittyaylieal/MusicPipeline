@@ -60,6 +60,8 @@ function Load-ProfileContext {
                     MaxLyricThreads         = 3
                     ScannerSleepIntervalSec = 60
                     ChronDaemonSleepSec     = 1800 
+
+                    MaxStreamReturnLines    = 15000
                     
                     NormalIntervalSec       = 1800     
                     CleanIntervalSec        = 604800   
@@ -116,6 +118,7 @@ function Load-ProfileContext {
         $Global:MaxLyricThreads         = $Global:ActiveConfig.MaxLyricThreads        
         $Global:ScannerSleepIntervalSec = $Global:ActiveConfig.ScannerSleepIntervalSec
         $Global:ChronDaemonSleepSec     = $Global:ActiveConfig.ChronDaemonSleepSec
+        $Global:MaxStreamReturnLines    = $Global:ActiveConfig.MaxStreamReturnLines
         
         # Global variable mappings for new splits
         $Global:NormalIntervalSec       = $Global:ActiveConfig.NormalIntervalSec
@@ -985,7 +988,7 @@ try {
                         }
                         
                         # Stream only up to 3000 new lines max
-                        $MaxLinesToReturn = 3000
+                        $MaxLinesToReturn = $Global:MaxStreamReturnLines
                         $Line = $null
                         while ($CurrentLogs.Count -lt $MaxLinesToReturn -and $null -ne ($Line = $StreamReader.ReadLine())) {
                             $CurrentLogs.Add($Line)
