@@ -62,6 +62,7 @@ function Load-ProfileContext {
                     ChronDaemonSleepSec     = 1800 
 
                     MaxStreamReturnLines    = 15000
+                    StartingWebServerPort   = 50001
                     
                     NormalIntervalSec       = 1800     
                     CleanIntervalSec        = 604800   
@@ -119,6 +120,7 @@ function Load-ProfileContext {
         $Global:ScannerSleepIntervalSec = $Global:ActiveConfig.ScannerSleepIntervalSec
         $Global:ChronDaemonSleepSec     = $Global:ActiveConfig.ChronDaemonSleepSec
         $Global:MaxStreamReturnLines    = $Global:ActiveConfig.MaxStreamReturnLines
+        $Global:StartingWebServerPort   = $Global:ActiveConfig.StartingWebServerPort
         
         # Global variable mappings for new splits
         $Global:NormalIntervalSec       = $Global:ActiveConfig.NormalIntervalSec
@@ -626,7 +628,7 @@ Log-Engine "🧼 Flushing old proxy tables and cleaning session jobs..." "33"
 netsh interface portproxy reset | Out-Null 
 Get-Job -Name "MusicFolderScanner","ChronDaemon","ActiveMusicDownloader" -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue 
 
-$TargetPort = 50001 
+$TargetPort = $Global:StartingWebServerPort
 
 # Probes both raw TCP sockets AND HTTP.sys URL prefix reservations to bypass ghost 503 listeners
 while ($true) {

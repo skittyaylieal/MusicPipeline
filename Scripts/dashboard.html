@@ -445,7 +445,7 @@
                 <h4 style="color: #D6ACFF; border-bottom: 1px solid #27272A; padding-bottom: 6px; margin-bottom: 15px;">Webserver Configuration & Setup</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="config-group"><label>Number of lines returned in each request (MaxStreamReturnLines)</label><input type="text" id="cfg-MaxStreamReturnLines"></div>
-                    <!--<div class="config-group"><label>Max Extraction Delay (MaxSleepInterval)</label><input type="text" id="cfg-MaxSleepInterval"></div>-->
+                    <div class="config-group"><label>Port to begin trying to find a valid port from (StartingWebServerPort)</label><input type="text" id="cfg-StartingWebServerPort"></div>
                 </div>
             </div>
 
@@ -1316,6 +1316,7 @@
 
                 // Webserver Config
                 MaxStreamReturnLines: parseInt(document.getElementById('cfg-MaxStreamReturnLines').value) || 15000,
+                StartingWebServerPort: parseInt(document.getElementById('cfg-StartingWebServerPort').value) || 50001,
                 
                 // Split-interval configuration capture
                 NormalIntervalSec: parseInt(document.getElementById('cfg-NormalIntervalSec').value) || 1800,
