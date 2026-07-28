@@ -107,9 +107,7 @@ for ($i = 0; $i -lt $AudioFiles.Count; $i++) {
 
 $TotalTracks = $AudioFiles.Count
 
-# =========================================================================
 # PARALLEL WORKER ENGINE
-# =========================================================================
 $TrackObjects | ForEach-Object -Parallel {
     $TrackIndex       = $_.Index
     $FilePath         = $_.Path
@@ -118,8 +116,8 @@ $TrackObjects | ForEach-Object -Parallel {
     $ForceFullRefresh = $using:ForceFullRefresh
     $GlobalState      = $using:GlobalState
 
-    try {
-        # Thread-Safe Logger
+    # Initialize helper functions ONCE per runspace session state to avoid scope bloat
+    if (-not (Test-Path function:\Invoke-LogMsg)) {
         function Invoke-LogMsg([string]$Text, [int]$Idx) {
             if ([string]::IsNullOrWhiteSpace($Text)) { return }
             $Timestamp = (Get-Date).ToString("HH:mm:ss")
@@ -149,7 +147,7 @@ $TrackObjects | ForEach-Object -Parallel {
             $ColorPrefix   = "$ESC[${ColorCode}m[$Timestamp] [Track $Idx]$Reset"
             $FormattedLine = "$ColorPrefix $Text"
             
-            Write-Output $FormattedLine
+            Write-Host $FormattedLine
             
             if (Test-Path -LiteralPath $GlobalLogFile) {
                 $RetryCount = 0
@@ -165,7 +163,6 @@ $TrackObjects | ForEach-Object -Parallel {
             }
         }
 
-        # Global Cooldown Check Routine
         function Test-And-WaitCooldown ([int]$Idx) {
             while ($true) {
                 $Until = $GlobalState.CooldownUntil
@@ -180,25 +177,22 @@ $TrackObjects | ForEach-Object -Parallel {
             }
         }
 
-        # Trigger Rate Limit Cooldown & Cleanup Routine
         function Trigger-RateLimitCooldown ([string]$Reason, [string]$AudioPath, [string]$LrcPath, [string]$TxtPath, [int]$Idx) {
             $NewUntil = [datetime]::Now.AddSeconds(60)
             [System.Threading.Monitor]::Enter($GlobalState.SyncRoot)
-                try {
-                    if ($NewUntil -gt $GlobalState.CooldownUntil) {
-                        $GlobalState.CooldownUntil = $NewUntil
-                        Invoke-LogMsg "    [🛑 429 / RATE LIMIT DETECTED] $Reason" $Idx
-                        Invoke-LogMsg "    [⏸️ GLOBAL PAUSE] Triggering 60-second API cooldown across all worker threads..." $Idx
-                    }
-                } finally {
-                    [System.Threading.Monitor]::Exit($GlobalState.SyncRoot)
+            try {
+                if ($NewUntil -gt $GlobalState.CooldownUntil) {
+                    $GlobalState.CooldownUntil = $NewUntil
+                    Invoke-LogMsg "    [🛑 429 / RATE LIMIT DETECTED] $Reason" $Idx
+                    Invoke-LogMsg "    [⏸️ GLOBAL PAUSE] Triggering 60-second API cooldown across all worker threads..." $Idx
                 }
+            } finally {
+                [System.Threading.Monitor]::Exit($GlobalState.SyncRoot)
+            }
 
-            # 1. Delete local temporary files
             if (Test-Path -LiteralPath $LrcPath) { Remove-Item -LiteralPath $LrcPath -Force -ErrorAction SilentlyContinue }
             if (Test-Path -LiteralPath $TxtPath) { Remove-Item -LiteralPath $TxtPath -Force -ErrorAction SilentlyContinue }
 
-            # 2. Wipe embedded plain text/synced lyrics tags in container
             Invoke-LogMsg "    [🧹 TAG PURGE] Wiping embedded lyrics tags from track container..." $Idx
             $WipePython = @"
 import sys, mutagen
@@ -229,7 +223,6 @@ except Exception: pass
             [void](Invoke-ThreadNativeProcess "python" @("-", $AudioPath) -InputScript $WipePython)
         }
 
-        # Enhanced Validator: Requires at least 3 timestamped lines to count as valid synced .lrc
         function Test-IsSyncedLrc ([string]$File) {
             if (-not (Test-Path -LiteralPath $File)) { return $false }
             try {
@@ -241,7 +234,6 @@ except Exception: pass
             }
         }
 
-        # Test if an output file contains HTTP 429 or rate limit JSON text
         function Test-IsRateLimitedFile ([string]$File) {
             if (-not (Test-Path -LiteralPath $File)) { return $false }
             try {
@@ -253,12 +245,17 @@ except Exception: pass
             return $false
         }
 
+        # Fix 1: Properly dispose native process handle to fix the 25k handle leak
         function Get-MemorySnapshot {
-            $Proc           = [System.Diagnostics.Process]::GetCurrentProcess()
-            $WorkingSetMB   = [math]::Round($Proc.WorkingSet64 / 1MB, 2)
-            $PrivateBytesMB = [math]::Round($Proc.PrivateMemorySize64 / 1MB, 2)
-            $Handles        = $Proc.HandleCount
-            return "RAM (WS): ${WorkingSetMB}MB | Private: ${PrivateBytesMB}MB | Handles: $Handles"
+            $Proc = [System.Diagnostics.Process]::GetCurrentProcess()
+            try {
+                $WorkingSetMB   = [math]::Round($Proc.WorkingSet64 / 1MB, 2)
+                $PrivateBytesMB = [math]::Round($Proc.PrivateMemorySize64 / 1MB, 2)
+                $Handles        = $Proc.HandleCount
+                return "RAM (WS): ${WorkingSetMB}MB | Private: ${PrivateBytesMB}MB | Handles: $Handles"
+            } finally {
+                if ($null -ne $Proc) { $Proc.Dispose() }
+            }
         }
 
         function Invoke-ThreadNativeProcess ([string]$Executable, [string[]]$ArgumentList, [string]$InputScript, [switch]$CaptureOutput) {
@@ -345,10 +342,10 @@ except Exception: pass
                 }
             }
         }
+    }
 
-        # ---------------------------------------------------------------------
+    try {
         # TRACK PROCESSING LOGIC
-        # ---------------------------------------------------------------------
         Test-And-WaitCooldown $TrackIndex
 
         $FileInfo = [System.IO.FileInfo]::new($FilePath)
@@ -589,7 +586,7 @@ sys.exit(0)
 "@
 
         $MBResult = Invoke-ThreadNativeProcess "python" @("-", $SafeQueries[0], $FilePath) -InputScript $MBPython
-        
+
         if ($MBResult.IsThrottled) {
             Trigger-RateLimitCooldown "MusicBrainz query triggered HTTP 429 Throttle" $FilePath $LrcFile $TxtFile $TrackIndex
             Invoke-LogMsg "---------------------------------------------" $TrackIndex
@@ -715,15 +712,11 @@ except Exception as e:
 
         Invoke-LogMsg "---------------------------------------------" $TrackIndex
     } finally {
-        [System.GC]::Collect()
-        [System.GC]::WaitForPendingFinalizers()
-        [System.GC]::Collect()
+        # Fix 4: Removed blocking manual GC sweeps
     }
-} -ThrottleLimit $ThrottleLimit
+} -ThrottleLimit $ThrottleLimit | Out-Null # Fix 2: Dump parallel pipeline output to $null to prevent RAM hoarding
 
-# =========================================================================
 # FINAL METRICS & TEARDOWN
-# =========================================================================
 $MetricStopwatch.Stop()
 $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Invoke-MainLogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
