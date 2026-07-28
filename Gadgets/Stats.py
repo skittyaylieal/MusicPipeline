@@ -154,11 +154,9 @@ if completed_tracks or mem_samples:
         if remaining_tracks > 0:
             eta_seconds = remaining_tracks / tracks_per_sec
 
-            # Calculate real-time target timestamp from current clock
             now = datetime.now()
             completion_dt = now + timedelta(seconds=eta_seconds)
 
-            # Format day indicator (e.g. Today, Tomorrow, or Mon, Jun 12)
             if completion_dt.date() == now.date():
                 day_str = "Today"
             elif completion_dt.date() == (now + timedelta(days=1)).date():
@@ -166,7 +164,8 @@ if completed_tracks or mem_samples:
             else:
                 day_str = completion_dt.strftime("%a, %b %d")
 
-            clock_time_str = completion_dt.strftime("%I:%M:%S %p")
+            # 24-Hour clock format (e.g. 00:04:11)
+            clock_time_str = completion_dt.strftime("%H:%M:%S")
 
             print(f"  Tracks Remaining      : {remaining_tracks:,}")
             print(
