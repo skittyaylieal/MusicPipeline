@@ -1,6 +1,6 @@
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 LOG_PATH = r"C:\MusicTools\MusicPipeline\Config\web_console_stream.log"
 
@@ -131,7 +131,7 @@ if completed_tracks or mem_samples:
     print("        LYRICS ENGINE EFFICIENCY & RESOURCE REPORT        ")
     print("=" * 65)
 
-    # Queue Progress & Speed Calculations
+    # Queue Progress & Real-Time Completion Target
     remaining_tracks = max(0, total_queue_count - latest_track_idx)
 
     print("📊 QUEUE PROGRESS & SPEED:")
@@ -153,9 +153,27 @@ if completed_tracks or mem_samples:
 
         if remaining_tracks > 0:
             eta_seconds = remaining_tracks / tracks_per_sec
+
+            # Calculate real-time target timestamp from current clock
+            now = datetime.now()
+            completion_dt = now + timedelta(seconds=eta_seconds)
+
+            # Format day indicator (e.g. Today, Tomorrow, or Mon, Jun 12)
+            if completion_dt.date() == now.date():
+                day_str = "Today"
+            elif completion_dt.date() == (now + timedelta(days=1)).date():
+                day_str = "Tomorrow"
+            else:
+                day_str = completion_dt.strftime("%a, %b %d")
+
+            clock_time_str = completion_dt.strftime("%I:%M:%S %p")
+
             print(f"  Tracks Remaining      : {remaining_tracks:,}")
             print(
-                f"  Estimated Time Left   : ~{format_duration(eta_seconds)} (ETA)"
+                f"  Estimated Duration    : ~{format_duration(eta_seconds)} remaining"
+            )
+            print(
+                f"  Target Finish Time    : {clock_time_str} ({day_str})"
             )
         else:
             print("  Status                : Pipeline queue complete!")
@@ -176,7 +194,6 @@ if completed_tracks or mem_samples:
         priv_vals = [s[2] for s in mem_samples]
         handle_vals = [s[3] for s in mem_samples]
 
-        # Sequential deltas between samples
         ws_diffs = [
             ws_vals[i] - ws_vals[i - 1] for i in range(1, len(ws_vals))
         ]
