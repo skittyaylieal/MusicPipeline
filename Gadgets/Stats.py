@@ -35,6 +35,27 @@ def format_duration(seconds: float) -> str:
         return f"{secs}s"
 
 
+# --- Stateful Monotonic Timestamp Parser ---
+current_day_offset = 0
+last_parsed_sec = None
+
+def parse_timestamp(time_str: str) -> datetime:
+    """Parse HH:MM:SS string and maintain monotonic day offsets across midnights."""
+    global current_day_offset, last_parsed_sec
+    
+    t = datetime.strptime(time_str, "%H:%M:%S").time()
+    t_sec = t.hour * 3600 + t.minute * 60 + t.second
+
+    if last_parsed_sec is not None:
+        # If time drops by more than 12 hours (43200s), increment the day counter.
+        # The 12h gap prevents minor out-of-order parallel thread writes from false-triggering.
+        if last_parsed_sec - t_sec > 43200:
+            current_day_offset += 1
+
+    last_parsed_sec = t_sec
+    return datetime.combine(datetime.min + timedelta(days=current_day_offset), t)
+
+
 # Tracking Containers
 active_tracks = {}  # { track_id: {"start_time": datetime, "name": str} }
 completed_tracks = []  # [{ "id": str, "name": str, "duration": float }]
@@ -58,7 +79,7 @@ with open(LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
         # 1. Parse Memory Metric Checkpoints
         mem_match = MEM_PATTERN.search(clean_line)
         if mem_match:
-            ts = datetime.strptime(mem_match.group(1), "%H:%M:%S")
+            ts = parse_timestamp(mem_match.group(1))
             ws_ram = float(mem_match.group(2))
             priv_ram = float(mem_match.group(3))
             handles = int(mem_match.group(4))
@@ -73,7 +94,7 @@ with open(LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
         # 2. Parse Track Start Line & Queue Position
         start_match = START_PATTERN.match(clean_line)
         if start_match:
-            ts = datetime.strptime(start_match.group(1), "%H:%M:%S")
+            ts = parse_timestamp(start_match.group(1))
             track_id = start_match.group(2)
             curr_idx = int(start_match.group(3))
             total_count = int(start_match.group(4))
@@ -96,15 +117,13 @@ with open(LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
         # 3. Parse Track End Line (Divider)
         end_match = END_PATTERN.match(clean_line)
         if end_match:
-            ts = datetime.strptime(end_match.group(1), "%H:%M:%S")
+            ts = parse_timestamp(end_match.group(1))
             track_id = end_match.group(2)
             last_timestamp = ts
 
             if track_id in active_tracks:
                 start_time = active_tracks[track_id]["start_time"]
                 delta = (ts - start_time).total_seconds()
-                if delta < 0:
-                    delta += 86400  # Midnight rollover safety
 
                 completed_tracks.append(
                     {
@@ -124,8 +143,6 @@ if completed_tracks or mem_samples:
     wall_clock_sec = 0
     if first_timestamp and last_timestamp:
         wall_clock_sec = (last_timestamp - first_timestamp).total_seconds()
-        if wall_clock_sec < 0:
-            wall_clock_sec += 86400
 
     print("\n" + "=" * 65)
     print("        LYRICS ENGINE EFFICIENCY & RESOURCE REPORT        ")
@@ -164,7 +181,6 @@ if completed_tracks or mem_samples:
             else:
                 day_str = completion_dt.strftime("%a, %b %d")
 
-            # 24-Hour clock format (e.g. 00:04:11)
             clock_time_str = completion_dt.strftime("%H:%M:%S")
 
             print(f"  Tracks Remaining      : {remaining_tracks:,}")
