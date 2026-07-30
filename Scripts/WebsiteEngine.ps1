@@ -382,11 +382,12 @@ function Invoke-PipelineExecution {
         [bool]$SkipStep3 = $false,
         [bool]$SkipStep4 = $false,
         [bool]$SkipStep5 = $false,
-        [bool]$SkipStep6 = $false,
+        [bool]$SkipStep6 = $false, # Lore Stage
+        [bool]$SkipStep7 = $false, # Metrics Stage
         [bool]$CleanSweepDownload = $false,
         [bool]$CleanSweepLyrics = $false,
         [bool]$CleanSweepCompress = $false,
-        [bool]$RouteViaVPN = $false # NEW: Catch the VPN payload flag
+        [bool]$RouteViaVPN = $false
     )
 
     if ($Global:IsPipelineRunning) { return } 
@@ -418,19 +419,20 @@ function Invoke-PipelineExecution {
         SleepRequests      = [int]$Global:Profile.SleepRequests
         MaxCompressThreads = [int]$Global:Profile.MaxCompressThreads
         MaxDownloadThreads = [int]$Global:Profile.MaxDownloadThreads
-        MaxLyricThreads = [int]$Global:Profile.MaxLyricThreads
+        MaxLyricThreads    = [int]$Global:Profile.MaxLyricThreads
         
-        # New Execution Controller Directives
+        # Execution Controller Directives
         SkipStep1          = $SkipStep1
         SkipStep2          = $SkipStep2
         SkipStep3          = $SkipStep3
         SkipStep4          = $SkipStep4
         SkipStep5          = $SkipStep5
         SkipStep6          = $SkipStep6
+        SkipStep7          = $SkipStep7
         CleanDownload      = $EffectiveCleanDownload
         CleanLyrics        = $CleanSweepLyrics
         CleanCompress      = $CleanSweepCompress
-        RouteViaVPN        = $RouteViaVPN # NEW: Add to thread-safe map
+        RouteViaVPN        = $RouteViaVPN
         
         LogFile            = $Global:DiagLogFile 
         TimingFile         = $Global:TimingFile 
@@ -452,7 +454,7 @@ function Invoke-PipelineExecution {
 
         try {
             if (-not $EnvMap.SkipStep1) {
-                Log-Progress "`e[1;33m[STEP 1/6]`e[0m Running Cookie Validation..." 
+                Log-Progress "`e[1;33m[STEP 1/7]`e[0m Running Cookie Validation..." 
                 $S1Watch = [System.Diagnostics.Stopwatch]::StartNew() 
                 $S1ScriptPath = Join-Path $EnvMap.ScriptDir "CookieCheck.ps1" 
                 if (Test-Path $S1ScriptPath) {
@@ -462,10 +464,10 @@ function Invoke-PipelineExecution {
                 } else { Log-Progress "⚠️ CookieCheck.ps1 missing. Skipping." }
                 $S1Watch.Stop()
                 $S1Time = [string]::Format("{0:hh\:mm\:ss}", $S1Watch.Elapsed) 
-            } else { Log-Progress "`e[90m[STEP 1/6] Explicitly bypassed via step toggle directive.`e[0m"; $S1Time = "00:00:00" }
+            } else { Log-Progress "`e[90m[STEP 1/7] Explicitly bypassed via step toggle directive.`e[0m"; $S1Time = "00:00:00" }
             
             if (-not $EnvMap.SkipStep2) {
-                Log-Progress "`e[1;33m[STEP 2/6]`e[0m Running Native Pipeline Downloader..." 
+                Log-Progress "`e[1;33m[STEP 2/7]`e[0m Running Native Pipeline Downloader..." 
                 $S2Watch = [System.Diagnostics.Stopwatch]::StartNew() 
                 $S2ScriptPath = Join-Path $EnvMap.ScriptDir "Download.ps1" 
                 if (Test-Path $S2ScriptPath) {
@@ -482,16 +484,16 @@ function Invoke-PipelineExecution {
                         SleepRequests       = $EnvMap.SleepRequests
                         MaxDownloadThreads  = $EnvMap.MaxDownloadThreads
                         CleanSweep          = $EnvMap.CleanDownload
-                        RouteViaVPN         = $EnvMap.RouteViaVPN # NEW: Pass down to Download.ps1
+                        RouteViaVPN         = $EnvMap.RouteViaVPN
                     }
                     & $S2ScriptPath @S2Params 2>&1 
                 } else { Log-Progress "⚠️ Download.ps1 missing. Skipping." }
                 $S2Watch.Stop()
                 $S2Time = [string]::Format("{0:hh\:mm\:ss}", $S2Watch.Elapsed) 
-            } else { Log-Progress "`e[90m[STEP 2/6] Explicitly bypassed via step toggle directive.`e[0m"; $S2Time = "00:00:00" }
+            } else { Log-Progress "`e[90m[STEP 2/7] Explicitly bypassed via step toggle directive.`e[0m"; $S2Time = "00:00:00" }
             
             if (-not $EnvMap.SkipStep3) {
-                Log-Progress "`e[1;33m[STEP 3/6]`e[0m Running Error Log Analysis..." 
+                Log-Progress "`e[1;33m[STEP 3/7]`e[0m Running Error Log Analysis..." 
                 $S3Watch = [System.Diagnostics.Stopwatch]::StartNew() 
                 $S3ScriptPath = Join-Path $EnvMap.ScriptDir "Fix.ps1" 
                 if (Test-Path $S3ScriptPath) {
@@ -500,10 +502,10 @@ function Invoke-PipelineExecution {
                 } else { Log-Progress "⚠️ Fix.ps1 missing. Skipping." }
                 $S3Watch.Stop()
                 $S3Time = [string]::Format("{0:hh\:mm\:ss}", $S3Watch.Elapsed) 
-            } else { Log-Progress "`e[90m[STEP 3/6] Explicitly bypassed via step toggle directive.`e[0m"; $S3Time = "00:00:00" }
+            } else { Log-Progress "`e[90m[STEP 3/7] Explicitly bypassed via step toggle directive.`e[0m"; $S3Time = "00:00:00" }
             
             if (-not $EnvMap.SkipStep4) {
-                Log-Progress "`e[1;33m[STEP 4/6]`e[0m Syncing Local Lyrics Databases..." 
+                Log-Progress "`e[1;33m[STEP 4/7]`e[0m Syncing Local Lyrics Databases..." 
                 $S4Watch = [System.Diagnostics.Stopwatch]::StartNew() 
                 $S4ScriptPath = Join-Path $EnvMap.ScriptDir "Lyrics.ps1" 
                 if (Test-Path $S4ScriptPath) {
@@ -513,10 +515,10 @@ function Invoke-PipelineExecution {
                 } else { Log-Progress "⚠️ Lyrics.ps1 missing. Skipping." }
                 $S4Watch.Stop()
                 $S4Time = [string]::Format("{0:hh\:mm\:ss}", $S4Watch.Elapsed) 
-            } else { Log-Progress "`e[90m[STEP 4/6] Explicitly bypassed via step toggle directive.`e[0m"; $S4Time = "00:00:00" }
+            } else { Log-Progress "`e[90m[STEP 4/7] Explicitly bypassed via step toggle directive.`e[0m"; $S4Time = "00:00:00" }
             
             if (-not $EnvMap.SkipStep5) {
-                Log-Progress "`e[1;35m[STEP 5/6]`e[0m Syncing and Compressing Mobile M4A Library Track Array..."
+                Log-Progress "`e[1;35m[STEP 5/7]`e[0m Syncing and Compressing Mobile M4A Library Track Array..."
                 $S5Watch = [System.Diagnostics.Stopwatch]::StartNew()
                 $S5ScriptPath = Join-Path $EnvMap.ScriptDir "CompressMusic.ps1"
                 
@@ -536,22 +538,40 @@ function Invoke-PipelineExecution {
                 $S5Watch.Stop()
                 $S5Time = [string]::Format("{0:hh\:mm\:ss}", $S5Watch.Elapsed)
             } else {
-                Log-Progress "`e[90m[STEP 5/6] Disabled by explicit configuration profile bypass.`e[0m"
+                Log-Progress "`e[90m[STEP 5/7] Disabled by explicit configuration profile bypass.`e[0m"
                 $S5Time = "00:00:00"
             }
-            
+
+            # --- STEP 6: VGM LORE EVALUATION STAGE ---
             if (-not $EnvMap.SkipStep6) {
-                Log-Progress "`e[1;33m[STEP 6/6]`e[0m Compiling Track Telemetry & Analytics..." 
+                Log-Progress "`e[1;35m[STEP 6/7]`e[0m Evaluating Instrumental Tracks with Ollama VGM Lore Engine..." 
                 $S6Watch = [System.Diagnostics.Stopwatch]::StartNew() 
-                $S6ScriptPath = Join-Path $EnvMap.ScriptDir "Metrics.ps1" 
-                if (Test-Path $S6ScriptPath) { 
-                    $S6Params = @{ LogPath = $EnvMap.LogFile; DatabasePath = Join-Path $EnvMap.ConfigDir "track_history.json"; RunId = (Get-Date).ToString("yyyyMMdd_HHmmss") } 
-                    $Step6Result = & $S6ScriptPath @S6Params 2>&1 
-                    $Step6Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
-                } else { Log-Progress "⚠️ Metrics.ps1 missing. Skipping." } 
-                $S6Watch.Stop() 
+                $S6ScriptPath = Join-Path $EnvMap.ScriptDir "Lore.ps1" 
+                if (Test-Path $S6ScriptPath) {
+                    $S6Params = @{
+                        BackupDir     = $EnvMap.BackupDir
+                        ConfigDir     = $EnvMap.ConfigDir
+                        GlobalLogFile = $EnvMap.LogFile
+                    }
+                    & $S6ScriptPath @S6Params 2>&1
+                } else { Log-Progress "⚠️ Lore.ps1 missing. Skipping." }
+                $S6Watch.Stop()
                 $S6Time = [string]::Format("{0:hh\:mm\:ss}", $S6Watch.Elapsed) 
-            } else { Log-Progress "`e[90m[STEP 6/6] Explicitly bypassed via step toggle directive.`e[0m"; $S6Time = "00:00:00" }
+            } else { Log-Progress "`e[90m[STEP 6/7] Explicitly bypassed via step toggle directive.`e[0m"; $S6Time = "00:00:00" }
+            
+            # --- STEP 7: TELEMETRY & ANALYTICS STAGE ---
+            if (-not $EnvMap.SkipStep7) {
+                Log-Progress "`e[1;33m[STEP 7/7]`e[0m Compiling Track Telemetry & Analytics..." 
+                $S7Watch = [System.Diagnostics.Stopwatch]::StartNew() 
+                $S7ScriptPath = Join-Path $EnvMap.ScriptDir "Metrics.ps1" 
+                if (Test-Path $S7ScriptPath) { 
+                    $S7Params = @{ LogPath = $EnvMap.LogFile; DatabasePath = Join-Path $EnvMap.ConfigDir "track_history.json"; RunId = (Get-Date).ToString("yyyyMMdd_HHmmss") } 
+                    $Step7Result = & $S7ScriptPath @S7Params 2>&1 
+                    $Step7Result | Out-File -FilePath $EnvMap.LogFile -Append -Encoding utf8 
+                } else { Log-Progress "⚠️ Metrics.ps1 missing. Skipping." } 
+                $S7Watch.Stop() 
+                $S7Time = [string]::Format("{0:hh\:mm\:ss}", $S7Watch.Elapsed) 
+            } else { Log-Progress "`e[90m[STEP 7/7] Explicitly bypassed via step toggle directive.`e[0m"; $S7Time = "00:00:00" }
 
             $OverallStopwatch.Stop() 
             $TotalTime = [string]::Format("{0:hh\:mm\:ss}", $OverallStopwatch.Elapsed) 
@@ -567,7 +587,7 @@ function Invoke-PipelineExecution {
             $NewMetricRecord = @{
                 timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") 
                 type      = $EnvMap.RunType 
-                step1     = $S1Time; step2 = $S2Time; step3 = $S3Time; step4 = $S4Time; step5 = $S5Time; step6 = $S6Time
+                step1     = $S1Time; step2 = $S2Time; step3 = $S3Time; step4 = $S4Time; step5 = $S5Time; step6 = $S6Time; step7 = $S7Time
                 total     = $TotalTime 
             }
             $HistoryDB += $NewMetricRecord 

@@ -6,28 +6,21 @@ Param (
     [string]$RunId = (Get-Date).ToString("yyyyMMdd_HHmmss")
 )
 
-# -----------------------------------------------------------------
-# CORE DETERMINISTIC SHA-256 UUID GENERATOR
-# -----------------------------------------------------------------
 function Get-TrackUUID([string]$Artist, [string]$Album, [string]$Title) {
-    # Force lowercase and trim spacing anomalies to ensure a stable hashing surface
     $RawIdentity = "$Artist-$Album-$Title".ToLower().Trim()
-    
     $Hasher = [System.Security.Cryptography.SHA256]::Create()
     $HashBytes = $Hasher.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($RawIdentity))
-    
-    # Convert byte-array to hex string and truncate to 32 characters for standard database sizing
     $FullHash = [System.BitConverter]::ToString($HashBytes).Replace("-", "").ToLower()
     return $FullHash.Substring(0, 32)
 }
 
-# Standard regex to catch and discard visible/invisible ANSI terminal styling escapes
 $AnsiRegex = '(?:\x1B[@-Z\\-_]|\x1B\[[0-?]*[ -/]*[@-~])'
 
-# Clean state-machine signatures mapped to yt-dlp console boundaries
-$StartPattern = '^\[(\d{2}:\d{2}:\d{2})\].*?\[download\] Downloading item (\d+) of (\d+)'
-$DestPattern  = '\[download\] Destination: .*\\([^\\]+)\\([^\\]+)\\([^\\]+)\.[^.\\]+$'
-$FinalPattern = '^\[(\d{2}:\d{2}:\d{2})\].*?Sync completed successfully!'
+# Extraction Regex Patterns
+$StartPattern     = '^\[(\d{2}:\d{2}:\d{2})\].*?\[download\] Downloading item (\d+) of (\d+)'
+$DestPattern      = '\[download\] Destination: .*\\([^\\]+)\\([^\\]+)\\([^\\]+)\.[^.\\]+$'
+$FinalPattern     = '^\[(\d{2}:\d{2}:\d{2})\].*?Sync completed successfully!'
+$StageMetricPattern = '^\[(\d{2}:\d{2}:\d{2})\]\s*(?:\[(.*?)\])?\s*\[METRIC\]\s*(\d{2}:\d{2}:\d{2})'
 
 if (-not (Test-Path -LiteralPath $LogPath)) {
     Write-Error "Target pipeline execution stream log not discovered at: $LogPath"
@@ -41,31 +34,29 @@ Write-Output "Executing ANSI Log Extraction Engine on: $LogPath"
 $Lines = Get-Content -LiteralPath $LogPath -Encoding utf8 -ErrorAction SilentlyContinue
 
 foreach ($Line in $Lines) {
-    # Strip terminal color layout anomalies on current evaluation frame
     $CleanLine = $Line -replace $AnsiRegex, ''
 
-    # Case A: A new track initializes execution loops
+    # Case A: Downloader Track Start
     if ($CleanLine -match $StartPattern) {
         $TimeStr = $Matches[1]
         $TrackIndex = $Matches[2]
         $NewStartTime = [DateTime]::ParseExact($TimeStr, "HH:mm:ss", $null)
 
-        # Closure Check: Process and save previously running item metrics
         if ($null -ne $ActiveTrack) {
             $Delta = ($NewStartTime - $ActiveTrack.StartTime).TotalSeconds
-            if ($Delta -lt 0) { $Delta += 86400 } # Midnight rollback safety frame
+            if ($Delta -lt 0) { $Delta += 86400 }
 
             $TrackMetrics += @{
                 runId     = $RunId
                 id        = $ActiveTrack.Id
                 index     = [int]$ActiveTrack.Index
                 name      = $ActiveTrack.Name
+                stage     = "download"
                 duration  = [Math]::Round($Delta, 2)
                 timestamp = $ActiveTrack.StartTime.ToString("yyyy-MM-dd HH:mm:ss")
             }
         }
 
-        # Instantiating current pointer frame
         $ActiveTrack = [PSCustomObject]@{
             Index     = $TrackIndex
             StartTime = $NewStartTime
@@ -75,7 +66,7 @@ foreach ($Line in $Lines) {
         continue
     }
 
-    # Case B: Local storage layout assignment is hit (Extract Folder metadata identities)
+    # Case B: Downloader Destination Match
     if ($CleanLine -match $DestPattern) {
         if ($null -ne $ActiveTrack) {
             $Artist = $Matches[1]
@@ -88,7 +79,7 @@ foreach ($Line in $Lines) {
         continue
     }
 
-    # Case C: Master execution engine gracefully finishes up
+    # Case C: Downloader Completion
     if ($CleanLine -match $FinalPattern) {
         if ($null -ne $ActiveTrack) {
             $TimeStr = $Matches[1]
@@ -101,29 +92,46 @@ foreach ($Line in $Lines) {
                 id        = $ActiveTrack.Id
                 index     = [int]$ActiveTrack.Index
                 name      = $ActiveTrack.Name
+                stage     = "download"
                 duration  = [Math]::Round($Delta, 2)
                 timestamp = $ActiveTrack.StartTime.ToString("yyyy-MM-dd HH:mm:ss")
             }
             $ActiveTrack = $null
         }
     }
+
+    # Case D: Stage Metric Entry (e.g. CookieCheck, VGM-Lore stage total)
+    if ($CleanLine -match $StageMetricPattern) {
+        $LogTime   = $Matches[1]
+        $Tag       = if ($Matches[2]) { $Matches[2] } else { "SERVER" }
+        $Duration  = $Matches[3]
+        $TimeSpan  = [TimeSpan]::Parse($Duration)
+
+        $TrackMetrics += @{
+            runId     = $RunId
+            id        = "stage_metric_$Tag".ToLower()
+            index     = 0
+            name      = "$Tag Stage Total"
+            stage     = $Tag.ToLower()
+            duration  = $TimeSpan.TotalSeconds
+            timestamp = (Get-Date).ToString("yyyy-MM-dd ") + $LogTime
+        }
+    }
 }
 
-# Catch any hanging unclosed processes if script output ended abruptly
 if ($null -ne $ActiveTrack) {
     $TrackMetrics += @{
         runId     = $RunId
         id        = $ActiveTrack.Id
         index     = [int]$ActiveTrack.Index
         name      = $ActiveTrack.Name
+        stage     = "download"
         duration  = 0.0
         timestamp = $ActiveTrack.StartTime.ToString("yyyy-MM-dd HH:mm:ss")
     }
 }
 
-# -----------------------------------------------------------------
-# ATOMIC HISTORICAL DATA STORAGE COMPILER
-# -----------------------------------------------------------------
+# Save Metrics to DB
 if ($TrackMetrics.Count -gt 0) {
     $ExistingHistory = @()
     if (Test-Path -LiteralPath $DatabasePath) {
@@ -135,15 +143,13 @@ if ($TrackMetrics.Count -gt 0) {
         }
     }
 
-    # Merge arrays cleanly
     $UpdatedHistory = $ExistingHistory + $TrackMetrics
 
-    # Execute safe atomic file swapping logic
     $TempDbFile = "$DatabasePath.tmp"
     $UpdatedHistory | ConvertTo-Json -Depth 4 | Out-File -FilePath $TempDbFile -Encoding utf8 -Force
     Move-Item -Path $TempDbFile -Destination $DatabasePath -Force
     
-    Write-Output "Successfully compiled and committed $($TrackMetrics.Count) track telemetry snapshots."
+    Write-Output "Successfully committed $($TrackMetrics.Count) telemetry records."
 } else {
     Write-Output "Analytics Run Finished: Zero metrics changes found to ingest."
 }
