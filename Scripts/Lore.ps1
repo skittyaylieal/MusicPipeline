@@ -5,7 +5,8 @@ Param (
     [string]$ModelName = "gemma2:9b",
     [int]$CooldownDays = 14,
     [string]$GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log",
-    [bool]$ForceRefresh = $false
+    [bool]$ForceRefresh = $false,
+    [bool]$CleanSweep = $false
 )
 
 # Start Total Stage Timer
@@ -97,7 +98,7 @@ try:
     artist = audio.get('\xa9ART', [''])[0]
     album = audio.get('\xa9alb', [''])[0]
     lyrics = audio.get('\xa9lyr', [''])[0]
-    print(json.dumps({'title': title, 'artist': artist, 'album': album, 'has_lyrics': bool(lyrics)}))
+    print(json.dumps({'title': title, 'artist': artist, 'album': album, 'has_lyrics': bool(lyrics), 'existing_lyrics': lyrics}))
 except Exception as e:
     print(json.dumps({'error': str(e)}))
 "@
@@ -122,6 +123,9 @@ audio.save()
 # --- INITIALIZATION & CACHE LOADING ---
 Invoke-LogMsg "============================================="
 Invoke-LogMsg "    PowerShell Module: VGM Lore Evaluator"
+if ($CleanSweep) {
+    Invoke-LogMsg "    [MODE] Clean Sweep Active (Re-evaluating existing lore)" "33"
+}
 Invoke-LogMsg "============================================="
 
 $CachePath = Join-Path $ConfigDir "vgm_cache.json"
@@ -185,8 +189,8 @@ foreach ($File in $TargetFiles) {
 
     $TrackId = Get-TrackUUID -Artist $Tags.artist -Album $Tags.album -Title $Tags.title
 
-    # 14-Day Cooldown Check
-    if ($VgmCache.ContainsKey($TrackId) -and -not $ForceRefresh) {
+    # 14-Day Cooldown Check (Bypassed in Clean Sweep or Force Refresh mode)
+    if ($VgmCache.ContainsKey($TrackId) -and -not $ForceRefresh -and -not $CleanSweep) {
         $Entry = $VgmCache[$TrackId]
         if ($Entry.status -eq "NOT_VGM" -and $Entry.last_checked) {
             $LastChecked = [DateTime]::Parse($Entry.last_checked)
@@ -199,7 +203,14 @@ foreach ($File in $TargetFiles) {
         }
     }
 
-    Invoke-LogMsg "[*] Evaluating Track [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
+    $HasExistingLore = -not [string]::IsNullOrWhiteSpace($Tags.existing_lyrics)
+    $ExistingLoreText = if ($HasExistingLore) { $Tags.existing_lyrics } else { "No prior lore embedded." }
+
+    if ($CleanSweep -and $HasExistingLore) {
+        Invoke-LogMsg "[*] [Sweep Review] Inspecting existing lore for [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
+    } else {
+        Invoke-LogMsg "[*] Evaluating Track [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
+    }
     
     $WebContext = Get-DuckDuckGoContext -Title $Tags.title -Artist $Tags.artist
 
@@ -208,6 +219,9 @@ You are an expert video game music historian and metadata validator.
 Analyze this track:
 Track Title: $($Tags.title)
 Artist/Composer: $($Tags.artist)
+
+PREVIOUS / EXISTING EMBEDDED LORE (FOR CONTEXT & REVIEW):
+$ExistingLoreText
 
 LIVE WEB SEARCH CONTEXT FOR THIS TRACK:
 $WebContext
@@ -218,6 +232,10 @@ If the track is NOT from a video game, or if it is a generic non-gaming instrume
 Do not include any other text, explanations, spaces, or punctuation if it fails validation.
 
 IF IT PASSES VALIDATION:
+Review the PREVIOUS / EXISTING EMBEDDED LORE alongside the LIVE WEB SEARCH CONTEXT.
+- If the existing lore is inaccurate, outdated, missing key details, or can be substantially improved, synthesize an updated and refined version.
+- If the existing lore is already accurate and thorough, format and re-affirm the complete text according to the required rules below.
+
 Format the output as clean plain text for a mobile display screen. 
 Use ALL CAPS for section headers. Do NOT use markdown (no asterisks, no hashes, no bullet points).
 Include these exact sections:
@@ -255,7 +273,11 @@ Include these exact sections:
         $FlaggedCount++
     } else {
         Set-M4aLyrics -FilePath $FilePath -LoreText $LoreOutput
-        Invoke-LogMsg "  [✓] Successfully embedded VGM lore into M4A lyrics tag!" "32"
+        if ($CleanSweep -and $HasExistingLore) {
+            Invoke-LogMsg "  [✓] Successfully reviewed and updated VGM lore tag!" "32"
+        } else {
+            Invoke-LogMsg "  [✓] Successfully embedded VGM lore into M4A lyrics tag!" "32"
+        }
 
         $VgmCache[$TrackId] = [PSCustomObject]@{
             title        = $Tags.title
@@ -277,9 +299,8 @@ $MetricStopwatch.Stop()
 $TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)
 $Elapsed = "{0:00}:{1:mm\:ss}" -f $TotalHours, $MetricStopwatch.Elapsed
 
-
 Invoke-LogMsg "============================================="
-Invoke-LogMsg "VGM Lore Stage Finished: $SuccessCount Embedded | $FlaggedCount Non-VGM Flagged | $SkippedCount Cooldown Skipped" "1;32"
+Invoke-LogMsg "VGM Lore Stage Finished: $SuccessCount Processed | $FlaggedCount Non-VGM Flagged | $SkippedCount Cooldown Skipped" "1;32"
 Invoke-LogMsg "[METRIC] $Elapsed"
 Invoke-LogMsg "============================================="
 Exit 0

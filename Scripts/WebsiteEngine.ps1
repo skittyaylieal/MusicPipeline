@@ -73,10 +73,12 @@ function Load-ProfileContext {
                     NormalStep4             = $true
                     NormalStep5             = $true
                     NormalStep6             = $true
+                    NormalStep7             = $true
                     
                     CleanSweepDownload      = $true
                     CleanSweepLyrics        = $true
                     CleanSweepCompress      = $true
+                    CleanSweepLore          = $true
                     
                     LastNormalRunEpoch      = 0
                     LastCleanRunEpoch       = 0
@@ -354,9 +356,10 @@ function Start-AutomatedChronDaemon {
                     $Skip4 = if ($Prof.NormalStep4 -eq $true) { "false" } else { "true" }
                     $Skip5 = if ($Prof.NormalStep5 -eq $true) { "false" } else { "true" }
                     $Skip6 = if ($Prof.NormalStep6 -eq $true) { "false" } else { "true" }
+                    $Skip7 = if ($Prof.NormalStep7 -eq $true) { "false" } else { "true" }
                     
                     $URI = "http://127.0.0.1:$TargetPort/run?type=AutomatedNormal" +
-                           "&skip1=$Skip1&skip2=$Skip2&skip3=$Skip3&skip4=$Skip4&skip5=$Skip5&skip6=$Skip6"
+                           "&skip1=$Skip1&skip2=$Skip2&skip3=$Skip3&skip4=$Skip4&skip5=$Skip5&skip6=$Skip6&skip7=$Skip7"
                            
                     Invoke-RestMethod -Uri $URI -Method Post | Out-Null
                 }
@@ -432,6 +435,7 @@ function Invoke-PipelineExecution {
         CleanDownload      = $EffectiveCleanDownload
         CleanLyrics        = $CleanSweepLyrics
         CleanCompress      = $CleanSweepCompress
+        CleanLore          = $CleanSweepLore
         RouteViaVPN        = $RouteViaVPN
         
         LogFile            = $Global:DiagLogFile 
@@ -552,6 +556,7 @@ function Invoke-PipelineExecution {
                         BackupDir     = $EnvMap.BackupDir
                         ConfigDir     = $EnvMap.ConfigDir
                         GlobalLogFile = $EnvMap.LogFile
+                        CleanSweep    = $EnvMap.CleanLore
                     }
                     & $S6ScriptPath @S6Params 2>&1
                 } else { Log-Progress "⚠️ Lore.ps1 missing. Skipping." }
@@ -1077,9 +1082,11 @@ try {
                         SkipStep4          = [bool](-not $JSONPayload.steps.s4)
                         SkipStep5          = [bool](-not $JSONPayload.steps.s5)
                         SkipStep6          = [bool](-not $JSONPayload.steps.s6)
+                        SkipStep7          = [bool](-not $JSONPayload.steps.s7)
                         CleanSweepDownload = [bool]($JSONPayload.cleanModes.s2)
                         CleanSweepLyrics   = [bool]($JSONPayload.cleanModes.s4)
                         CleanSweepCompress = [bool]($JSONPayload.cleanModes.s5)
+                        CleanSweepLore     = [bool]($JSONPayload.cleanModes.s6)
                         RouteViaVPN        = [bool]($JSONPayload.useVpn)
                     }
 
@@ -1121,18 +1128,22 @@ try {
                 $SkipStep4         = [bool]($Params["skip4"] -eq "true")
                 $SkipStep5         = [bool]($Params["skip5"] -eq "true")
                 $SkipStep6         = [bool]($Params["skip6"] -eq "true")
+                $SkipStep7         = [bool]($Params["skip7"] -eq "true")
                 
                 $CleanDownload     = [bool]($Params["cleanDownload"] -eq "true")
                 $CleanLyrics       = [bool]($Params["cleanLyrics"] -eq "true")
                 $CleanCompress     = [bool]($Params["cleanCompress"] -eq "true")
+                $CleanLore         = [bool]($Params["cleanLore"] -eq "true")
 
                 Invoke-PipelineExecution -TriggerType $RunContext `
                                          -CleanSweep $IsSweepRequested `
                                          -SkipStep1 $SkipStep1 -SkipStep2 $SkipStep2 -SkipStep3 $SkipStep3 `
                                          -SkipStep4 $SkipStep4 -SkipStep5 $SkipStep5 -SkipStep6 $SkipStep6 `
+                                         -SkipStep7 $SkipStep7 `
                                          -CleanSweepDownload $CleanDownload `
                                          -CleanSweepLyrics $CleanLyrics `
-                                         -CleanSweepCompress $CleanCompress
+                                         -CleanSweepCompress $CleanCompress `
+                                         -CleanSweepLore $CleanLore `
 
                 try {
                     $RawConfig = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json

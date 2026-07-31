@@ -255,7 +255,10 @@
                         <input type="checkbox" id="chk-run-s5" checked style="accent-color: #BD93F9; cursor: pointer;"> Step 5: Compress
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #E2E8F0; cursor: pointer;">
-                        <input type="checkbox" id="chk-run-s6" checked style="accent-color: #BD93F9; cursor: pointer;"> Step 6: Commit
+                        <input type="checkbox" id="chk-run-s6" checked style="accent-color: #BD93F9; cursor: pointer;"> Step 6: Lore
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #E2E8F0; cursor: pointer;">
+                        <input type="checkbox" id="chk-run-s7" checked style="accent-color: #BD93F9; cursor: pointer;"> Step 7: Commit
                     </label>
                 </div>
 
@@ -268,6 +271,9 @@
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #8BE9FD; cursor: pointer; font-weight: 500;">
                         <input type="checkbox" id="chk-clean-s5" style="accent-color: #8BE9FD; cursor: pointer;"> Clean Sweep Compression (Force Full Re-Transcode)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #8BE9FD; cursor: pointer; font-weight: 500;">
+                        <input type="checkbox" id="chk-clean-s6" style="accent-color: #8BE9FD; cursor: pointer;"> Clean Sweep Lore (Force Full Re-Check)
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #F1FA8C; cursor: pointer; font-weight: 700; border-left: 1px solid #3F3F46; padding-left: 15px;">
                         <input type="checkbox" id="chk-vpn-override" style="accent-color: #F1FA8C; cursor: pointer;"> 🌐 Force ProtonVPN Route
@@ -389,7 +395,8 @@
                         <th>S3: Verification</th>
                         <th>S4: Metadata</th>
                         <th>S5: Transcode</th>
-                        <th>S6: Metrics</th>
+                        <th>S6: Lore</th>
+                        <th>S7: Metrics</th>
                         <th>Net Total</th>
                     </tr>
                 </thead>
@@ -491,13 +498,15 @@
                                 <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep3"> Step 3: Fix Broken Metadata</label>
                                 <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep4"> Step 4: Timed Lyric Scraper</label>
                                 <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep5"> Step 5: FFmpeg Audio Compressor</label>
-                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep6"> Step 6: Telemetry Reports</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep6"> Step 6: Lore</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-NormalStep7"> Step 7: Telemetry Reports</label>
                             </div>
                             <div>
                                 <span style="font-size: 11px; color: #FF79C6; font-weight: 600; display:block; margin-bottom:5px;">Clean Run Forced Sweeps:</span>
                                 <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-CleanSweepDownload"> Force-Wipe Download History</label>
                                 <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-CleanSweepLyrics"> Purge & Force Re-download Lyrics</label>
                                 <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-CleanSweepCompress"> Clean-Wipe Mobile Output Folder</label>
+                                <label style="display:flex; gap:8px; font-size:12px; margin-bottom:4px; alignment: center;"><input type="checkbox" id="cfg-CleanSweepLore"> Purge & Force Re-check Lore</label>
                             </div>
                         </div>
                     </div>
@@ -673,6 +682,7 @@
                                 <td style="font-family:monospace;">${run.step4 || "00:00"}</td>
                                 <td style="font-family:monospace;">${run.step5 || "00:00"}</td>
                                 <td style="font-family:monospace;">${run.step6 || "00:00"}</td>
+                                <td style="font-family:monospace;">${run.step7 || "00:00"}</td>
                                 <td style="font-family:monospace; font-weight:bold; color:#BD93F9;">${run.total || "00:00"}</td>
                             </tr>
                         `;
@@ -1012,6 +1022,7 @@
             const step4Data = dataset.map(d => convertTimeToSeconds(d.step4));
             const step5Data = dataset.map(d => convertTimeToSeconds(d.step5));
             const step6Data = dataset.map(d => convertTimeToSeconds(d.step6));
+            const step7Data = dataset.map(d => convertTimeToSeconds(d.step7));
 
             if (performanceChartInstance) performanceChartInstance.destroy();
 
@@ -1025,7 +1036,8 @@
                         { label: 'S3: Error Fix', data: step3Data, backgroundColor: '#FF5555' },
                         { label: 'S4: Lyric Sync', data: step4Data, backgroundColor: '#FF79C6' },
                         { label: 'S5: Transcode', data: step5Data, backgroundColor: '#8BE9FD' },
-                        { label: 'S6: Metrics', data: step6Data, backgroundColor: '#50FA7B' }
+                        { label: 'S6: Lore', data: step6Data, backgroundColor: '#51EDD8' }
+                        { label: 'S7: Metrics', data: step7Data, backgroundColor: '#50FA7B' }
                     ]
                 },
                 options: {
@@ -1126,12 +1138,14 @@
                     s3: document.getElementById('chk-run-s3').checked,
                     s4: document.getElementById('chk-run-s4').checked,
                     s5: document.getElementById('chk-run-s5').checked,
-                    s6: document.getElementById('chk-run-s6').checked
+                    s6: document.getElementById('chk-run-s6').checked,
+                    s7: document.getElementById('chk-run-s7').checked
                 },
                 cleanModes: {
                     s2: document.getElementById('chk-clean-s2').checked,
                     s4: document.getElementById('chk-clean-s4').checked,
-                    s5: document.getElementById('chk-clean-s5').checked
+                    s5: document.getElementById('chk-clean-s5').checked,
+                    s7: document.getElementById('chk-clean-s6').checked
                 },
                 useVpn: document.getElementById('chk-vpn-override').checked
             };
@@ -1245,8 +1259,8 @@
 
             // Checkbox elements mapping matrices
             const checkboxKeys = [
-                'NormalStep1', 'NormalStep2', 'NormalStep3', 'NormalStep4', 'NormalStep5', 'NormalStep6',
-                'CleanSweepDownload', 'CleanSweepLyrics', 'CleanSweepCompress'
+                'NormalStep1', 'NormalStep2', 'NormalStep3', 'NormalStep4', 'NormalStep5', 'NormalStep6', 'NormalStep7',
+                'CleanSweepDownload', 'CleanSweepLyrics', 'CleanSweepCompress', 'CleanSweepLore'
             ];
 
             checkboxKeys.forEach(key => {
@@ -1329,11 +1343,13 @@
                 NormalStep4: document.getElementById('cfg-NormalStep4').checked,
                 NormalStep5: document.getElementById('cfg-NormalStep5').checked,
                 NormalStep6: document.getElementById('cfg-NormalStep6').checked,
+                NormalStep7: document.getElementById('cfg-NormalStep7').checked,
                 
                 CleanSweepDownload: document.getElementById('cfg-CleanSweepDownload').checked,
                 CleanSweepLyrics: document.getElementById('cfg-CleanSweepLyrics').checked,
                 CleanSweepCompress: document.getElementById('cfg-CleanSweepCompress').checked,
-                
+                CleanSweepLore: document.getElementById('cfg-CleanSweepLore').checked,
+
                 Playlists: playlistsArray
             };
 
