@@ -1143,7 +1143,7 @@ try {
                                          -CleanSweepDownload $CleanDownload `
                                          -CleanSweepLyrics $CleanLyrics `
                                          -CleanSweepCompress $CleanCompress `
-                                         -CleanSweepLore $CleanLore `
+                                         -CleanSweepLore $CleanLore 
 
                 try {
                     $RawConfig = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
