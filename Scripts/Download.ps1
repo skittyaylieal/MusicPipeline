@@ -254,8 +254,9 @@ finally {
     }
     
     $MetricStopwatch.Stop()
-    $Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-    Write-Output "[METRIC] Total Run Duration: $Elapsed"
-    Write-Output "`n============================================="
+    $TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)
+    $Elapsed = "{0:00}:{1:mm\:ss}" -f $TotalHours, $MetricStopwatch.Elapsed
+    Invoke-LogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
+    Invoke-LogMsg "============================================="
 }
 Exit 0

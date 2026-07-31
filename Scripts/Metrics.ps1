@@ -14,13 +14,13 @@ function Get-TrackUUID([string]$Artist, [string]$Album, [string]$Title) {
     return $FullHash.Substring(0, 32)
 }
 
-$AnsiRegex = '(?:\x1B[@-Z\\-_]|\x1B\[[0-?]*[ -/]*[@-~])'
+$AnsiRegex = '(?:\x1B[@-Z\\-_]|\x1B\[[0-9?]*[ -/]*[@-~])'
 
-# Extraction Regex Patterns
-$StartPattern     = '^\[(\d{2}:\d{2}:\d{2})\].*?\[download\] Downloading item (\d+) of (\d+)'
-$DestPattern      = '\[download\] Destination: .*\\([^\\]+)\\([^\\]+)\\([^\\]+)\.[^.\\]+$'
-$FinalPattern     = '^\[(\d{2}:\d{2}:\d{2})\].*?Sync completed successfully!'
-$StageMetricPattern = '^\[(\d{2}:\d{2}:\d{2})\]\s*(?:\[(.*?)\])?\s*\[METRIC\]\s*(\d{2}:\d{2}:\d{2})'
+# Extraction Regex Patterns (\d+ on hours allows 80+ hour metrics)
+$StartPattern       = '^\[(\d{2}:\d{2}:\d{2})\].*?\[download\] Downloading item (\d+) of (\d+)'
+$DestPattern        = '\[download\] Destination: .*\\([^\\]+)\\([^\\]+)\\([^\\]+)\.[^.\\]+$'
+$FinalPattern       = '^\[(\d{2}:\d{2}:\d{2})\].*?Sync completed successfully!'
+$StageMetricPattern = '^\[(\d{2}:\d{2}:\d{2})\]\s*(?:\[(.*?)\])?\s*\[METRIC\]\s*(?:Total Engine Run Duration:\s*)?(\d+:\d{2}:\d{2})'
 
 if (-not (Test-Path -LiteralPath $LogPath)) {
     Write-Error "Target pipeline execution stream log not discovered at: $LogPath"
@@ -30,21 +30,34 @@ if (-not (Test-Path -LiteralPath $LogPath)) {
 $TrackMetrics = @()
 $ActiveTrack = $null
 
+# Sequential Midnight Rollover Tracker
+$CurrentBaseDate = (Get-Date).Date
+$LastSeenTS      = [TimeSpan]::Zero
+
 Write-Output "Executing ANSI Log Extraction Engine on: $LogPath"
 $Lines = Get-Content -LiteralPath $LogPath -Encoding utf8 -ErrorAction SilentlyContinue
 
 foreach ($Line in $Lines) {
     $CleanLine = $Line -replace $AnsiRegex, ''
 
+    # Helper script to parse time while accounting for multi-day rollovers
+    function Get-AbsoluteTime([string]$TimeStr) {
+        $TS = [TimeSpan]::Parse($TimeStr)
+        if ($TS -lt $script:LastSeenTS -and ($script:LastSeenTS - $TS).TotalHours -gt 12) {
+            $script:CurrentBaseDate = $script:CurrentBaseDate.AddDays(1)
+        }
+        $script:LastSeenTS = $TS
+        return $script:CurrentBaseDate.Add($TS)
+    }
+
     # Case A: Downloader Track Start
     if ($CleanLine -match $StartPattern) {
         $TimeStr = $Matches[1]
         $TrackIndex = $Matches[2]
-        $NewStartTime = [DateTime]::ParseExact($TimeStr, "HH:mm:ss", $null)
+        $NewStartTime = Get-AbsoluteTime $TimeStr
 
         if ($null -ne $ActiveTrack) {
             $Delta = ($NewStartTime - $ActiveTrack.StartTime).TotalSeconds
-            if ($Delta -lt 0) { $Delta += 86400 }
 
             $TrackMetrics += @{
                 runId     = $RunId
@@ -83,9 +96,8 @@ foreach ($Line in $Lines) {
     if ($CleanLine -match $FinalPattern) {
         if ($null -ne $ActiveTrack) {
             $TimeStr = $Matches[1]
-            $FinalTime = [DateTime]::ParseExact($TimeStr, "HH:mm:ss", $null)
+            $FinalTime = Get-AbsoluteTime $TimeStr
             $Delta = ($FinalTime - $ActiveTrack.StartTime).TotalSeconds
-            if ($Delta -lt 0) { $Delta += 86400 }
 
             $TrackMetrics += @{
                 runId     = $RunId
@@ -100,11 +112,13 @@ foreach ($Line in $Lines) {
         }
     }
 
-    # Case D: Stage Metric Entry (e.g. CookieCheck, VGM-Lore stage total)
+    # Case D: Stage Metric Entry (e.g., Fixer, VGM-Lore stage total)
     if ($CleanLine -match $StageMetricPattern) {
         $LogTime   = $Matches[1]
         $Tag       = if ($Matches[2]) { $Matches[2] } else { "SERVER" }
         $Duration  = $Matches[3]
+        
+        # Parse [TimeSpan] directly (handles arbitrary hour durations like 80:14:22)
         $TimeSpan  = [TimeSpan]::Parse($Duration)
 
         $TrackMetrics += @{

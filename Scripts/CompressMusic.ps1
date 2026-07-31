@@ -230,9 +230,10 @@ $Queue | ForEach-Object -Parallel {
     }
 } -ThrottleLimit $MaxThreads
 
-$MetricStopwatch.Stop()
-$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
 Invoke-LogMsg "[BAKED] Mobile library is perfectly synced and compressed!"
-Invoke-LogMsg "[METRIC] $Elapsed"
+$MetricStopwatch.Stop()
+$TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)
+$Elapsed = "{0:00}:{1:mm\:ss}" -f $TotalHours, $MetricStopwatch.Elapsed
+Invoke-LogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
 Invoke-LogMsg "============================================="
 Exit 0

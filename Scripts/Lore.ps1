@@ -274,7 +274,9 @@ Include these exact sections:
 
 # STOP TOTAL STAGE TIMER & LOG METRIC
 $MetricStopwatch.Stop()
-$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
+$TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)
+$Elapsed = "{0:00}:{1:mm\:ss}" -f $TotalHours, $MetricStopwatch.Elapsed
+
 
 Invoke-LogMsg "============================================="
 Invoke-LogMsg "VGM Lore Stage Finished: $SuccessCount Embedded | $FlaggedCount Non-VGM Flagged | $SkippedCount Cooldown Skipped" "1;32"

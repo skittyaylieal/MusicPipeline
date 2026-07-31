@@ -721,9 +721,9 @@ except Exception as e:
     }
 } -ThrottleLimit $ThrottleLimit | Out-Null # Fix 2: Dump parallel pipeline output to $null to prevent RAM hoarding
 
-# FINAL METRICS & TEARDOWN
 $MetricStopwatch.Stop()
-$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Invoke-MainLogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
-Invoke-MainLogMsg "============================================="
+$TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)
+$Elapsed = "{0:00}:{1:mm\:ss}" -f $TotalHours, $MetricStopwatch.Elapsed
+Invoke-LogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
+Invoke-LogMsg "============================================="
 Exit 0

@@ -76,7 +76,8 @@ if ($LastExitCode -ne 0) {
 
 Log-Engine "[+] Cookies authenticated successfully."
 $MetricStopwatch.Stop()
-$Elapsed = "{0:hh\:mm\:ss}" -f $MetricStopwatch.Elapsed
-Log-Engine "[METRIC] $Elapsed"
-Log-Engine "============================================="
+$TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)
+$Elapsed = "{0:00}:{1:mm\:ss}" -f $TotalHours, $MetricStopwatch.Elapsed
+Invoke-LogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
+Invoke-LogMsg "============================================="
 Exit 0
