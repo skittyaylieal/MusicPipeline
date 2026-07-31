@@ -22,7 +22,7 @@ function Get-TrackUUID([string]$Artist, [string]$Album, [string]$Title) {
 }
 
 # ANSI Logging Engine
-function Invoke-LogMsg([string]$Text, [string]$AnsiColor = "38;5;135") {
+function Invoke-LogMsg([string]$Text, [string]$AnsiColor = "38;5;202") {
     if ([string]::IsNullOrWhiteSpace($Text)) { return }
     $Timestamp = (Get-Date).ToString("HH:mm:ss")
     $ESC = [char]27
