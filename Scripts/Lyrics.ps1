@@ -336,6 +336,11 @@ except Exception: pass
             } finally {
                 if ($null -ne $stdoutBuilder) { $stdoutBuilder.Clear(); $stdoutBuilder = $null }
                 if ($null -ne $proc) {
+                    # Explicitly close redirected pipe streams before disposing the process
+                    try { $proc.StandardInput.Close() } catch {}
+                    try { $proc.StandardOutput.Close() } catch {}
+                    try { $proc.StandardError.Close() } catch {}
+
                     try { $proc.Close() } catch {}
                     try { $proc.Dispose() } catch {}
                     $proc = $null
