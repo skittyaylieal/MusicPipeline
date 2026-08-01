@@ -359,6 +359,8 @@ except Exception: pass
         $DirName = $FileInfo.DirectoryName
         $LrcFile = Join-Path $DirName "$($FileInfo.BaseName).lrc"
         $TxtFile = Join-Path $DirName "$($FileInfo.BaseName).txt"
+        $InstFile = Join-Path $DirName "$($FileInfo.BaseName).inst"
+
         
         if ($ForceFullRefresh) {
             if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue }
@@ -427,6 +429,10 @@ except Exception as e:
 
         if (-not $ForceFullRefresh -and $Meta.is_inst) {
             Invoke-LogMsg "    [-] Track explicitly marked as Instrumental. Skipping API engine." $TrackIndex
+            # Ensure sidecar marker exists for background scanner
+            if (-not (Test-Path -LiteralPath $InstFile)) {
+                New-Item -Path $InstFile -ItemType File -Force | Out-Null
+            }
             if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
             Invoke-LogMsg "---------------------------------------------" $TrackIndex
             return
@@ -600,6 +606,10 @@ sys.exit(0)
             Invoke-LogMsg "    [+] Confirmed Instrumental via MusicBrainz! Tags stamped." $TrackIndex
             if (Test-Path -LiteralPath $LrcFile) { Remove-Item -LiteralPath $LrcFile -Force -ErrorAction SilentlyContinue }
             if (Test-Path -LiteralPath $TxtFile) { Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue }
+            # Ensure sidecar marker exists for background scanner
+            if (-not (Test-Path -LiteralPath $InstFile)) {
+                New-Item -Path $InstFile -ItemType File -Force | Out-Null
+            }
             Invoke-LogMsg "---------------------------------------------" $TrackIndex
             return
         }
@@ -741,7 +751,10 @@ try:
             tags.save(file_path)
 except Exception: pass
 "@
-            [void](Invoke-ThreadNativeProcess "python" @("-", $FilePath) -InputScript $InstTagPython)
+            [void](Invoke-ThreadNativeProcess "python" @("-", $FilePath) -InputScript $InstTagPython)# Ensure sidecar marker exists for background scanner
+            if (-not (Test-Path -LiteralPath $InstFile)) {
+                New-Item -Path $InstFile -ItemType File -Force | Out-Null
+            }
             Invoke-LogMsg "    [+] Marked as Instrumental successfully." $TrackIndex
         }
 

@@ -131,19 +131,47 @@ audio.save()
     & python -c $PyCode "$FilePath" $LoreText 2>$null
 }
 
-# Fast Single-Pass Python Batch Scanner
-function Get-InstrumentalCandidates([string]$Dir) {
+# Fast Single-Pass Python Batch Scanner (Cache-Aware + LRC Detection)
+function Get-InstrumentalCandidates([string]$Dir, [string]$ConfigDir) {
     $PyCode = @"
-import os, sys, json
+import os, sys, json, hashlib
 from mutagen.mp4 import MP4
 
 backup_dir = sys.argv[1]
+config_dir = sys.argv[2]
+cache_file = os.path.join(config_dir, "dashboard_cache.json")
+
+# 1. Load dashboard cache if available
+candidate_ids = set()
+use_cache = False
+
+if os.path.exists(cache_file):
+    try:
+        with open(cache_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            tracks = data.get('tracks', [])
+            for t in tracks:
+                # Target tracks marked instrumental OR missing LRC
+                if t.get('isInstrumental', False) or not t.get('hasLrc', True):
+                    candidate_ids.add(t.get('id'))
+            use_cache = len(candidate_ids) > 0
+    except Exception:
+        use_cache = False
+
+def generate_track_id(artist, album, title):
+    raw = f"{artist}-{album}-{title}".lower().strip()
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:32]
+
 candidates = []
 
+# 2. Walk directory
 for root, dirs, files in os.walk(backup_dir):
     for f in files:
         if f.lower().endswith('.m4a'):
             full_path = os.path.join(root, f)
+            lrc_path = os.path.splitext(full_path)[0] + '.lrc'
+            has_lrc_file = os.path.exists(lrc_path)
+
             try:
                 audio = MP4(full_path)
                 title = audio.get('\xa9nam', [''])[0]
@@ -152,9 +180,24 @@ for root, dirs, files in os.walk(backup_dir):
                 lyrics = audio.get('\xa9lyr', [''])[0] if '\xa9lyr' in audio else ''
                 comment = audio.get('\xa9cmt', [''])[0].lower() if '\xa9cmt' in audio else ''
 
-                is_inst = ('instrumental' in comment) or (lyrics.strip().lower() == 'instrumental')
+                if not title or not artist:
+                    continue
 
-                if title and artist and is_inst:
+                track_id = generate_track_id(artist, album, title)
+                is_inst_flag = ('instrumental' in comment) or (lyrics.strip().lower() == 'instrumental')
+
+                # Selection Criteria:
+                # - Match in dashboard_cache.json (missing LRC or flagged instrumental)
+                # - OR No .lrc file exists on disk
+                # - OR Explicitly tagged as instrumental
+                # - OR Has no embedded lyrics text
+                is_candidate = False
+                if use_cache:
+                    is_candidate = (track_id in candidate_ids) or is_inst_flag or (not has_lrc_file)
+                else:
+                    is_candidate = is_inst_flag or (not has_lrc_file) or (not lyrics.strip())
+
+                if is_candidate:
                     candidates.append({
                         'FullName': full_path,
                         'Name': f,
@@ -169,8 +212,8 @@ for root, dirs, files in os.walk(backup_dir):
 
 print(json.dumps(candidates))
 "@
-    Invoke-LogMsg "[*] Batch scanning library for instrumental tracks..." "33"
-    $Res = & python -c $PyCode "$Dir" 2>$null
+    Invoke-LogMsg "[*] Batch scanning library for candidates (checking dashboard cache & .lrc availability)..." "33"
+    $Res = & python -c $PyCode "$Dir" "$ConfigDir" 2>$null
     if ($Res) {
         try { return ($Res | ConvertFrom-Json) } catch { return @() }
     }
@@ -185,8 +228,25 @@ function Start-OllamaIfNeeded {
         return $null
     } catch {
         Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "33"
-        $Process = Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden -PassThru
         
+        # Locate Ollama binary (handles stale PATH environment variables)
+        $OllamaBin = (Get-Command "ollama" -ErrorAction SilentlyContinue).Source
+        if (-not $OllamaBin) {
+            $DefaultPath = Join-Path $env:LOCALAPPDATA "Programs\Ollama\ollama.exe"
+            if (Test-Path -LiteralPath $DefaultPath) {
+                $OllamaBin = $DefaultPath
+            } else {
+                $OllamaBin = "ollama"
+            }
+        }
+
+        try {
+            $Process = Start-Process -FilePath $OllamaBin -ArgumentList "serve" -WindowStyle Hidden -PassThru
+        } catch {
+            Invoke-LogMsg "[-] Critical Error: Could not execute Ollama at path '$OllamaBin'. Ensure Ollama is installed." "31"
+            return $null
+        }
+
         $Ready = $false
         $Retries = 0
         while (-not $Ready -and $Retries -lt 15) {
@@ -248,10 +308,10 @@ if (Test-Path -LiteralPath $CachePath) {
     }
 }
 
-# Fast batch retrieval of candidates
+# Fast batch retrieval of candidates using dashboard cache & LRC awareness
 $CandidateTracks = @()
 if (Test-Path -LiteralPath $BackupDir) {
-    $CandidateTracks = Get-InstrumentalCandidates -Dir $BackupDir
+    $CandidateTracks = Get-InstrumentalCandidates -Dir $BackupDir -ConfigDir $ConfigDir
 }
 
 Invoke-LogMsg "[+] Located $($CandidateTracks.Count) candidate instrumental track(s) for VGM lore evaluation." "32"
