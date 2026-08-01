@@ -69,7 +69,7 @@ function Get-DuckDuckGoContext([string]$Title, [string]$Artist) {
         }
 
         $Snippets = @()
-        $Count = [Math]::Min(4, $RegexMatches.Count)
+        $Count = [Math]::Min(6, $RegexMatches.Count) # Set to 6 snippets for maximum depth
         for ($i = 0; $i -lt $Count; $i++) {
             $CleanText = $RegexMatches[$i].Groups[1].Value -replace '<[^>]+>', ''
             $CleanText = [System.Net.WebUtility]::HtmlDecode($CleanText).Trim()
@@ -131,6 +131,52 @@ audio.save()
     & python -c $PyCode "$FilePath" $LoreText 2>$null
 }
 
+# Fast Single-Pass Python Batch Scanner
+function Get-InstrumentalCandidates([string]$Dir) {
+    $PyCode = @"
+import os, sys, json
+from mutagen.mp4 import MP4
+
+backup_dir = sys.argv[1]
+candidates = []
+
+for root, dirs, files in os.walk(backup_dir):
+    for f in files:
+        if f.lower().endswith('.m4a'):
+            full_path = os.path.join(root, f)
+            try:
+                audio = MP4(full_path)
+                title = audio.get('\xa9nam', [''])[0]
+                artist = audio.get('\xa9ART', [''])[0]
+                album = audio.get('\xa9alb', [''])[0]
+                lyrics = audio.get('\xa9lyr', [''])[0] if '\xa9lyr' in audio else ''
+                comment = audio.get('\xa9cmt', [''])[0].lower() if '\xa9cmt' in audio else ''
+
+                is_inst = ('instrumental' in comment) or (lyrics.strip().lower() == 'instrumental')
+
+                if title and artist and is_inst:
+                    candidates.append({
+                        'FullName': full_path,
+                        'Name': f,
+                        'title': title,
+                        'artist': artist,
+                        'album': album,
+                        'existing_lyrics': lyrics,
+                        'has_lyrics': bool(lyrics)
+                    })
+            except Exception:
+                continue
+
+print(json.dumps(candidates))
+"@
+    Invoke-LogMsg "[*] Batch scanning library for instrumental tracks..." "33"
+    $Res = & python -c $PyCode "$Dir" 2>$null
+    if ($Res) {
+        try { return ($Res | ConvertFrom-Json) } catch { return @() }
+    }
+    return @()
+}
+
 # --- OLLAMA LIFECYCLE MANAGEMENT ---
 function Start-OllamaIfNeeded {
     try {
@@ -138,7 +184,7 @@ function Start-OllamaIfNeeded {
         Invoke-LogMsg "[+] Ollama server is already running." "32"
         return $null
     } catch {
-        Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "301"
+        Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "33"
         $Process = Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden -PassThru
         
         $Ready = $false
@@ -164,15 +210,15 @@ function Start-OllamaIfNeeded {
 }
 
 function Stop-OllamaIfStarted([System.Diagnostics.Process]$OllamaProc, [string]$Model) {
-    # 1. Instruct Ollama to immediately drop the model from RAM
+    # 1. Instruct Ollama to immediately unload model from RAM
     try {
         $UnloadPayload = @{ model = $Model; keep_alive = 0 } | ConvertTo-Json
         $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $UnloadPayload -ContentType "application/json" -TimeoutSec 5 -ErrorAction SilentlyContinue
     } catch {}
 
-    # 2. Terminate the process if we started it in this script
+    # 2. Terminate background process if spawned by this script
     if ($OllamaProc -and -not $OllamaProc.HasExited) {
-        Invoke-LogMsg "[*] Terminating Ollama background process to reclaim system RAM..." "301"
+        Invoke-LogMsg "[*] Terminating Ollama background process to reclaim system RAM..." "33"
         Stop-Process -Id $OllamaProc.Id -Force -ErrorAction SilentlyContinue
     }
 }
@@ -181,7 +227,7 @@ function Stop-OllamaIfStarted([System.Diagnostics.Process]$OllamaProc, [string]$
 Invoke-LogMsg "============================================="
 Invoke-LogMsg "    PowerShell Module: VGM Lore Evaluator"
 if ($CleanSweep) {
-    Invoke-LogMsg "    [MODE] Clean Sweep Active (Re-evaluating existing lore)" "301"
+    Invoke-LogMsg "    [MODE] Clean Sweep Active (Re-evaluating existing lore)" "33"
 }
 Invoke-LogMsg "============================================="
 
@@ -202,19 +248,13 @@ if (Test-Path -LiteralPath $CachePath) {
     }
 }
 
-$TargetFiles = @()
+# Fast batch retrieval of candidates
+$CandidateTracks = @()
 if (Test-Path -LiteralPath $BackupDir) {
-    $AllM4A = Get-ChildItem -Path $BackupDir -Filter "*.m4a" -Recurse -File
-    
-    foreach ($File in $AllM4A) {
-        $Tags = Get-M4aTags -FilePath $File.FullName
-        if ($Tags -and $Tags.title -and $Tags.is_inst) {
-            $TargetFiles += $File
-        }
-    }
+    $CandidateTracks = Get-InstrumentalCandidates -Dir $BackupDir
 }
 
-Invoke-LogMsg "[+] Located $($TargetFiles.Count) candidate instrumental track(s) for VGM lore evaluation." "32"
+Invoke-LogMsg "[+] Located $($CandidateTracks.Count) candidate instrumental track(s) for VGM lore evaluation." "32"
 
 # Start Ollama service if offline
 $SpawnedOllamaProc = Start-OllamaIfNeeded
@@ -225,13 +265,13 @@ $SkippedCount = 0
 $TrackIndex = 0
 
 try {
-    foreach ($File in $TargetFiles) {
+    foreach ($Track in $CandidateTracks) {
         $TrackIndex++
-        $FilePath = $File.FullName
-        $FileName = $File.Name
+        $FilePath = $Track.FullName
+        $FileName = $Track.Name
+        $Tags     = $Track
 
-        $Tags = Get-M4aTags -FilePath $FilePath
-        if (-not $Tags -or -not $Tags.title -or -not $Tags.artist) {
+        if (-not $Tags.title -or -not $Tags.artist) {
             Invoke-LogMsg "[-] Skipping $FileName (Missing Title/Artist metadata tags)" "90"
             continue
         }
@@ -245,7 +285,7 @@ try {
                 $LastChecked = [DateTime]::Parse($Entry.last_checked)
                 if ((Get-Date) -lt $LastChecked.AddDays($CooldownDays)) {
                     $NextCheck = $LastChecked.AddDays($CooldownDays).ToString("yyyy-MM-dd")
-                    Invoke-LogMsg "[~] Skipping [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' (Flagged NOT_VGM | Cooldown active until $NextCheck)" "38;5;244"
+                    Invoke-LogMsg "[~] Skipping [$TrackIndex/$($CandidateTracks.Count)]: '$($Tags.title)' (Flagged NOT_VGM | Cooldown active until $NextCheck)" "38;5;244"
                     $SkippedCount++
                     continue
                 }
@@ -256,9 +296,9 @@ try {
         $ExistingLoreText = if ($HasExistingLore) { $Tags.existing_lyrics } else { "No prior lore embedded." }
 
         if ($CleanSweep -and $HasExistingLore) {
-            Invoke-LogMsg "[*] [Sweep Review] Inspecting existing lore for [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
+            Invoke-LogMsg "[*] [Sweep Review] Inspecting existing lore for [$TrackIndex/$($CandidateTracks.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
         } else {
-            Invoke-LogMsg "[*] Evaluating Track [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
+            Invoke-LogMsg "[*] Evaluating Track [$TrackIndex/$($CandidateTracks.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
         }
         
         $WebContext = Get-DuckDuckGoContext -Title $Tags.title -Artist $Tags.artist
@@ -311,7 +351,7 @@ Include these exact sections:
         }
 
         if ($LoreOutput -eq "NOT_VGM" -or $LoreOutput.StartsWith("NOT_VGM")) {
-            Invoke-LogMsg "  [!] Flagged as NOT_VGM by $ModelName. Cooldown activated." "301"
+            Invoke-LogMsg "  [!] Flagged as NOT_VGM by $ModelName. Cooldown activated." "33"
             
             $VgmCache[$TrackId] = [PSCustomObject]@{
                 title        = $Tags.title
