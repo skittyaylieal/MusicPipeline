@@ -245,7 +245,6 @@ except Exception: pass
             return $false
         }
 
-        # Fix 1: Properly dispose native process handle to fix the 25k handle leak
         function Get-MemorySnapshot {
             $Proc = [System.Diagnostics.Process]::GetCurrentProcess()
             try {
@@ -336,7 +335,6 @@ except Exception: pass
             } finally {
                 if ($null -ne $stdoutBuilder) { $stdoutBuilder.Clear(); $stdoutBuilder = $null }
                 if ($null -ne $proc) {
-                    # Explicitly close redirected pipe streams before disposing the process
                     try { $proc.StandardInput.Close() } catch {}
                     try { $proc.StandardOutput.Close() } catch {}
                     try { $proc.StandardError.Close() } catch {}
@@ -675,6 +673,7 @@ sys.exit(0)
         }
 
         # STEP 6: Untimed Tag Embedding
+        $PlainLyricsEmbedded = $false
         if (Test-Path -LiteralPath $TxtFile) {
             Invoke-LogMsg "     [+] Plain text lyrics found. Embedding into container tags..." $TrackIndex
             
@@ -709,17 +708,48 @@ except Exception as e:
     sys.exit(1)
 "@
             $EmbedResult = Invoke-ThreadNativeProcess "python" @("-", $TxtFile, $FilePath) -InputScript $PythonCode
-        }
-        
-        if (Test-Path -LiteralPath $TxtFile) {
+            $PlainLyricsEmbedded = $true
             Remove-Item -LiteralPath $TxtFile -Force -ErrorAction SilentlyContinue
+        }
+
+        # STEP 7: Fallback Instrumental Tagging (If no lyrics found anywhere)
+        if (-not $PlainLyricsEmbedded -and -not $HasUnsyncedLyrics) {
+            Invoke-LogMsg "    [!] No lyrics found across any provider. Marking track as Instrumental..." $TrackIndex
+            
+            $InstTagPython = @"
+import sys, mutagen
+from mutagen.mp4 import MP4
+from mutagen.flac import FLAC
+from mutagen.id3 import ID3, COMM, TLAN
+
+file_path = sys.argv[1]
+try:
+    audio = mutagen.File(file_path)
+    if audio is not None:
+        if isinstance(audio, FLAC):
+            audio['language'] = 'zxx'
+            audio['comment'] = 'Instrumental'
+            audio.save()
+        elif isinstance(audio, MP4):
+            audio['\xa9cmt'] = ['Instrumental']
+            audio.save()
+        else:
+            try: tags = ID3(file_path)
+            except Exception: tags = ID3()
+            tags.append(TLAN(encoding=3, text=['zxx']))
+            tags.add(COMM(encoding=3, lang='eng', desc='Comment', text='Instrumental'))
+            tags.save(file_path)
+except Exception: pass
+"@
+            [void](Invoke-ThreadNativeProcess "python" @("-", $FilePath) -InputScript $InstTagPython)
+            Invoke-LogMsg "    [+] Marked as Instrumental successfully." $TrackIndex
         }
 
         Invoke-LogMsg "---------------------------------------------" $TrackIndex
     } finally {
-        # Fix 4: Removed blocking manual GC sweeps
+        # Cleanup
     }
-} -ThrottleLimit $ThrottleLimit | Out-Null # Fix 2: Dump parallel pipeline output to $null to prevent RAM hoarding
+} -ThrottleLimit $ThrottleLimit | Out-Null
 
 $MetricStopwatch.Stop()
 $TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)

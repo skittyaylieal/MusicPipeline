@@ -97,10 +97,21 @@ try:
     title = audio.get('\xa9nam', [''])[0]
     artist = audio.get('\xa9ART', [''])[0]
     album = audio.get('\xa9alb', [''])[0]
-    lyrics = audio.get('\xa9lyr', [''])[0]
-    print(json.dumps({'title': title, 'artist': artist, 'album': album, 'has_lyrics': bool(lyrics), 'existing_lyrics': lyrics}))
+    lyrics = audio.get('\xa9lyr', [''])[0] if '\xa9lyr' in audio else ''
+    comment = audio.get('\xa9cmt', [''])[0].lower() if '\xa9cmt' in audio else ''
+
+    is_inst = ('instrumental' in comment) or (lyrics.strip().lower() == 'instrumental')
+
+    print(json.dumps({
+        'title': title, 
+        'artist': artist, 
+        'album': album, 
+        'has_lyrics': bool(lyrics), 
+        'existing_lyrics': lyrics,
+        'is_inst': is_inst
+    }))
 except Exception as e:
-    print(json.dumps({'error': str(e)}))
+    print(json.dumps({'error': str(e), 'is_inst': False}))
 "@
     $Res = & python -c $PyCode "$FilePath" 2>$null
     if ($Res) {
@@ -129,7 +140,6 @@ if ($CleanSweep) {
 Invoke-LogMsg "============================================="
 
 $CachePath = Join-Path $ConfigDir "vgm_cache.json"
-$InstrumentalsDbPath = Join-Path $ConfigDir "instrumentals.json"
 
 $VgmCache = @{}
 if (Test-Path -LiteralPath $CachePath) {
@@ -150,22 +160,11 @@ $TargetFiles = @()
 if (Test-Path -LiteralPath $BackupDir) {
     $AllM4A = Get-ChildItem -Path $BackupDir -Filter "*.m4a" -Recurse -File
     
-    if (Test-Path -LiteralPath $InstrumentalsDbPath) {
-        try {
-            $InstDb = Get-Content -LiteralPath $InstrumentalsDbPath -Raw | ConvertFrom-Json
-            $InstIds = $InstDb | ForEach-Object { $_.id }
-            foreach ($File in $AllM4A) {
-                $Tags = Get-M4aTags -FilePath $File.FullName
-                if ($Tags -and $Tags.title) {
-                    $TrackId = Get-TrackUUID -Artist $Tags.artist -Album $Tags.album -Title $Tags.title
-                    if ($InstIds -contains $TrackId) { $TargetFiles += $File }
-                }
-            }
-        } catch {
-            $TargetFiles = $AllM4A
+    foreach ($File in $AllM4A) {
+        $Tags = Get-M4aTags -FilePath $File.FullName
+        if ($Tags -and $Tags.title -and $Tags.is_inst) {
+            $TargetFiles += $File
         }
-    } else {
-        $TargetFiles = $AllM4A
     }
 }
 
@@ -203,7 +202,7 @@ foreach ($File in $TargetFiles) {
         }
     }
 
-    $HasExistingLore = -not [string]::IsNullOrWhiteSpace($Tags.existing_lyrics)
+    $HasExistingLore = -not [string]::IsNullOrWhiteSpace($Tags.existing_lyrics) -and ($Tags.existing_lyrics.Trim().ToLower() -ne "instrumental")
     $ExistingLoreText = if ($HasExistingLore) { $Tags.existing_lyrics } else { "No prior lore embedded." }
 
     if ($CleanSweep -and $HasExistingLore) {
