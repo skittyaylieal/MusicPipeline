@@ -138,7 +138,7 @@ function Start-OllamaIfNeeded {
         Invoke-LogMsg "[+] Ollama server is already running." "32"
         return $null
     } catch {
-        Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "33"
+        Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "301"
         $Process = Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden -PassThru
         
         $Ready = $false
@@ -172,7 +172,7 @@ function Stop-OllamaIfStarted([System.Diagnostics.Process]$OllamaProc, [string]$
 
     # 2. Terminate the process if we started it in this script
     if ($OllamaProc -and -not $OllamaProc.HasExited) {
-        Invoke-LogMsg "[*] Terminating Ollama background process to reclaim system RAM..." "33"
+        Invoke-LogMsg "[*] Terminating Ollama background process to reclaim system RAM..." "301"
         Stop-Process -Id $OllamaProc.Id -Force -ErrorAction SilentlyContinue
     }
 }
@@ -181,7 +181,7 @@ function Stop-OllamaIfStarted([System.Diagnostics.Process]$OllamaProc, [string]$
 Invoke-LogMsg "============================================="
 Invoke-LogMsg "    PowerShell Module: VGM Lore Evaluator"
 if ($CleanSweep) {
-    Invoke-LogMsg "    [MODE] Clean Sweep Active (Re-evaluating existing lore)" "33"
+    Invoke-LogMsg "    [MODE] Clean Sweep Active (Re-evaluating existing lore)" "301"
 }
 Invoke-LogMsg "============================================="
 
@@ -311,7 +311,7 @@ Include these exact sections:
         }
 
         if ($LoreOutput -eq "NOT_VGM" -or $LoreOutput.StartsWith("NOT_VGM")) {
-            Invoke-LogMsg "  [!] Flagged as NOT_VGM by $ModelName. Cooldown activated." "33"
+            Invoke-LogMsg "  [!] Flagged as NOT_VGM by $ModelName. Cooldown activated." "301"
             
             $VgmCache[$TrackId] = [PSCustomObject]@{
                 title        = $Tags.title

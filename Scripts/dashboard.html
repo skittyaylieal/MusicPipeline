@@ -921,7 +921,7 @@
                         // Full 12-Color Palette + Error & Reset Codes
                         const extendedColorCodes = [
                             '38;5;51', '38;5;201', '33', '38;5;135', '38;5;208', 
-                            '38;5;217', '38;5;75', '38;5;118', '38;5;213', '38;5;37', 
+                            '38;5;217', '38;5;75', '38;5;118', '38;5;213', '38;5;37', '38;5;202',
                             '38;5;203', '38;5;141', '32', '1;31'
                         ];
 
@@ -953,6 +953,8 @@
                                 .replace(/\x1b\[38;5;203m/g, '<span style="color:#FF5555; font-weight:bold;">')   // Thread 11: Coral Red
                                 .replace(/\x1b\[38;5;141m/g, '<span style="color:#D6ACFF; font-weight:bold;">')   // Thread 12: Lavender
                                 .replace(/\x1b\[38;5;202m/g, '<span style="color:#FF5F00; font-weight:bold;">')   // Lore: Dark Orange
+                                .replace(/\x1b\[38;5;301m/g, '<span style="color:#F2991D; font-weight:bold;">')   // Lore: Clean Sweep
+                                
                                 
                                 // --- Process Debug Alerts & Fallbacks ---
                                 .replace(/\x1b\[1;31m/g,     '<span style="color:#FF5555; font-weight:bold; background:rgba(255,85,85,0.15);">') // Debug Panic Alert
