@@ -388,9 +388,10 @@ function Invoke-PipelineExecution {
         [bool]$SkipStep6 = $false, # Lore Stage
         [bool]$SkipStep7 = $false, # Metrics Stage
         [bool]$CleanSweepDownload = $false,
-        [bool]$CleanSweepLyrics = $false,
+        [bool]$CleanSweepLyrics   = $false,
         [bool]$CleanSweepCompress = $false,
-        [bool]$RouteViaVPN = $false
+        [bool]$CleanSweepLore     = $false,
+        [bool]$RouteViaVPN        = $false
     )
 
     if ($Global:IsPipelineRunning) { return } 
