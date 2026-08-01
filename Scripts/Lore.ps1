@@ -131,6 +131,52 @@ audio.save()
     & python -c $PyCode "$FilePath" $LoreText 2>$null
 }
 
+# --- OLLAMA LIFECYCLE MANAGEMENT ---
+function Start-OllamaIfNeeded {
+    try {
+        $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
+        Invoke-LogMsg "[+] Ollama server is already running." "32"
+        return $null
+    } catch {
+        Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "33"
+        $Process = Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden -PassThru
+        
+        $Ready = $false
+        $Retries = 0
+        while (-not $Ready -and $Retries -lt 15) {
+            Start-Sleep -Seconds 1
+            try {
+                $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
+                $Ready = $true
+            } catch {
+                $Retries++
+            }
+        }
+
+        if ($Ready) {
+            Invoke-LogMsg "[✓] Ollama server started successfully!" "32"
+            return $Process
+        } else {
+            Invoke-LogMsg "[-] Failed to start Ollama server." "31"
+            return $null
+        }
+    }
+}
+
+function Stop-OllamaIfStarted([System.Diagnostics.Process]$OllamaProc, [string]$Model) {
+    # 1. Instruct Ollama to immediately drop the model from RAM
+    try {
+        $UnloadPayload = @{ model = $Model; keep_alive = 0 } | ConvertTo-Json
+        $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $UnloadPayload -ContentType "application/json" -TimeoutSec 5 -ErrorAction SilentlyContinue
+    } catch {}
+
+    # 2. Terminate the process if we started it in this script
+    if ($OllamaProc -and -not $OllamaProc.HasExited) {
+        Invoke-LogMsg "[*] Terminating Ollama background process to reclaim system RAM..." "33"
+        Stop-Process -Id $OllamaProc.Id -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # --- INITIALIZATION & CACHE LOADING ---
 Invoke-LogMsg "============================================="
 Invoke-LogMsg "    PowerShell Module: VGM Lore Evaluator"
@@ -170,50 +216,54 @@ if (Test-Path -LiteralPath $BackupDir) {
 
 Invoke-LogMsg "[+] Located $($TargetFiles.Count) candidate instrumental track(s) for VGM lore evaluation." "32"
 
+# Start Ollama service if offline
+$SpawnedOllamaProc = Start-OllamaIfNeeded
+
 $SuccessCount = 0
 $FlaggedCount = 0
 $SkippedCount = 0
 $TrackIndex = 0
 
-foreach ($File in $TargetFiles) {
-    $TrackIndex++
-    $FilePath = $File.FullName
-    $FileName = $File.Name
+try {
+    foreach ($File in $TargetFiles) {
+        $TrackIndex++
+        $FilePath = $File.FullName
+        $FileName = $File.Name
 
-    $Tags = Get-M4aTags -FilePath $FilePath
-    if (-not $Tags -or -not $Tags.title -or -not $Tags.artist) {
-        Invoke-LogMsg "[-] Skipping $FileName (Missing Title/Artist metadata tags)" "90"
-        continue
-    }
+        $Tags = Get-M4aTags -FilePath $FilePath
+        if (-not $Tags -or -not $Tags.title -or -not $Tags.artist) {
+            Invoke-LogMsg "[-] Skipping $FileName (Missing Title/Artist metadata tags)" "90"
+            continue
+        }
 
-    $TrackId = Get-TrackUUID -Artist $Tags.artist -Album $Tags.album -Title $Tags.title
+        $TrackId = Get-TrackUUID -Artist $Tags.artist -Album $Tags.album -Title $Tags.title
 
-    # 14-Day Cooldown Check (Bypassed in Clean Sweep or Force Refresh mode)
-    if ($VgmCache.ContainsKey($TrackId) -and -not $ForceRefresh -and -not $CleanSweep) {
-        $Entry = $VgmCache[$TrackId]
-        if ($Entry.status -eq "NOT_VGM" -and $Entry.last_checked) {
-            $LastChecked = [DateTime]::Parse($Entry.last_checked)
-            if ((Get-Date) -lt $LastChecked.AddDays($CooldownDays)) {
-                $NextCheck = $LastChecked.AddDays($CooldownDays).ToString("yyyy-MM-dd")
-                Invoke-LogMsg "[~] Skipping [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' (Flagged NOT_VGM | Cooldown active until $NextCheck)" "38;5;244"
-                $SkippedCount++
-                continue
+        # 14-Day Cooldown Check (Bypassed in Clean Sweep or Force Refresh mode)
+        if ($VgmCache.ContainsKey($TrackId) -and -not $ForceRefresh -and -not $CleanSweep) {
+            $Entry = $VgmCache[$TrackId]
+            if ($Entry.status -eq "NOT_VGM" -and $Entry.last_checked) {
+                $LastChecked = [DateTime]::Parse($Entry.last_checked)
+                if ((Get-Date) -lt $LastChecked.AddDays($CooldownDays)) {
+                    $NextCheck = $LastChecked.AddDays($CooldownDays).ToString("yyyy-MM-dd")
+                    Invoke-LogMsg "[~] Skipping [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' (Flagged NOT_VGM | Cooldown active until $NextCheck)" "38;5;244"
+                    $SkippedCount++
+                    continue
+                }
             }
         }
-    }
 
-    $HasExistingLore = -not [string]::IsNullOrWhiteSpace($Tags.existing_lyrics) -and ($Tags.existing_lyrics.Trim().ToLower() -ne "instrumental")
-    $ExistingLoreText = if ($HasExistingLore) { $Tags.existing_lyrics } else { "No prior lore embedded." }
+        $HasExistingLore = -not [string]::IsNullOrWhiteSpace($Tags.existing_lyrics) -and ($Tags.existing_lyrics.Trim().ToLower() -ne "instrumental")
+        $ExistingLoreText = if ($HasExistingLore) { $Tags.existing_lyrics } else { "No prior lore embedded." }
 
-    if ($CleanSweep -and $HasExistingLore) {
-        Invoke-LogMsg "[*] [Sweep Review] Inspecting existing lore for [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
-    } else {
-        Invoke-LogMsg "[*] Evaluating Track [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
-    }
-    
-    $WebContext = Get-DuckDuckGoContext -Title $Tags.title -Artist $Tags.artist
+        if ($CleanSweep -and $HasExistingLore) {
+            Invoke-LogMsg "[*] [Sweep Review] Inspecting existing lore for [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
+        } else {
+            Invoke-LogMsg "[*] Evaluating Track [$TrackIndex/$($TargetFiles.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
+        }
+        
+        $WebContext = Get-DuckDuckGoContext -Title $Tags.title -Artist $Tags.artist
 
-    $Prompt = @"
+        $Prompt = @"
 You are an expert video game music historian and metadata validator. 
 Analyze this track:
 Track Title: $($Tags.title)
@@ -245,52 +295,56 @@ Include these exact sections:
 5. MUSICAL MOTIFS (Themes, patterns, or instruments used)
 "@
 
-    $Payload = @{
-        model   = $ModelName
-        prompt  = $Prompt
-        stream  = $false
-        options = @{ temperature = 0.1 }
-    } | ConvertTo-Json -Depth 5
+        $Payload = @{
+            model   = $ModelName
+            prompt  = $Prompt
+            stream  = $false
+            options = @{ temperature = 0.1 }
+        } | ConvertTo-Json -Depth 5
 
-    try {
-        $OllamaRes = Invoke-RestMethod -Uri $OllamaUrl -Method Post -Body $Payload -ContentType "application/json" -TimeoutSec 60
-        $LoreOutput = $OllamaRes.response.Trim()
-    } catch {
-        Invoke-LogMsg "[-] Ollama connection failed or timed out: $_" "31"
-        $LoreOutput = "NOT_VGM"
-    }
-
-    if ($LoreOutput -eq "NOT_VGM" -or $LoreOutput.StartsWith("NOT_VGM")) {
-        Invoke-LogMsg "  [!] Flagged as NOT_VGM by $ModelName. Cooldown activated." "33"
-        
-        $VgmCache[$TrackId] = [PSCustomObject]@{
-            title        = $Tags.title
-            artist       = $Tags.artist
-            status       = "NOT_VGM"
-            last_checked = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+        try {
+            $OllamaRes = Invoke-RestMethod -Uri $OllamaUrl -Method Post -Body $Payload -ContentType "application/json" -TimeoutSec 60
+            $LoreOutput = $OllamaRes.response.Trim()
+        } catch {
+            Invoke-LogMsg "[-] Ollama connection failed or timed out: $_" "31"
+            $LoreOutput = "NOT_VGM"
         }
-        $FlaggedCount++
-    } else {
-        Set-M4aLyrics -FilePath $FilePath -LoreText $LoreOutput
-        if ($CleanSweep -and $HasExistingLore) {
-            Invoke-LogMsg "  [✓] Successfully reviewed and updated VGM lore tag!" "32"
+
+        if ($LoreOutput -eq "NOT_VGM" -or $LoreOutput.StartsWith("NOT_VGM")) {
+            Invoke-LogMsg "  [!] Flagged as NOT_VGM by $ModelName. Cooldown activated." "33"
+            
+            $VgmCache[$TrackId] = [PSCustomObject]@{
+                title        = $Tags.title
+                artist       = $Tags.artist
+                status       = "NOT_VGM"
+                last_checked = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+            }
+            $FlaggedCount++
         } else {
-            Invoke-LogMsg "  [✓] Successfully embedded VGM lore into M4A lyrics tag!" "32"
+            Set-M4aLyrics -FilePath $FilePath -LoreText $LoreOutput
+            if ($CleanSweep -and $HasExistingLore) {
+                Invoke-LogMsg "  [✓] Successfully reviewed and updated VGM lore tag!" "32"
+            } else {
+                Invoke-LogMsg "  [✓] Successfully embedded VGM lore into M4A lyrics tag!" "32"
+            }
+
+            $VgmCache[$TrackId] = [PSCustomObject]@{
+                title        = $Tags.title
+                artist       = $Tags.artist
+                status       = "VGM_EMBEDDED"
+                last_checked = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+            }
+            $SuccessCount++
         }
 
-        $VgmCache[$TrackId] = [PSCustomObject]@{
-            title        = $Tags.title
-            artist       = $Tags.artist
-            status       = "VGM_EMBEDDED"
-            last_checked = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
-        }
-        $SuccessCount++
+        # Atomic Cache Write
+        $TempCache = "$CachePath.tmp"
+        $VgmCache | ConvertTo-Json -Depth 5 | Out-File -FilePath $TempCache -Encoding utf8 -Force
+        Move-Item -Path $TempCache -Destination $CachePath -Force
     }
-
-    # Atomic Cache Write
-    $TempCache = "$CachePath.tmp"
-    $VgmCache | ConvertTo-Json -Depth 5 | Out-File -FilePath $TempCache -Encoding utf8 -Force
-    Move-Item -Path $TempCache -Destination $CachePath -Force
+} finally {
+    # Guarantees Ollama process cleanup and VRAM/RAM flushing upon exit/interrupt
+    Stop-OllamaIfStarted -OllamaProc $SpawnedOllamaProc -Model $ModelName
 }
 
 # STOP TOTAL STAGE TIMER & LOG METRIC
