@@ -377,23 +377,25 @@ LIVE WEB SEARCH CONTEXT FOR THIS TRACK:
 $WebContext
 
 CRITICAL VALIDATION STEP:
-Evaluate if this track is a verified piece of video game music (VGM). 
-If the track is NOT from a video game, or if it is a generic non-gaming instrumental track (e.g. standalone jazz, classical, or background pop), respond with EXACTLY ONE WORD: NOT_VGM
+Determine if this track is associated with video game music (VGM).
+- VALID VGM INCLUDES: Official soundtracks (OSTs), official remixes, fan arrangements, covers, chiptunes, and game tribute albums (e.g., 2 Mello, Luke Pickman, Materia Collective, OverClocked ReMix, Smooth McGroove).
+- INVALID (NOT_VGM): Tracks with ZERO connection to video games (e.g., mainstream rock/pop bands like 311, commercial rap, generic background jazz/pop).
+
+If the track is strictly NOT_VGM (has no connection to video games), respond with EXACTLY ONE WORD: NOT_VGM
 Do not include any other text, explanations, spaces, or punctuation if it fails validation.
 
-IF IT PASSES VALIDATION:
-Review the PREVIOUS / EXISTING EMBEDDED LORE alongside the LIVE WEB SEARCH CONTEXT.
-- If the existing lore is inaccurate, outdated, missing key details, or can be substantially improved, synthesize an updated and refined version.
-- If the existing lore is already accurate and thorough, format and re-affirm the complete text according to the required rules below.
+IF IT PASSES VALIDATION (OST, COVER, OR REMIX):
+Synthesize a detailed lore entry using the search context and existing lore.
+If the track is a cover, remix, or arrangement, explain the original game's lore AND detail the specific cover artist's contribution/style.
 
 Format the output as clean plain text for a mobile display screen. 
 Use ALL CAPS for section headers. Do NOT use markdown (no asterisks, no hashes, no bullet points).
 Include these exact sections:
-1. GAME ORIGIN (The game title and release year)
-2. COMPOSER BIO (2 sentences on the artist)
-3. GAMEPLAY CONTEXT (Where/when it plays in-game)
-4. NARRATIVE SIGNIFICANCE (The emotional context or meaning)
-5. MUSICAL MOTIFS (Themes, patterns, or instruments used)
+1. GAME ORIGIN (The original game title, release year, and whether this track is an OST or a cover/remix)
+2. COMPOSER BIO (Mention the original game composer AND the cover/remix artist if applicable)
+3. GAMEPLAY CONTEXT (Where/when the original theme plays in-game)
+4. NARRATIVE SIGNIFICANCE (The emotional context or meaning of the original piece)
+5. MUSICAL MOTIFS (Themes, instrumentation, and specific style/elements of this cover or arrangement)
 "@
 
         $Payload = @{
