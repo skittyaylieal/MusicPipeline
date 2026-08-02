@@ -9,5 +9,6 @@ public class Orchestrator
     {
         var o = new Orchestrator();
         LogEngine.Out(o.LogFile, "Test", "Orchestrator");
+        LogEngine.Out(o.LogFile, "Test Number 2", "Orchestrator")
     }
 }
