@@ -1,7 +1,7 @@
 Param (
     [string]$BackupDir = "C:\Users\filip\Music\YT_Music_Backup",
     [string]$ConfigDir = "C:\MusicTools\MusicPipeline\Config",
-    [string]$OllamaUrl = "http://localhost:11434/api/generate",
+    [string]$OllamaUrl = "http://127.0.0.1:11434/api/generate",
     [string]$ModelName = "gemma2:9b",
     [int]$CooldownDays = 14,
     [string]$GlobalLogFile = "C:\MusicTools\MusicPipeline\Config\web_console_stream.log",
@@ -218,7 +218,7 @@ function Start-OllamaIfNeeded([string]$Model) {
     
     # 1. Check if server is already active
     try {
-        $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
+        $null = Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
         Invoke-LogMsg "[+] Ollama server is already running." "32"
     } catch {
         Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "33"
@@ -245,7 +245,7 @@ function Start-OllamaIfNeeded([string]$Model) {
         while (-not $Ready) {
             Start-Sleep -Seconds 1
             try {
-                $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
+                $null = Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
                 $Ready = $true
             } catch {
                 # Waiting for HTTP server listener to open...
@@ -264,7 +264,7 @@ function Start-OllamaIfNeeded([string]$Model) {
         } | ConvertTo-Json
 
         # No -TimeoutSec parameter here
-        $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $WarmupPayload -ContentType "application/json"
+        $null = Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/generate" -Method Post -Body $WarmupPayload -ContentType "application/json"
         Invoke-LogMsg "[✓] Model '$Model' successfully loaded and ready in RAM!" "32"
     } catch {
         Invoke-LogMsg "⚠️ Model pre-load failed: $_" "33"
@@ -278,7 +278,7 @@ function Stop-OllamaIfStarted([System.Diagnostics.Process]$OllamaProc, [string]$
     try {
         Invoke-LogMsg "[*] Unloading model '$Model' from memory..." "33"
         $UnloadPayload = @{ model = $Model; keep_alive = 0 } | ConvertTo-Json
-        $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $UnloadPayload -ContentType "application/json" -TimeoutSec 10 -ErrorAction SilentlyContinue
+        $null = Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/generate" -Method Post -Body $UnloadPayload -ContentType "application/json" -TimeoutSec 10 -ErrorAction SilentlyContinue
     } catch {}
 
     # 2. Terminate background process if spawned by this script

@@ -1182,6 +1182,8 @@ try {
                     }
                     Stop-Process -Name "yt-dlp" -Force -ErrorAction SilentlyContinue
                     Stop-Process -Name "ffmpeg" -Force -ErrorAction SilentlyContinue
+                    Stop-Process -Name "ollama" -Force -ErrorAction SilentlyContinue
+                    Stop-Process -Name "ollama*" -Force -ErrorAction SilentlyContinue
 
                     $Global:IsPipelineRunning = $false
                     $Timestamp = (Get-Date).ToString("HH:mm:ss")
