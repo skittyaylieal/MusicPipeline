@@ -21,9 +21,10 @@ public class LogEngine
         DateTime current = DateTime.Now;
         string TimeStamp = "[" + current.ToString("HH:mm:ss") + "]";
         string ColPrefix = $"{esc}[{Style}m{TimeStamp} [{User}] {reset}";
-        string ProcessedMessage = $"\u000A{ColPrefix} {Message}";
+        string ProcessedMessage = $"{ColPrefix} {Message}";
+        string ProcessedMessageNl = $"\u000A{ProcessedMessage}";
 
-        File.AppendAllText(LogFile, ProcessedMessage);
+        File.AppendAllText(LogFile, ProcessedMessageNl);
         Console.WriteLine(ProcessedMessage);
 
     }
