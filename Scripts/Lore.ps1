@@ -319,6 +319,15 @@ Invoke-LogMsg "[+] Located $($CandidateTracks.Count) candidate instrumental trac
 # Start Ollama service if offline
 $SpawnedOllamaProc = Start-OllamaIfNeeded
 
+# --- CIRCUIT BREAKER: VERIFY OLLAMA IS ONLINE BEFORE RUNNING ---
+try {
+    $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 3 -ErrorAction Stop
+} catch {
+    Invoke-LogMsg "🛑 [CRITICAL] Ollama server is unreachable. Aborting VGM Lore sweep." "31"
+    Stop-OllamaIfStarted -OllamaProc $SpawnedOllamaProc -Model $ModelName
+    Exit 1
+}
+
 $SuccessCount = 0
 $FlaggedCount = 0
 $SkippedCount = 0
@@ -402,14 +411,33 @@ Include these exact sections:
             options = @{ temperature = 0.1 }
         } | ConvertTo-Json -Depth 5
 
+        $OllamaError = $false
+        $LoreOutput  = $null
+
         try {
-            $OllamaRes = Invoke-RestMethod -Uri $OllamaUrl -Method Post -Body $Payload -ContentType "application/json" -TimeoutSec 60
+            $OllamaRes  = Invoke-RestMethod -Uri $OllamaUrl -Method Post -Body $Payload -ContentType "application/json" -TimeoutSec 60
             $LoreOutput = $OllamaRes.response.Trim()
         } catch {
             Invoke-LogMsg "[-] Ollama connection failed or timed out: $_" "31"
-            $LoreOutput = "NOT_VGM"
+            $OllamaError = $true
         }
 
+        # 1. API Failure Guard: Skip track without writing to cache or setting cooldown
+        if ($OllamaError -or [string]::IsNullOrWhiteSpace($LoreOutput)) {
+            Invoke-LogMsg "  [!] Skipping track due to Ollama error (Cache unchanged)." "33"
+            $SkippedCount++
+
+            # Mid-Run Circuit Breaker: If server crashed mid-sweep, break out of loop completely
+            try {
+                $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
+            } catch {
+                Invoke-LogMsg "🛑 [OLLAMA CRASHED] Server dropped offline mid-sweep. Aborting remaining tracks." "31"
+                break
+            }
+            continue
+        }
+
+        # 2. Evaluate Valid Model Response
         if ($LoreOutput -eq "NOT_VGM" -or $LoreOutput.StartsWith("NOT_VGM")) {
             Invoke-LogMsg "  [!] Flagged as NOT_VGM by $ModelName. Cooldown activated." "33"
             
