@@ -767,6 +767,6 @@ except Exception: pass
 $MetricStopwatch.Stop()
 $TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)
 $Elapsed = "{0:00}:{1:mm\:ss}" -f $TotalHours, $MetricStopwatch.Elapsed
-Invoke-LogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
-Invoke-LogMsg "============================================="
+Invoke-MainLogMsg "[METRIC] Total Engine Run Duration: $Elapsed"
+Invoke-MainLogMsg "============================================="
 Exit 0
