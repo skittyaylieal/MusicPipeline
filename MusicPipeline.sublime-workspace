@@ -1,0 +1,449 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"Cl",
+				"CleanLore"
+			],
+			[
+				"chk",
+				"chk-clean-s4"
+			],
+			[
+				"CleanSwe",
+				"CleanSweepLore"
+			],
+			[
+				"SkipStep",
+				"SkipStep7"
+			],
+			[
+				"MaxS",
+				"MaxStreamReturnLines"
+			],
+			[
+				"Max",
+				"MaxStreamReturnLines"
+			],
+			[
+				"Pro",
+				"ProfilesFile"
+			],
+			[
+				"Cleans",
+				"CleanSweepDownload"
+			],
+			[
+				"Clea",
+				"CleanSweep"
+			],
+			[
+				"E",
+				"EnvMap"
+			],
+			[
+				"ski",
+				"SkipStep5"
+			],
+			[
+				"Sk",
+				"SkipStep3"
+			],
+			[
+				"Skip",
+				"SkipStep1"
+			],
+			[
+				"Col",
+				"ColorCode"
+			],
+			[
+				"Succ",
+				"Successful"
+			],
+			[
+				"Wri",
+				"Write-Host"
+			],
+			[
+				"Local",
+				"LocalConfigDir"
+			],
+			[
+				"LocalC",
+				"LocalConfigDir"
+			],
+			[
+				"T",
+				"TestURL"
+			],
+			[
+				"MA",
+				"MaxThreads"
+			],
+			[
+				"Start",
+				"Start-Sleep"
+			],
+			[
+				"EX",
+				"ExtractedID"
+			],
+			[
+				"Lo",
+				"LogContent"
+			],
+			[
+				"Pla",
+				"PlaylistURL"
+			],
+			[
+				"Ou",
+				"OutputTemplate"
+			],
+			[
+				"rand",
+				"randomise"
+			],
+			[
+				"gri",
+				"GrilledAsparagus"
+			],
+			[
+				"spi",
+				"SpicyAsparagusStirfry"
+			],
+			[
+				"pas",
+				"PastaAsparagus"
+			],
+			[
+				"as",
+				"Asparagus"
+			],
+			[
+				"Gril",
+				"GrilledAsparagus"
+			],
+			[
+				"Con",
+				"ContentPackFor"
+			]
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"Packa",
+				"Package Control: Install Package"
+			],
+			[
+				"package control",
+				"Package Control: Install Package"
+			],
+			[
+				"pack",
+				"Package Control: Install Package"
+			],
+			[
+				"Package Control: ",
+				"Package Control: Install Package"
+			],
+			[
+				"p",
+				"Package Control: Install Package"
+			],
+			[
+				"Package Control: Add Repository",
+				"Package Control: Add Repository"
+			],
+			[
+				"Install Package Control",
+				"Package Control: Install Package"
+			],
+			[
+				"git",
+				"Git: Commit history"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"pac",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/john/Music/MusicPipeline"
+	],
+	"file_history":
+	[
+		"/Users/john/Music/MusicPipeline/Scripts/dashboard.html",
+		"/Users/john/Music/MusicPipeline/Scripts/WebsiteEngine.ps1",
+		"/Users/john/Music/MusicPipeline/Scripts/Metrics.ps1",
+		"/Users/john/Music/MusicPipeline/Scripts/Lore.ps1",
+		"/Users/john/Music/MusicPipeline/Scripts/CompressMusic.ps1",
+		"/Users/john/Music/MusicPipeline/Scripts/Lyrics.ps1",
+		"/Users/john/Music/MusicPipeline/Scripts/Fix.ps1",
+		"/Users/john/Music/MusicPipeline/Scripts/Download.ps1",
+		"/Users/john/Music/MusicPipeline/Scripts/CookieCheck.ps1",
+		"/Users/john/Music/MusicPipeline/.git/COMMIT_EDITMSG",
+		"/Users/john/Music/MusicPipeline/Gadgets/Stats.py",
+		"/Users/john/Music/MusicPipeline/Gadgets/Timing.py",
+		"/Users/john/Documents/heap_report.txt",
+		"/Users/john/Music/MusicPipeline/Scripts/WebsiteEngine_PREPROFILE.ps1",
+		"/Users/john/Documents/dashboard_cache.json",
+		"/Users/john/Documents/output.txt",
+		"/Users/john/Documents/prompt.txt",
+		"/Users/john/Documents/Prompt.txt",
+		"/Users/john/Documents/prompt was too long",
+		"/Users/john/Documents/prompt",
+		"/Users/john/Music/MusicPipeline/Scripts/Sync.ps1",
+		"/Users/john/Music/MusicPipeline/sync_music.bat",
+		"/Users/john/Music/MusicPipeline/test_music.bat",
+		"/Users/john/Music/MusicPipeline/.gitignore",
+		"/Users/john/Music/MusicPipeline/Config/.env",
+		"/Users/john/Desktop/gameEngine.py",
+		"/Users/john/Desktop/TextAdventure.py",
+		"/Users/john/Desktop/Numbers.py",
+		"/Users/john/Desktop/ShaderCode.glsl",
+		"/Users/john/Desktop/Moniter.sh",
+		"/Users/john/Desktop/cool.py",
+		"/Users/john/Library/Application Support/minecraft/resourcepacks/PhoenixSC Music Resourcepack/assets/music/sounds.json",
+		"/Users/john/Library/Application Support/minecraft/resourcepacks/PhoenixSC Music Resourcepack/pack.mcmeta",
+		"/Users/john/Library/Application Support/minecraft/saves/Datapack Test/datapacks/PhoenixSC Music Datapack/data/test/dialog/music.json",
+		"/Users/john/Library/Application Support/minecraft/saves/Datapack Test/datapacks/PhoenixSC Music Datapack/pack.mcmeta",
+		"/Users/john/Desktop/Axiom Editor UI Themes",
+		"/Users/john/.config/StardewValley/Saves/Skittys_395070626/Skittys_395070626",
+		"/Users/john/Library/Application Support/minecraft/resourcepacks/PhoenixSC Music Resourcepack/sounds.json",
+		"/Users/john/Library/Application Support/minecraft/saves/Datapack Test/datapacks/PhoenicSC Music Datapack/data/test/jukebox_song/rickastley.json",
+		"/Users/john/Desktop/mobile mods/stardew_mod_checker.py",
+		"/Applications/Project64.sh",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/Skitty.SkittysAsparagus/asparagusCropType.cs",
+		"/Users/john/.config/StardewValley/Saves/Mobile_403431063/Mobile_403431063",
+		"/Users/john/Desktop/Mobile save backup, for editing only/Mobile_403431063",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/Skitty.SkittysAsparagus/content.json",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/modEntry.cs",
+		"/Users/john/Stardew Plan.txt",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/Manifest.json",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/README.md",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/modEntry.cs.old",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/content.json",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/asparagusCropType.cs",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/content.json",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/test.txt",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/.git/rebase-merge/git-rebase-todo",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/.git/COMMIT_EDITMSG",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/-CP-SkittysAsparagus/.git/MERGE_MSG",
+		"/var/folders/6w/b7b4hs714y1__52_q0khsbcw0000gn/T/TemporaryItems/NSIRD_screencaptureui_t70N9m/Screenshot 2025-03-17 at 19.13.35.png",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/asparagusCropType.cs",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/modEntry.cs.old",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/modEntry.cs",
+		"/Users/john/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/[CP] SkittysAsparagus/Manifest.json",
+		"/var/folders/6w/b7b4hs714y1__52_q0khsbcw0000gn/T/TemporaryItems/NSIRD_screencaptureui_UxP1pb/Screenshot 2025-03-15 at 20.31.22.png",
+		"/Users/john/Desktop/BlockGame.cs",
+		"/Users/john/Documents/Stardew Plan",
+		"/Users/john/Downloads/cyber-dojo-2025-2-26-AKy1kh/files/cyber-dojo.sh",
+		"/Users/john/Downloads/cyber-dojo-2025-2-26-AKy1kh/README.md",
+		"/Users/john/Downloads/ffmpeg-7.1/INSTALL.md",
+		"/Users/john/Library/Caches/Google/AndroidStudio2024.2/device-explorer/motorola Moto G (5)/_/storage/self/primary/DCIM/Camera/VID_20250210_152838827.mp4",
+		"/Users/john/.config/StardewValley/Saves/tistic_398450839/tistic_398450839",
+		"/Users/john/.config/StardewValley/Saves/tistic_398450839/SaveGameInfo",
+		"/Users/john/Desktop/StardewValley/Saves/Skittys_395070626/Skittys_395070626",
+		"/Users/john/.wine/drive_c/users/john/AppData/Roaming/StardewValley/Saves/Skittys_395070626/Skittys_395070626",
+		"/Users/john/Downloads/idle_iktah.data",
+		"/Users/john/.wine/drive_c/users/john/AppData/Roaming/StardewValley/Saves/Skittys_395070626/SaveGameInfo",
+		"/Users/john/.wine/drive_c/users/john/AppData/Roaming/StardewValley/Saves/Skittys_395070626/SaveGameInfo_old",
+		"/Users/john/Desktop/Skittys_395070626",
+		"/Users/john/.wine/drive_c/users/john/AppData/Roaming/StardewValley/default_options",
+		"/Users/john/.wine/drive_c/users/john/AppData/Roaming/StardewValley/startup_preferences"
+	],
+	"find":
+	{
+		"height": 28.0
+	},
+	"find_in_files":
+	{
+		"height": 398.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": true,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 28.0
+	},
+	"input":
+	{
+		"height": 159.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.LSP Log Panel":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.diagnostics":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.diff_views":
+	{
+		"height": 167.0,
+		"history":
+		[
+		]
+	},
+	"output.find_results":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.mdpopups":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"pinned_build_system": "",
+	"project": "MusicPipeline.sublime-project",
+	"replace":
+	{
+		"height": 52.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 305.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 592.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+		"lsp_show_inlay_hints": false
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 171.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

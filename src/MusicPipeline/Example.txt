@@ -1,0 +1,11 @@
+namespace MusicPipeline.Services;
+
+public class YoutubeDownloader
+{
+    public static async Task DownloadTrackAsync(string url)
+    {
+        // Your yt-dlp code will go here!
+    }
+}
+
+use this template for any other c#
