@@ -6,6 +6,11 @@ public class LogEngine
     // Takes ASCII codes
     // Takes the message
     // Takes the profile file? or just the log file
+    private char esc = '\u001B';
+    private string reset = $"{esc}[0m";
+    private DateTime current = DateTime.Now;
+    private string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
+
 
     public static void Out(string LogFile, string Message, string User = "System", string Style = "1;36") 
     {
@@ -16,16 +21,20 @@ public class LogEngine
             throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
         }*/
 
-        char esc = '\u001B';
-        string reset = $"{esc}[0m";
-        DateTime current = DateTime.Now;
-        string TimeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-        string ColPrefix = $"{esc}[{Style}m{TimeStamp} [{User}] {reset}";
+        var l = new LogEngine();
+        string ColPrefix = $"{l.esc}[{Style}m{l.timeStamp} [{User}] {l.reset}";
         string ProcessedMessage = $"{ColPrefix} {Message}";
         string ProcessedMessageNl = $"\u000A{ProcessedMessage}";
 
         File.AppendAllText(LogFile, ProcessedMessageNl);
         Console.WriteLine(ProcessedMessage);
 
+    }
+
+    public static void Wipe(string LogFile, string User = "System")
+    {
+        var l = new LogEngine();
+        string ColPrefix = $"{l.esc}[1;36m{l.timeStamp}";
+        File.WriteAllTextAsync(LogFile, $"{ColPrefix} File Cleared by {User}")
     }
 }
