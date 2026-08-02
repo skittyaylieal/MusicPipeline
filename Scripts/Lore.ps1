@@ -59,7 +59,7 @@ function Get-DuckDuckGoContext([string]$Title, [string]$Artist) {
     $UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
     try {
-        $Response = Invoke-WebRequest -Uri $SearchUrl -Method Post -Body @{ q = $Query } -UserAgent $UserAgent -TimeoutSec 10 -ErrorAction Stop
+        $Response = Invoke-WebRequest -Uri $SearchUrl -Method Post -Body @{ q = $Query } -UserAgent $UserAgent -TimeoutSec 15 -ErrorAction Stop
         $Html = $Response.Content
 
         $RegexMatches = [regex]::Matches($Html, '<a class="result__snippet"[^>]*>(.*?)</a>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
@@ -69,7 +69,7 @@ function Get-DuckDuckGoContext([string]$Title, [string]$Artist) {
         }
 
         $Snippets = @()
-        $Count = [Math]::Min(6, $RegexMatches.Count) # Set to 6 snippets for maximum depth
+        $Count = [Math]::Min(6, $RegexMatches.Count)
         for ($i = 0; $i -lt $Count; $i++) {
             $CleanText = $RegexMatches[$i].Groups[1].Value -replace '<[^>]+>', ''
             $CleanText = [System.Net.WebUtility]::HtmlDecode($CleanText).Trim()
@@ -141,7 +141,6 @@ backup_dir = sys.argv[1]
 config_dir = sys.argv[2]
 cache_file = os.path.join(config_dir, "dashboard_cache.json")
 
-# 1. Load dashboard cache if available
 candidate_ids = set()
 use_cache = False
 
@@ -151,7 +150,6 @@ if os.path.exists(cache_file):
             data = json.load(f)
             tracks = data.get('tracks', [])
             for t in tracks:
-                # Target tracks marked instrumental OR missing LRC
                 if t.get('isInstrumental', False) or not t.get('hasLrc', True):
                     candidate_ids.add(t.get('id'))
             use_cache = len(candidate_ids) > 0
@@ -164,7 +162,6 @@ def generate_track_id(artist, album, title):
 
 candidates = []
 
-# 2. Walk directory
 for root, dirs, files in os.walk(backup_dir):
     for f in files:
         if f.lower().endswith('.m4a'):
@@ -186,11 +183,6 @@ for root, dirs, files in os.walk(backup_dir):
                 track_id = generate_track_id(artist, album, title)
                 is_inst_flag = ('instrumental' in comment) or (lyrics.strip().lower() == 'instrumental')
 
-                # Selection Criteria:
-                # - Match in dashboard_cache.json (missing LRC or flagged instrumental)
-                # - OR No .lrc file exists on disk
-                # - OR Explicitly tagged as instrumental
-                # - OR Has no embedded lyrics text
                 is_candidate = False
                 if use_cache:
                     is_candidate = (track_id in candidate_ids) or is_inst_flag or (not has_lrc_file)
@@ -212,7 +204,7 @@ for root, dirs, files in os.walk(backup_dir):
 
 print(json.dumps(candidates))
 "@
-    Invoke-LogMsg "[*] Batch scanning library for candidates (checking dashboard cache & .lrc availability)..." "33"
+    Invoke-LogMsg "[*] Batch scanning library for candidates..." "33"
     $Res = & python -c $PyCode "$Dir" "$ConfigDir" 2>$null
     if ($Res) {
         try { return ($Res | ConvertFrom-Json) } catch { return @() }
@@ -221,15 +213,18 @@ print(json.dumps(candidates))
 }
 
 # --- OLLAMA LIFECYCLE MANAGEMENT ---
-function Start-OllamaIfNeeded {
+function Start-OllamaIfNeeded([string]$Model) {
+    $OllamaProc = $null
+    
+    # 1. Check if server is already active
+    $IsRunning = $false
     try {
         $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
         Invoke-LogMsg "[+] Ollama server is already running." "32"
-        return $null
+        $IsRunning = $true
     } catch {
         Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "33"
         
-        # Locate Ollama binary (handles stale PATH environment variables)
         $OllamaBin = (Get-Command "ollama" -ErrorAction SilentlyContinue).Source
         if (-not $OllamaBin) {
             $DefaultPath = Join-Path $env:LOCALAPPDATA "Programs\Ollama\ollama.exe"
@@ -241,44 +236,50 @@ function Start-OllamaIfNeeded {
         }
 
         try {
-            $Process = Start-Process -FilePath $OllamaBin -ArgumentList "serve" -WindowStyle Hidden -PassThru
+            $OllamaProc = Start-Process -FilePath $OllamaBin -ArgumentList "serve" -WindowStyle Hidden -PassThru
         } catch {
-            Invoke-LogMsg "[-] Critical Error: Could not execute Ollama at path '$OllamaBin'. Ensure Ollama is installed." "31"
+            Invoke-LogMsg "[-] Critical Error: Could not execute Ollama at '$OllamaBin'." "31"
             return $null
         }
 
+        # Poll port until server is responsive
         $Ready = $false
-        $Retries = 0
-        while (-not $Ready -and $Retries -lt 15) {
+        while (-not $Ready) {
             Start-Sleep -Seconds 1
             try {
                 $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
                 $Ready = $true
             } catch {
-                $Retries++
+                # Keep waiting patiently for server startup
             }
         }
-
-        if ($Ready) {
-            Invoke-LogMsg "[✓] Ollama server started successfully!" "32"
-            return $Process
-        } else {
-            Invoke-LogMsg "[-] Failed to start Ollama server." "31"
-            return $null
-        }
+        Invoke-LogMsg "[✓] Ollama server started!" "32"
     }
+
+    # 2. Warm up model: Pre-load model into system memory without timeout
+    Invoke-LogMsg "[*] Pre-loading '$Model' into system memory (N100 CPU load step)..." "33"
+    try {
+        $WarmupPayload = @{ model = $Model; keep_alive = "30m" } | ConvertTo-Json
+        $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $WarmupPayload -ContentType "application/json"
+        Invoke-LogMsg "[✓] Model '$Model' successfully loaded into memory and ready!" "32"
+    } catch {
+        Invoke-LogMsg "⚠️ Model pre-load warning: $_" "33"
+    }
+
+    return $OllamaProc
 }
 
 function Stop-OllamaIfStarted([System.Diagnostics.Process]$OllamaProc, [string]$Model) {
     # 1. Instruct Ollama to immediately unload model from RAM
     try {
+        Invoke-LogMsg "[*] Unloading model '$Model' from memory..." "33"
         $UnloadPayload = @{ model = $Model; keep_alive = 0 } | ConvertTo-Json
-        $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $UnloadPayload -ContentType "application/json" -TimeoutSec 5 -ErrorAction SilentlyContinue
+        $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $UnloadPayload -ContentType "application/json" -TimeoutSec 10 -ErrorAction SilentlyContinue
     } catch {}
 
     # 2. Terminate background process if spawned by this script
     if ($OllamaProc -and -not $OllamaProc.HasExited) {
-        Invoke-LogMsg "[*] Terminating Ollama background process to reclaim system RAM..." "33"
+        Invoke-LogMsg "[*] Terminating Ollama background process..." "33"
         Stop-Process -Id $OllamaProc.Id -Force -ErrorAction SilentlyContinue
     }
 }
@@ -287,7 +288,7 @@ function Stop-OllamaIfStarted([System.Diagnostics.Process]$OllamaProc, [string]$
 Invoke-LogMsg "============================================="
 Invoke-LogMsg "    PowerShell Module: VGM Lore Evaluator"
 if ($CleanSweep) {
-    Invoke-LogMsg "    [MODE] Clean Sweep Active (Re-evaluating existing lore)" "33"
+    Invoke-LogMsg "    [MODE] Clean Sweep Active" "33"
 }
 Invoke-LogMsg "============================================="
 
@@ -308,25 +309,16 @@ if (Test-Path -LiteralPath $CachePath) {
     }
 }
 
-# Fast batch retrieval of candidates using dashboard cache & LRC awareness
+# Fast batch retrieval of candidates
 $CandidateTracks = @()
 if (Test-Path -LiteralPath $BackupDir) {
     $CandidateTracks = Get-InstrumentalCandidates -Dir $BackupDir -ConfigDir $ConfigDir
 }
 
-Invoke-LogMsg "[+] Located $($CandidateTracks.Count) candidate instrumental track(s) for VGM lore evaluation." "32"
+Invoke-LogMsg "[+] Located $($CandidateTracks.Count) candidate track(s) for evaluation." "32"
 
-# Start Ollama service if offline
-$SpawnedOllamaProc = Start-OllamaIfNeeded
-
-# --- CIRCUIT BREAKER: VERIFY OLLAMA IS ONLINE BEFORE RUNNING ---
-try {
-    $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 3 -ErrorAction Stop
-} catch {
-    Invoke-LogMsg "🛑 [CRITICAL] Ollama server is unreachable. Aborting VGM Lore sweep." "31"
-    Stop-OllamaIfStarted -OllamaProc $SpawnedOllamaProc -Model $ModelName
-    Exit 1
-}
+# Launch Ollama service & pre-load model
+$SpawnedOllamaProc = Start-OllamaIfNeeded -Model $ModelName
 
 $SuccessCount = 0
 $FlaggedCount = 0
@@ -341,20 +333,20 @@ try {
         $Tags     = $Track
 
         if (-not $Tags.title -or -not $Tags.artist) {
-            Invoke-LogMsg "[-] Skipping $FileName (Missing Title/Artist metadata tags)" "90"
+            Invoke-LogMsg "[-] Skipping $FileName (Missing Title/Artist tags)" "90"
             continue
         }
 
         $TrackId = Get-TrackUUID -Artist $Tags.artist -Album $Tags.album -Title $Tags.title
 
-        # 14-Day Cooldown Check (Bypassed in Clean Sweep or Force Refresh mode)
+        # Cooldown check
         if ($VgmCache.ContainsKey($TrackId) -and -not $ForceRefresh -and -not $CleanSweep) {
             $Entry = $VgmCache[$TrackId]
             if ($Entry.status -eq "NOT_VGM" -and $Entry.last_checked) {
                 $LastChecked = [DateTime]::Parse($Entry.last_checked)
                 if ((Get-Date) -lt $LastChecked.AddDays($CooldownDays)) {
                     $NextCheck = $LastChecked.AddDays($CooldownDays).ToString("yyyy-MM-dd")
-                    Invoke-LogMsg "[~] Skipping [$TrackIndex/$($CandidateTracks.Count)]: '$($Tags.title)' (Flagged NOT_VGM | Cooldown active until $NextCheck)" "38;5;244"
+                    Invoke-LogMsg "[~] Skipping [$TrackIndex/$($CandidateTracks.Count)]: '$($Tags.title)' (Flagged NOT_VGM | Cooldown until $NextCheck)" "38;5;244"
                     $SkippedCount++
                     continue
                 }
@@ -364,11 +356,7 @@ try {
         $HasExistingLore = -not [string]::IsNullOrWhiteSpace($Tags.existing_lyrics) -and ($Tags.existing_lyrics.Trim().ToLower() -ne "instrumental")
         $ExistingLoreText = if ($HasExistingLore) { $Tags.existing_lyrics } else { "No prior lore embedded." }
 
-        if ($CleanSweep -and $HasExistingLore) {
-            Invoke-LogMsg "[*] [Sweep Review] Inspecting existing lore for [$TrackIndex/$($CandidateTracks.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
-        } else {
-            Invoke-LogMsg "[*] Evaluating Track [$TrackIndex/$($CandidateTracks.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
-        }
+        Invoke-LogMsg "[*] Evaluating Track [$TrackIndex/$($CandidateTracks.Count)]: '$($Tags.title)' - $($Tags.artist)" "36"
         
         $WebContext = Get-DuckDuckGoContext -Title $Tags.title -Artist $Tags.artist
 
@@ -408,36 +396,30 @@ Include these exact sections:
             model   = $ModelName
             prompt  = $Prompt
             stream  = $false
-            options = @{ temperature = 0.1 }
+            options = @{ 
+                temperature = 0.1
+                num_thread  = 4  # Fully utilizes N100 physical threads
+            }
         } | ConvertTo-Json -Depth 5
 
         $OllamaError = $false
         $LoreOutput  = $null
 
         try {
-            $OllamaRes  = Invoke-RestMethod -Uri $OllamaUrl -Method Post -Body $Payload -ContentType "application/json" -TimeoutSec 60
+            # Omitted TimeoutSec completely so PowerShell waits for N100 generation finish
+            $OllamaRes  = Invoke-RestMethod -Uri $OllamaUrl -Method Post -Body $Payload -ContentType "application/json"
             $LoreOutput = $OllamaRes.response.Trim()
         } catch {
-            Invoke-LogMsg "[-] Ollama connection failed or timed out: $_" "31"
+            Invoke-LogMsg "[-] Ollama request failed: $_" "31"
             $OllamaError = $true
         }
 
-        # 1. API Failure Guard: Skip track without writing to cache or setting cooldown
         if ($OllamaError -or [string]::IsNullOrWhiteSpace($LoreOutput)) {
             Invoke-LogMsg "  [!] Skipping track due to Ollama error (Cache unchanged)." "33"
             $SkippedCount++
-
-            # Mid-Run Circuit Breaker: If server crashed mid-sweep, break out of loop completely
-            try {
-                $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
-            } catch {
-                Invoke-LogMsg "🛑 [OLLAMA CRASHED] Server dropped offline mid-sweep. Aborting remaining tracks." "31"
-                break
-            }
             continue
         }
 
-        # 2. Evaluate Valid Model Response
         if ($LoreOutput -eq "NOT_VGM" -or $LoreOutput.StartsWith("NOT_VGM")) {
             Invoke-LogMsg "  [!] Flagged as NOT_VGM by $ModelName. Cooldown activated." "33"
             
@@ -450,11 +432,7 @@ Include these exact sections:
             $FlaggedCount++
         } else {
             Set-M4aLyrics -FilePath $FilePath -LoreText $LoreOutput
-            if ($CleanSweep -and $HasExistingLore) {
-                Invoke-LogMsg "  [✓] Successfully reviewed and updated VGM lore tag!" "32"
-            } else {
-                Invoke-LogMsg "  [✓] Successfully embedded VGM lore into M4A lyrics tag!" "32"
-            }
+            Invoke-LogMsg "  [✓] Successfully embedded VGM lore into M4A lyrics tag!" "32"
 
             $VgmCache[$TrackId] = [PSCustomObject]@{
                 title        = $Tags.title
@@ -471,17 +449,17 @@ Include these exact sections:
         Move-Item -Path $TempCache -Destination $CachePath -Force
     }
 } finally {
-    # Guarantees Ollama process cleanup and VRAM/RAM flushing upon exit/interrupt
+    # Guarantees Ollama RAM flush and process cleanup on script completion or interruption
     Stop-OllamaIfStarted -OllamaProc $SpawnedOllamaProc -Model $ModelName
 }
 
-# STOP TOTAL STAGE TIMER & LOG METRIC
+# Stop Timer & Log Summary
 $MetricStopwatch.Stop()
 $TotalHours = [math]::Floor($MetricStopwatch.Elapsed.TotalHours)
 $Elapsed = "{0:00}:{1:mm\:ss}" -f $TotalHours, $MetricStopwatch.Elapsed
 
 Invoke-LogMsg "============================================="
 Invoke-LogMsg "VGM Lore Stage Finished: $SuccessCount Processed | $FlaggedCount Non-VGM Flagged | $SkippedCount Cooldown Skipped" "1;32"
-Invoke-LogMsg "[METRIC] $Elapsed"
+Invoke-LogMsg "[METRIC] Execution Time: $Elapsed"
 Invoke-LogMsg "============================================="
 Exit 0
