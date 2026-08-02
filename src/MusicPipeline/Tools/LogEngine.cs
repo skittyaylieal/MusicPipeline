@@ -7,7 +7,7 @@ public class LogEngine
     // Takes the message
     // Takes the profile file? or just the log file
 
-    static void Out(string LogFile, string Message, string Style = "1;36") 
+    public static void Out(string LogFile, string Message, string Style = "1;36") 
     {
         /*ArgumentException.ThrowIfNullOrEmpty(LogFile);
         ArgumentException.ThrowIfNullOrEmpty(Message);
