@@ -35,6 +35,6 @@ public class LogEngine
     {
         var l = new LogEngine();
         string ColPrefix = $"{l.esc}[1;36m{l.timeStamp}";
-        File.WriteAllTextAsync(LogFile, $"{ColPrefix} File Cleared by {User}")
+        File.WriteAllTextAsync(LogFile, $"{ColPrefix} File Cleared by {User}");
     }
 }

@@ -8,7 +8,7 @@ public class Orchestrator
     public static void Start()
     {
         var o = new Orchestrator();
-        LogEngine.Wipe(o.LogFile, "Orchestrator")
+        LogEngine.Wipe(o.LogFile, "Orchestrator");
         LogEngine.Out(o.LogFile, "Test", "Orchestrator");
         LogEngine.Out(o.LogFile, "Test Number 2", "Orchestrator");
     }
