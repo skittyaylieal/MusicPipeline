@@ -1,3 +1,4 @@
+
 namespace MusicPipeline.Tools.LogEngine;
 
 public class LogEngine
@@ -20,5 +21,10 @@ public class LogEngine
         Contents += Message;
         File.WriteAllText(LogFile, Contents);
 
+    }
+
+    internal static void Out(string v)
+    {
+        throw new NotImplementedException();
     }
 }
