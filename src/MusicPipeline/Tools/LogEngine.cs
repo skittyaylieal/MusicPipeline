@@ -1,4 +1,3 @@
-
 namespace MusicPipeline.Tools.LogEngine;
 
 public class LogEngine
@@ -8,7 +7,7 @@ public class LogEngine
     // Takes the message
     // Takes the profile file? or just the log file
 
-    public static void Out(string LogFile, string Message, string Style = "1;36") 
+    public static void Out(string LogFile, string Message, string User = "System", string Style = "1;36") 
     {
         /*ArgumentException.ThrowIfNullOrEmpty(LogFile);
         ArgumentException.ThrowIfNullOrEmpty(Message);
@@ -17,14 +16,17 @@ public class LogEngine
             throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
         }*/
 
+        char esc = '\u001B';
+        string reset = $"{esc}[0m";
+        DateTime current = DateTime.Now;
+        string TimeStamp = "[" + current.ToString("HH:mm:ss") + "]";
+        string ColPrefix = $"{esc}[{Style}m{TimeStamp} [{User}] {reset}";
+        string ProcessedMessage = $"{ColPrefix} {Message}";
+
         string Contents = File.ReadAllText(LogFile);
-        Contents += Message;
+        Contents += ProcessedMessage;
         File.WriteAllText(LogFile, Contents);
+        Console.WriteLine(ProcessedMessage);
 
-    }
-
-    internal static void Out(string v)
-    {
-        throw new NotImplementedException();
     }
 }

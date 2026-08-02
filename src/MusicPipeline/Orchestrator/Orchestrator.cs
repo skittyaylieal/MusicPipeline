@@ -8,6 +8,6 @@ public class Orchestrator
     public static void Start()
     {
         var o = new Orchestrator();
-        LogEngine.Out(o.LogFile, "Test");
+        LogEngine.Out(o.LogFile, "Test", "Orchestrator");
     }
 }
