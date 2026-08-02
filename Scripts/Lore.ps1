@@ -217,11 +217,9 @@ function Start-OllamaIfNeeded([string]$Model) {
     $OllamaProc = $null
     
     # 1. Check if server is already active
-    $IsRunning = $false
     try {
         $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
         Invoke-LogMsg "[+] Ollama server is already running." "32"
-        $IsRunning = $true
     } catch {
         Invoke-LogMsg "[*] Ollama server is offline. Launching background instance..." "33"
         
@@ -250,20 +248,26 @@ function Start-OllamaIfNeeded([string]$Model) {
                 $null = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get -TimeoutSec 2 -ErrorAction Stop
                 $Ready = $true
             } catch {
-                # Keep waiting patiently for server startup
+                # Waiting for HTTP server listener to open...
             }
         }
-        Invoke-LogMsg "[✓] Ollama server started!" "32"
+        Invoke-LogMsg "[✓] Ollama HTTP listener ready!" "32"
     }
 
-    # 2. Warm up model: Pre-load model into system memory without timeout
-    Invoke-LogMsg "[*] Pre-loading '$Model' into system memory (N100 CPU load step)..." "33"
+    # 2. Warm up model: Zero timeouts. Explicitly set stream = false so REST returns cleanly when ready.
+    Invoke-LogMsg "[*] Pre-loading '$Model' into system memory... (Giving N100 as much time as needed)" "33"
     try {
-        $WarmupPayload = @{ model = $Model; keep_alive = "30m" } | ConvertTo-Json
+        $WarmupPayload = @{ 
+            model      = $Model
+            keep_alive = "30m"
+            stream     = $false 
+        } | ConvertTo-Json
+
+        # No -TimeoutSec parameter here
         $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $WarmupPayload -ContentType "application/json"
-        Invoke-LogMsg "[✓] Model '$Model' successfully loaded into memory and ready!" "32"
+        Invoke-LogMsg "[✓] Model '$Model' successfully loaded and ready in RAM!" "32"
     } catch {
-        Invoke-LogMsg "⚠️ Model pre-load warning: $_" "33"
+        Invoke-LogMsg "⚠️ Model pre-load failed: $_" "33"
     }
 
     return $OllamaProc
