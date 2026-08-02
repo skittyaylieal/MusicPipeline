@@ -3,13 +3,13 @@ namespace MusicPipeline.Orchestrator;
 
 public class Orchestrator
 {
-    private string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
+    // So I don't need o
+    private static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
     // Need tools
     public static void Start()
     {
-        var o = new Orchestrator();
-        LogEngine.Wipe(o.LogFile, "Orchestrator");
-        LogEngine.Out(o.LogFile, "Test", "Orchestrator");
-        LogEngine.Out(o.LogFile, "Test Number 2", "Orchestrator");
+        LogEngine.Wipe(LogFile, "Orchestrator");
+        LogEngine.Out(LogFile, "Test", "Orchestrator", "38;5;203");
+        LogEngine.Out(LogFile, "Test Number 2", "Orchestrator", "38;5;213");
     }
 }

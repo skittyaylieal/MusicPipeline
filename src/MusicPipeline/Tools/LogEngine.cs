@@ -6,11 +6,8 @@ public class LogEngine
     // Takes ASCII codes
     // Takes the message
     // Takes the profile file? or just the log file
-    private char esc = '\u001B';
-    private string reset = $"{esc}[0m";
-    private DateTime current = DateTime.Now;
-    private string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-
+    private const char esc = '\u001B';
+    private const string reset = $"\u001B[0m";
 
     public static void Out(string LogFile, string Message, string User = "System", string Style = "1;36") 
     {
@@ -22,7 +19,9 @@ public class LogEngine
         }*/
 
         var l = new LogEngine();
-        string ColPrefix = $"{l.esc}[{Style}m{l.timeStamp} [{User}] {l.reset}";
+        DateTime current = DateTime.Now;
+        string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
+        string ColPrefix = $"{esc}[{Style}m{timeStamp} [{User}] {reset}";
         string ProcessedMessage = $"{ColPrefix} {Message}";
         string ProcessedMessageNl = $"\u000A{ProcessedMessage}";
 
@@ -34,7 +33,9 @@ public class LogEngine
     public static void Wipe(string LogFile, string User = "System")
     {
         var l = new LogEngine();
-        string ColPrefix = $"{l.esc}[1;36m{l.timeStamp}";
+        DateTime current = DateTime.Now;
+        string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
+        string ColPrefix = $"{esc}[1;36m{timeStamp}";
         File.WriteAllTextAsync(LogFile, $"{ColPrefix} File Cleared by {User}");
     }
 }
