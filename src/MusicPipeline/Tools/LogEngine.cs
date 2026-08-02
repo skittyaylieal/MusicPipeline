@@ -23,9 +23,7 @@ public class LogEngine
         string ColPrefix = $"{esc}[{Style}m{TimeStamp} [{User}] {reset}";
         string ProcessedMessage = $"{ColPrefix} {Message}";
 
-        string Contents = File.ReadAllText(LogFile);
-        Contents += ProcessedMessage;
-        File.WriteAllText(LogFile, Contents);
+        File.AppendAllText(LogFile, ProcessedMessage);
         Console.WriteLine(ProcessedMessage);
 
     }
