@@ -4,25 +4,30 @@ namespace MusicPipeline.Profiles;
 
 public class ProfileFile
 {
-    public static Profile defaultProfile = DefaultProfiles.defaultProfile;
-    public static Profile nullProfile = new Profile();
-    public required string activeProfile {get; set;}
-    public required Profile[] profiles {get; set;}
+    public static readonly Profile DefaultProfile = DefaultProfiles.defaultProfile;
+    public static readonly Profile NullProfile = new Profile();
+    public required string ActiveProfile {get; set;}
+    public required Profile[] Profiles {get; set;}
     public bool NoProfiles()    
     {
-        if (profiles.Length == 0) {
+        if (Profiles.Length == 0) {
             return true;
         }
         return false;
     }
-    public Profile ActiveProfile()
+    public Profile GetActiveProfile()
     {
-        foreach (Profile p in profiles) {
-            if (p.Name == activeProfile) {
+        foreach (Profile p in Profiles) {
+            if (p.Name == ActiveProfile) {
                 return p;
             }
         }
-        return nullProfile;
+        return NullProfile;
+    }
+    public ProfileFile(string activeProfile = "Default", Profile[]? profiles)
+    {
+        ActiveProfile = activeProfile;
+        Profiles = profiles;
     }
 }
 
@@ -34,7 +39,7 @@ public static class ProfileManager
         string jsonString = File.ReadAllText(profileFile);
         ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
         if (!file.NoProfiles()) {
-            Profile activeProfile = file.ActiveProfile();
+            Profile activeProfile = file.GetActiveProfile();
         } else {
             LogEngine.Out(@"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log", $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", "38;5;203");
             // TODO: Save to profile file
