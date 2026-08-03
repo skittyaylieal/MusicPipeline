@@ -2,7 +2,7 @@ using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Profiles;
 namespace MusicPipeline.Orchestrator;
 
-public class Orchestrator
+public static class Orchestrator
 {
     // So I don't need to invoke this class itself
     private static readonly string logFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
