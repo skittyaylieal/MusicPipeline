@@ -16,4 +16,27 @@ public static class Orchestrator
         LogEngine.Out(logFile, "Test Number 2", "Orchestrator", "38;5;213");
         ProfileManager.LoadProfileContext(profileFile);
     }
+
+
+
+    // Needs to do everything that WebsiteEngine.ps1 does
+
+    // FUNCTIONS:
+    //
+    // LogEngine - Done
+    // LoadProfile stuff - WIP
+    // Setup and making directories etc
+    // Track UUID function - IMPORTANT
+    // Asynchronous library scanner - Improve 
+    // Chron daemon
+    // Hot reload and git pull functionality - Improve
+    // WEB SERVER SHIT
+        // Find a suitable socket
+        // Proxy map port 80 to the target 
+        // Listen on target port
+        // Optionally get the external ip and print that
+        // URL paths, etc etc
+        // Make sure to close it
+    // Idea, music streaming server
+    // You can stream music from the server to your device
 }
