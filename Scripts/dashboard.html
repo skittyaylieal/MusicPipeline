@@ -363,6 +363,8 @@
         <div class="header-section">
             <h1>Diagnostic System Stream Console</h1>
             <button class="btn-danger" onclick="dispatchClearLogs()">🧹 Wipe Log Buffers</button>
+            <button class="btn-run-sweep" onclick="changeColourMode()"> Change Colour Pallete
+            </button>
         </div>
         <div id="terminal-feed">Initializing active network stdout trace modules...</div>
     </div>
@@ -542,6 +544,69 @@
         let isMetricsActive = false;
         let isAnalyticsActive = false;
         let isTrackMetricsActive = false;
+        let USE_OFFICIAL_ANSI_COLORS = false;
+
+        // Official 256 ANSI Color Palette (0–255) from ColourGuide.txt
+        const OFFICIAL_ANSI_PALETTE = [
+            "#000000", "#800000", "#008000", "#808000", "#000080", "#800080", "#008080", "#c0c0c0",
+            "#808080", "#ff0000", "#00ff00", "#ffff00", "#0000ff", "#ff00ff", "#00ffff", "#ffffff",
+            "#000000", "#00005f", "#000087", "#0000af", "#0000d7", "#0000ff", "#005f00", "#005f5f",
+            "#005f87", "#005faf", "#005fd7", "#005fff", "#008700", "#00875f", "#008787", "#0087af",
+            "#0087d7", "#0087ff", "#00af00", "#00af5f", "#00af87", "#00afaf", "#00afd7", "#00afff",
+            "#00d700", "#00d75f", "#00d787", "#00d7af", "#00d7d7", "#00d7ff", "#00ff00", "#00ff5f",
+            "#00ff87", "#00ffaf", "#00ffd7", "#00ffff", "#5f0000", "#5f005f", "#5f0087", "#5f00af",
+            "#5f00d7", "#5f00ff", "#5f5f00", "#5f5f5f", "#5f5f87", "#5f5faf", "#5f5fd7", "#5f5fff",
+            "#5f8700", "#5f875f", "#5f8787", "#5f87af", "#5f87d7", "#5f87ff", "#5faf00", "#5faf5f",
+            "#5faf87", "#5fafaf", "#5fafd7", "#5fafff", "#5fd700", "#5fd75f", "#5fd787", "#5fd7af",
+            "#5fd7d7", "#5fd7ff", "#5fff00", "#5fff5f", "#5fff87", "#5fffaf", "#5fffd7", "#5fffff",
+            "#870000", "#87005f", "#870087", "#8700af", "#8700d7", "#8700ff", "#875f00", "#875f5f",
+            "#875f87", "#875faf", "#875fd7", "#875fff", "#878700", "#87875f", "#878787", "#8787af",
+            "#8787d7", "#8787ff", "#87af00", "#87af5f", "#87af87", "#87afaf", "#87afd7", "#87afff",
+            "#87d700", "#87d75f", "#87d787", "#87d7af", "#87d7d7", "#87d7ff", "#87ff00", "#87ff5f",
+            "#87ff87", "#87ffaf", "#87ffd7", "#87ffff", "#af0000", "#af005f", "#af0087", "#af00af",
+            "#af00d7", "#af00ff", "#af5f00", "#af5f5f", "#af5f87", "#af5faf", "#af5fd7", "#af5fff",
+            "#af8700", "#af875f", "#af8787", "#af87af", "#af87d7", "#af87ff", "#afaf00", "#afaf5f",
+            "#afaf87", "#afafaf", "#afafd7", "#afafff", "#afd700", "#afd75f", "#afd787", "#afd7af",
+            "#afd7d7", "#afd7ff", "#afff00", "#afff5f", "#afff87", "#afffaf", "#afffd7", "#afffff",
+            "#d70000", "#d7005f", "#d70087", "#d700af", "#d700d7", "#d700ff", "#d75f00", "#d75f5f",
+            "#d75f87", "#d75faf", "#d75fd7", "#d75fff", "#d78700", "#d7875f", "#d78787", "#d787af",
+            "#d787d7", "#d787ff", "#d7af00", "#d7af5f", "#d7af87", "#d7afaf", "#d7afd7", "#d7afff",
+            "#d7d700", "#d7d75f", "#d7d787", "#d7d7af", "#d7d7d7", "#d7d7ff", "#d7ff00", "#d7ff5f",
+            "#d7ff87", "#d7ffaf", "#d7ffd7", "#d7ffff", "#ff0000", "#ff005f", "#ff0087", "#ff00af",
+            "#ff00d7", "#ff00ff", "#ff5f00", "#ff5f5f", "#ff5f87", "#ff5faf", "#ff5fd7", "#ff5fff",
+            "#ff8700", "#ff875f", "#ff8787", "#ff87af", "#ff87d7", "#ff87ff", "#ffaf00", "#ffaf5f",
+            "#ffaf87", "#ffafaf", "#ffafd7", "#ffafff", "#ffd700", "#ffd75f", "#ffd787", "#ffd7af",
+            "#ffd7d7", "#ffd7ff", "#ffff00", "#ffff5f", "#ffff87", "#ffffaf", "#ffffd7", "#ffffff",
+            "#080808", "#121212", "#1c1c1c", "#262626", "#303030", "#3a3a3a", "#444444", "#4e4e4e",
+            "#585858", "#626262", "#6c6c6c", "#767676", "#808080", "#8a8a8a", "#949494", "#9e9e9e",
+            "#a8a8a8", "#b2b2b2", "#bcbcbc", "#c6c6c6", "#d0d0d0", "#dadada", "#e4e4e4", "#eeeeee"
+        ];
+
+        // Legacy Dracula-style custom overrides for standard 12-thread rendering
+        const LEGACY_THEME_MAP = {
+            51:  '#00F5FF',
+            201: '#F453AD',
+            135: '#BD93F9',
+            208: '#FF8700',
+            217: '#FFB86C',
+            75:  '#5FAFFF',
+            118: '#50FA7B',
+            213: '#FF79C6',
+            37:  '#00AFA1',
+            203: '#FF5555',
+            141: '#D6ACFF',
+            202: '#FF5F00',
+            301: '#F2991D'
+        };
+
+
+        function changeColourMode() {
+            if (USE_OFFICIAL_ANSI_COLORS == false) {
+                USE_OFFICIAL_ANSI_COLORS = true
+            } else {
+                USE_OFFICIAL_ANSI_COLORS = false
+            }
+        }
 
         // Sidebar Navigation Animations & Display Routines
         function toggleDrawer() {
@@ -907,7 +972,6 @@
                     }
 
                     if (data.logs && data.logs.length > 0) {
-                        // FIXED: Wrapped in braces so shortFeed isn't cleared on every single fetch tick
                         if (activeLogLinePointer === 0) {
                             if (feed) feed.innerHTML = '';
                             if (shortFeed) shortFeed.innerHTML = '';
@@ -918,13 +982,6 @@
 
                         let batchedHTML = '';
 
-                        // Full 12-Color Palette + Error & Reset Codes
-                        const extendedColorCodes = [
-                            '38;5;51', '38;5;201', '33', '38;5;135', '38;5;208', 
-                            '38;5;217', '38;5;75', '38;5;118', '38;5;213', '38;5;37', '38;5;202',
-                            '38;5;203', '38;5;141', '32', '1;31'
-                        ];
-
                         data.logs.forEach(line => {
                             let cleanedLine = line.replace(/[\r\n]+$/, '');
 
@@ -932,40 +989,50 @@
                                 return;
                             }
 
-                            // Pre-process un-escaped ANSI color bracket formatting
-                            extendedColorCodes.forEach(code => {
-                                if (cleanedLine.includes(`[${code}m`) && !cleanedLine.includes('\x1b')) {
-                                    cleanedLine = cleanedLine.replace(new RegExp(`\\[${code.replace(/;/g, '\\;')}(?=m)`, 'g'), `\x1b[${code}`);
+                            // Pre-process un-escaped ANSI color bracket formatting (e.g. [38;5;51m -> \x1b[38;5;51m)
+                            cleanedLine = cleanedLine.replace(/(^|[^\x1b])\[(38;5;\d+|\d+;\d+|\d+)m/g, '$1\x1b[$2m');
+
+                            let formattedLine = cleanedLine;
+
+                            // --- Dynamic 256-Color Parsing ---
+                            formattedLine = formattedLine.replace(/\x1b\[38;5;(\d+)m/g, (match, colorIndexStr) => {
+                                const index = parseInt(colorIndexStr, 10);
+                                let hexColor;
+
+                                if (USE_OFFICIAL_ANSI_COLORS) {
+                                    hexColor = OFFICIAL_ANSI_PALETTE[index] || '#ffffff';
+                                } else {
+                                    hexColor = LEGACY_THEME_MAP[index] || OFFICIAL_ANSI_PALETTE[index] || '#ffffff';
                                 }
+
+                                return `<span style="color:${hexColor}; font-weight:bold;">`;
                             });
 
-                            let formattedLine = cleanedLine
-                                // --- 12-Thread Expanded ANSI Palette ---
-                                .replace(/\x1b\[38;5;51m/g,  '<span style="color:#00F5FF; font-weight:bold;">')   // Thread 1: Cyan
-                                .replace(/\x1b\[38;5;201m/g, '<span style="color:#F453AD; font-weight:bold;">')   // Thread 2: Magenta
-                                .replace(/\x1b\[38;5;135m/g, '<span style="color:#BD93F9; font-weight:bold;">')   // Thread 4: Purple
-                                .replace(/\x1b\[38;5;208m/g, '<span style="color:#FF8700; font-weight:bold;">')   // Thread 5: Orange
-                                .replace(/\x1b\[38;5;217m/g, '<span style="color:#FFB86C; font-weight:bold;">')   // Thread 6: Peach
-                                .replace(/\x1b\[38;5;75m/g,  '<span style="color:#5FAFFF; font-weight:bold;">')   // Thread 7: Sky Blue
-                                .replace(/\x1b\[38;5;118m/g, '<span style="color:#50FA7B; font-weight:bold;">')   // Thread 8: Bright Lime
-                                .replace(/\x1b\[38;5;213m/g, '<span style="color:#FF79C6; font-weight:bold;">')   // Thread 9: Orchid Pink
-                                .replace(/\x1b\[38;5;37m/g,  '<span style="color:#00AFA1; font-weight:bold;">')   // Thread 10: Teal
-                                .replace(/\x1b\[38;5;203m/g, '<span style="color:#FF5555; font-weight:bold;">')   // Thread 11: Coral Red
-                                .replace(/\x1b\[38;5;141m/g, '<span style="color:#D6ACFF; font-weight:bold;">')   // Thread 12: Lavender
-                                .replace(/\x1b\[38;5;202m/g, '<span style="color:#FF5F00; font-weight:bold;">')   // Lore: Dark Orange
-                                .replace(/\x1b\[38;5;301m/g, '<span style="color:#F2991D; font-weight:bold;">')   // Lore: Clean Sweep
-                                
-                                
-                                // --- Process Debug Alerts & Fallbacks ---
-                                .replace(/\x1b\[1;31m/g,     '<span style="color:#FF5555; font-weight:bold; background:rgba(255,85,85,0.15);">') // Debug Panic Alert
-                                .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')   // Fallback Cyan
-                                .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">')   // Fallback Magenta
-                                .replace(/\x1b\[(1;)?33m/g, '<span style="color:#E3CA59; font-weight:bold;">')   // Thread 3 & Fallback Yellow
-                                .replace(/\x1b\[(1;)?34m/g, '<span style="color:#6272A4; font-weight:bold;">')   // Standard Blue
-                                .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">')   // Fallback Green
-                                .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">')   // Standard Red
-                                .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">')                     // Muted Gray
-                                .replace(/\x1b\[0m/g,       '</span>');                                          // Reset Tag
+                            // --- Standard ANSI & Panic Alert Fallbacks ---
+                            if (USE_OFFICIAL_ANSI_COLORS) {
+                                formattedLine = formattedLine
+                                    .replace(/\x1b\[1;31m/g,     `<span style="color:${OFFICIAL_ANSI_PALETTE[9]}; font-weight:bold; background:rgba(255,0,0,0.15);">`)
+                                    .replace(/\x1b\[(1;)?36m/g, `<span style="color:${OFFICIAL_ANSI_PALETTE[14]}; font-weight:bold;">`)
+                                    .replace(/\x1b\[(1;)?35m/g, `<span style="color:${OFFICIAL_ANSI_PALETTE[13]}; font-weight:bold;">`)
+                                    .replace(/\x1b\[(1;)?33m/g, `<span style="color:${OFFICIAL_ANSI_PALETTE[11]}; font-weight:bold;">`)
+                                    .replace(/\x1b\[(1;)?34m/g, `<span style="color:${OFFICIAL_ANSI_PALETTE[12]}; font-weight:bold;">`)
+                                    .replace(/\x1b\[(1;)?32m/g, `<span style="color:${OFFICIAL_ANSI_PALETTE[10]}; font-weight:bold;">`)
+                                    .replace(/\x1b\[(1;)?31m/g, `<span style="color:${OFFICIAL_ANSI_PALETTE[9]}; font-weight:bold;">`)
+                                    .replace(/\x1b\[(90|30)m/g, `<span style="color:${OFFICIAL_ANSI_PALETTE[8]};">`);
+                            } else {
+                                formattedLine = formattedLine
+                                    .replace(/\x1b\[1;31m/g,     '<span style="color:#FF5555; font-weight:bold; background:rgba(255,85,85,0.15);">')
+                                    .replace(/\x1b\[(1;)?36m/g, '<span style="color:#8BE9FD; font-weight:bold;">')
+                                    .replace(/\x1b\[(1;)?35m/g, '<span style="color:#FF79C6; font-weight:bold;">')
+                                    .replace(/\x1b\[(1;)?33m/g, '<span style="color:#E3CA59; font-weight:bold;">')
+                                    .replace(/\x1b\[(1;)?34m/g, '<span style="color:#6272A4; font-weight:bold;">')
+                                    .replace(/\x1b\[(1;)?32m/g, '<span style="color:#50FA7B; font-weight:bold;">')
+                                    .replace(/\x1b\[(1;)?31m/g, '<span style="color:#FF5555; font-weight:bold;">')
+                                    .replace(/\x1b\[(90|30)m/g, '<span style="color:#6272A4;">');
+                            }
+
+                            // Reset Tag
+                            formattedLine = formattedLine.replace(/\x1b\[0m/g, '</span>');
 
                             batchedHTML += `<div style="display:block; min-height:1.2em; white-space:pre-wrap;">${formattedLine}</div>`;
                         });
@@ -989,7 +1056,7 @@
                             while (shortFeed.children.length > maxShortLinesAllowed) {
                                 shortFeed.removeChild(shortFeed.firstChild);
                             }
-                            shortFeed.scrollTop = shortFeed.scrollHeight; // Always pin overview mini-feed to bottom
+                            shortFeed.scrollTop = shortFeed.scrollHeight;
                         }
 
                         activeLogLinePointer = data.totalLines;
