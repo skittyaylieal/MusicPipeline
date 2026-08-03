@@ -1,6 +1,11 @@
 namespace MusicPipeline.Metrics;
 
-public static class Metrics
+public class Metric
 {
-	// TODO
+	// TODO: finish
+	public int MasterCount {get; set;}
+	public int MobileCount {get; set;}
+	public int LrcCount {get; set;}
+	public int MasterSize {get; set;}
+	public int MobileSize {get; set;}
 }
