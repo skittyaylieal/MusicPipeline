@@ -17,6 +17,12 @@ def hex_to_srgb(hex_str: str) -> tuple[float, float, float]:
     return tuple(int(hex_str[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
 
 
+def hex_to_rgb_ints(hex_str: str) -> tuple[int, int, int]:
+    """Convert a hex string to integer RGB tuple (0-255)."""
+    hex_str = hex_str.lstrip("#")
+    return tuple(int(hex_str[i : i + 2], 16) for i in (0, 2, 4))
+
+
 def srgb_to_linear(c: float) -> float:
     """Convert sRGB gamma-compressed component to linear RGB."""
     return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
@@ -63,7 +69,6 @@ def oklab_distance(
 def parse_colour_guide(file_path: Path | str = DEFAULT_GUIDE_PATH) -> list[dict]:
     """Parse 'ColourGuide.txt' into a list of color objects with precomputed Oklab values."""
     palette = []
-    # Pattern matches: <number> <hex> Name: <name>
     pattern = re.compile(r"^(\d+)\s+(#[0-9a-fA-F]{6})\s+Name:\s*(.+)$")
 
     with open(file_path, "r", encoding="utf-8") as f:
@@ -111,10 +116,25 @@ if __name__ == "__main__":
     if re.match(r"^#[0-9a-fA-F]{6}$", user_input):
         top_matches = get_top_closest(user_input, top_n=3)
 
-        print(f"\nTarget: {user_input}")
+        # 24-bit Truecolor sequence for target hex input
+        tr, tg, tb = hex_to_rgb_ints(user_input)
+        target_truecolor = f"\x1b[38;2;{tr};{tg};{tb}m"
+
+        # Build comparison block line: 6 target blocks + 2 blocks per match
+        comparison_blocks = f"{target_truecolor}██████\x1b[0m"
+        for match in top_matches:
+            ansi_num = match["number"]
+            comparison_blocks += f"\x1b[38;5;{ansi_num}m██\x1b[0m"
+
+        print(f"\nTarget: {target_truecolor}{user_input}\x1b[0m")
+        print(f"Blocks: {comparison_blocks}\n")
+
         print("Top 3 Closest Colors:")
         for match in top_matches:
-            # Output format: Number Name Hex
-            print(f"{match['number']} {match['name']} {match['hex']}")
+            ansi_num = match["number"]
+            # Print each text line styled in its respective ANSI color
+            print(
+                f"\x1b[38;5;{ansi_num}m{match['number']} {match['name']} {match['hex']}\x1b[0m"
+            )
     else:
         print("Invalid hex code. Please enter a valid 6-digit hex code.")
