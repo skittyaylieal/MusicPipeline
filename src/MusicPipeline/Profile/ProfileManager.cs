@@ -6,8 +6,18 @@ public class ProfileFile
 {
     public static Profile defaultProfile = DefaultProfiles.defaultProfile;
     public static Profile nullProfile = new Profile();
-    public required string activeProfile {get; set;}
-    public required Profile[] profiles {get; set;}
+    public string activeProfile {get; set;}
+    public Profile[] profiles {get; set;}
+
+    public ProfileFile(string activeProfile, Profile[] profiles)
+    {
+        //i'm only using the this keyword to let it know which is being assigned to which
+        //if they don't have the same names you can avoid this.
+        //typically the parameters will be cammel case, and the properties will be pascal case.
+        this.activeProfile = activeProfile;
+        this.profiles = profiles;
+    }
+    
     public bool NoProfiles()    
     {
         if (profiles.Length == 0) {
