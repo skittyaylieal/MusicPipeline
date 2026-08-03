@@ -21,12 +21,12 @@ public class LogEngine
         var l = new LogEngine();
         DateTime current = DateTime.Now;
         string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-        string ColPrefix = $"{esc}[{Style}m{timeStamp} [{User}] {reset}";
-        string ProcessedMessage = $"{ColPrefix} {Message}";
-        string ProcessedMessageNl = $"\u000A{ProcessedMessage}";
+        string colPrefix = $"{esc}[{Style}m{timeStamp} [{User}] {reset}";
+        string processedMessage = $"{colPrefix} {Message}";
+        string processedMessageNl = $"\u000A{processedMessage}";
 
-        File.AppendAllText(LogFile, ProcessedMessageNl);
-        Console.WriteLine(ProcessedMessage);
+        File.AppendAllText(LogFile, processedMessageNl);
+        Console.WriteLine(processedMessage);
 
     }
 
@@ -35,7 +35,7 @@ public class LogEngine
         var l = new LogEngine();
         DateTime current = DateTime.Now;
         string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-        string ColPrefix = $"{esc}[1;36m{timeStamp}";
-        File.WriteAllTextAsync(LogFile, $"{ColPrefix} File Cleared by {User}");
+        string colPrefix = $"{esc}[1;36m{timeStamp}";
+        File.WriteAllTextAsync(LogFile, $"{colPrefix} File Cleared by {User}");
     }
 }
