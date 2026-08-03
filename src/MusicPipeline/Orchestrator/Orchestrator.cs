@@ -6,7 +6,7 @@ public class Orchestrator
 {
     // So I don't need to invoke this class itself
     private static readonly string logFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
-    private static readonly string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfileFile.json"
+    private static readonly string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfileFile.json";
     // Need tools
     // 
     public static void Start(string ProfileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
