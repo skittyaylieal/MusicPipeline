@@ -24,9 +24,10 @@ public class ProfileFile
         }
         return NullProfile;
     }
-    public ProfileFile(string activeProfile = "Default", Profile[]? profiles)
+    public ProfileFile(Profile[]? profiles = null, string activeProfile = "Default")
     {
         ActiveProfile = activeProfile;
+        profiles = [DefaultProfiles.defaultProfile];
         Profiles = profiles;
     }
 }
