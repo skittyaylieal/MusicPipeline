@@ -106,7 +106,7 @@ def get_top_closest(
 
 # --- Interactive CLI ---
 if __name__ == "__main__":
-    user_input = input("Enter a hex colour code (e.g. #af80d0): ").strip()
+    user_input = input("Enter a hex colour code (e.g. #faa719): ").strip()
 
     # Prepend '#' if missing
     if user_input and not user_input.startswith("#"):
@@ -120,19 +120,23 @@ if __name__ == "__main__":
         tr, tg, tb = hex_to_rgb_ints(user_input)
         target_truecolor = f"\x1b[38;2;{tr};{tg};{tb}m"
 
-        # Build comparison block line: 6 target blocks + 2 blocks per match
-        comparison_blocks = f"{target_truecolor}██████\x1b[0m"
+        # Line 1: Target color label
+        print(f"\ntarget colour: {target_truecolor}{user_input}\x1b[0m")
+
+        # Line 2: 6 blocks of target color
+        print(f"{target_truecolor}█████████\x1b[0m")
+
+        # Line 3: 2 blocks for 1st, 2nd, and 3rd closest colors
+        match_blocks = ""
         for match in top_matches:
             ansi_num = match["number"]
-            comparison_blocks += f"\x1b[38;5;{ansi_num}m██\x1b[0m"
+            match_blocks += f"\x1b[38;5;{ansi_num}m███\x1b[0m"
+        print(match_blocks)
 
-        print(f"\nTarget: {target_truecolor}{user_input}\x1b[0m")
-        print(f"Blocks: {comparison_blocks}\n")
-
-        print("Top 3 Closest Colors:")
+        # Line 4+: List of top 3 closest colors
+        print("\ntop three closest colours")
         for match in top_matches:
             ansi_num = match["number"]
-            # Print each text line styled in its respective ANSI color
             print(
                 f"\x1b[38;5;{ansi_num}m{match['number']} {match['name']} {match['hex']}\x1b[0m"
             )
