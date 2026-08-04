@@ -143,7 +143,7 @@ public static class ProfileManager
         catch
         {
             LogEngine.Out(LogFile, "Getting profile file failed", "ProfileManager", "38;5;124");
-            return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "Error");
+            return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
         }
     }
 }
