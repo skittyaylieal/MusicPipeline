@@ -2,6 +2,8 @@ using System.Text.Json;
 using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Profiles;
 
+
+
 public class ProfileFile
 {
     public static readonly Profile DefaultProfile = DefaultProfiles.defaultProfile;
@@ -35,6 +37,8 @@ public class ProfileFile
 
 public static class ProfileManager
 {
+
+    public static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
     public static void LoadProfileContext(string profileFile)
     {
         string jsonString = File.ReadAllText(profileFile);
@@ -59,13 +63,36 @@ public static class ProfileManager
         // Done
     }
 
-    public static void SaveProfileContext(string profileFile)
+    public static void SaveProfileContext(string profileFile, Profile profile)
     {
-        // TODO
+        // TODO: fix
+        ProfileFile Existing = GetProfileFile(profileFile);
+        if (Existing.ActiveProfile == "Error")
+        {
+            LogEngine.Out(LogFile, "Failed", "ProfileManager", "38;5;124");
+            break;
+        }
+        File = new ProfileFile(profile.Name, Existing.AppendProfile(profile));
+        LogEngine.Out(LogFile, "Did something", "ProfileManager");
+        
     }
 
     public static void SwitchProfileContext(string profileFile)
     {
         // TODO
+    }
+
+    public static ProfileFile GetProfileFile(string profileFile)
+    {
+        try 
+        {
+            ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(profileFile);
+            return file;
+        }
+        catch
+        {
+            LogEngine.Out(LogFile, "Getting profile file failed", "ProfileManager", "38;5;124");
+            return ProfileFile("Error");
+        }
     }
 }
