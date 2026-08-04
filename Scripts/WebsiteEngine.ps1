@@ -38,8 +38,8 @@ function Load-ProfileContext {
         # Comprehensive profile matrix template - all presets moved completely into config mapping
         $DefaultTemplate = @{
             ActiveProfile = "Default"
-            Profiles = @{
-                {
+            Profiles = @(
+                @{
                     Name                    = "Default"
                     BackupDir               = "C:\Users\filip\Music\YT_Music_Backup"
                     MobileDir               = "C:\Users\filip\Music\YT_Music_Mobile"
@@ -91,7 +91,7 @@ function Load-ProfileContext {
                         "https://www.youtube.com/playlist?list=PLqcuYaDDgyach02bt_8R8G7AzE9zSAOkS"
                     )
                 }
-            }
+            )
         }
         $DefaultTemplate | ConvertTo-Json -Depth 5 | Out-File $ProfilesFile -Encoding utf8 -Force
     }
