@@ -1,5 +1,7 @@
 namespace MusicPipeline.Profiles;
 
+//TODO: make the profile initialise to defaults
+
 public class Profile
 {
     public string Name {get; set;} = "Null";

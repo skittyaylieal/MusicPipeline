@@ -50,6 +50,8 @@ public class DefaultProfiles
 		LastNormalRunEpoch = 1785673837
 	};
 
+	// Swap default with null
+
 	public static readonly Profile ErrorProfile = new Profile
 	{
 		Name = "ERROR",
