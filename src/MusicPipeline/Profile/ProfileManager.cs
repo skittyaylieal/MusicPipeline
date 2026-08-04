@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Collections.Generic;
 using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Profiles;
 
@@ -6,13 +7,13 @@ namespace MusicPipeline.Profiles;
 
 public class ProfileFile
 {
-    public static readonly Profile DefaultProfile = DefaultProfiles.defaultProfile;
+    public static readonly Profile DefaultProfile = DefaultProfiles.DefaultProfile;
     public static readonly Profile NullProfile = new Profile();
     public required string ActiveProfile {get; set;}
-    public required Profile[] Profiles {get; set;}
+    public required List<Profile> Profiles {get; set;}
     public bool NoProfiles()    
     {
-        if (Profiles.Length == 0) {
+        if (Profiles.Count == 0) {
             return true;
         }
         return false;
@@ -26,10 +27,10 @@ public class ProfileFile
         }
         return NullProfile;
     }
-    public ProfileFile(Profile[]? profiles = null, string activeProfile = "Default")
+    public ProfileFile(List<Profile>? profiles = null, string activeProfile = "Default")
     {
         ActiveProfile = activeProfile;
-        profiles = [DefaultProfiles.defaultProfile];
+        profiles = new List<Profile>(){DefaultProfiles.DefaultProfile};
         Profiles = profiles;
     }
 }
@@ -70,9 +71,10 @@ public static class ProfileManager
         if (Existing.ActiveProfile == "Error")
         {
             LogEngine.Out(LogFile, "Failed", "ProfileManager", "38;5;124");
-            break;
+            return;
         }
-        File = new ProfileFile(profile.Name, Existing.AppendProfile(profile));
+        Existing.Profiles.Add(profile);
+        ProfileFile File = new ProfileFile(Existing.Profiles, profile.Name);
         LogEngine.Out(LogFile, "Did something", "ProfileManager");
         
     }
@@ -92,7 +94,7 @@ public static class ProfileManager
         catch
         {
             LogEngine.Out(LogFile, "Getting profile file failed", "ProfileManager", "38;5;124");
-            return ProfileFile("Error");
+            return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "Error");
         }
     }
 }

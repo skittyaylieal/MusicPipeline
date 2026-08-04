@@ -2,7 +2,7 @@ namespace MusicPipeline.Profiles;
 
 public class DefaultProfiles
 {
-	public static readonly Profile defaultProfile = new Profile
+	public static readonly Profile DefaultProfile = new Profile
 	{
 		Name = "Default",
 		BackupDir = @"C:\Users\filip\Music\YT_Music_Backup",
@@ -48,5 +48,53 @@ public class DefaultProfiles
 		],
 		LastCleanRunEpoch = 1785532108,
 		LastNormalRunEpoch = 1785673837
+	};
+
+	public static readonly Profile ErrorProfile = new Profile
+	{
+		Name = "ERROR",
+		BackupDir = "ERROR",
+		MobileDir = "ERROR",
+		BrokenSongsFile = "ERROR",
+		DiagLogFile = "ERROR",
+		CacheFile = "ERROR",
+		TimingFile = "ERROR",
+		CookieFile = "ERROR",
+		HistoryFile = "ERROR",
+		YTDLPExe = "ERROR",
+		FFmpegExe = "ERROR",
+		FirefoxExe = "ERROR",
+		CheckURL = "ERROR",
+		SleepInterval = 2147483647,
+		MaxSleepInterval = 2147483647, 
+		SleepRequests = 2147483647,
+		MaxCompressThreads = 2147483647,
+		MaxDownloadThreads = 2147483647,
+		MaxLyricThreads = 2147483647,
+		ScannerSleepIntervalSec = 2147483647,
+		ChronDaemonSleepSec = 2147483647,
+		MaxStreamReturnLines = 2147483647,
+		StartingWebServerPort = 2147483647,
+		NormalIntervalSec = 2147483647,
+		CleanIntervalSec = 2147483647,
+		NormalStep1 = true,
+		NormalStep2 = true,
+		NormalStep3 = true,
+		NormalStep4 = true,
+		NormalStep5 = true,
+		NormalStep6 = true,
+		NormalStep7 = true,
+		CleanSweepDownload = true,
+		CleanSweepLyrics = true,
+		CleanSweepCompress = true,
+		CleanSweepLore = true,
+		Playlists = [
+		"ERROR",
+		"ERROR",
+		"ERROR",
+		"ERROR"
+		],
+		LastCleanRunEpoch = 2147483647,
+		LastNormalRunEpoch = 2147483647
 	};
 }
