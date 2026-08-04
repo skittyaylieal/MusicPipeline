@@ -56,8 +56,8 @@ public class ProfileFile
         LastNormalRunEpoch = 1785673837
     };
     public static readonly Profile NullProfile = new Profile();
-    public required string ActiveProfile {get; set;}
-    public required List<Profile> Profiles {get; set;}
+    public string ActiveProfile {get; set;}
+    public List<Profile> Profiles {get; set;}
     public bool NoProfiles()    
     {
         if (Profiles.Count == 0) {
