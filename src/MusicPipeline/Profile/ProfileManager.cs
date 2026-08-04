@@ -101,6 +101,14 @@ public static class ProfileManager
     public static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
     public static Profile LoadActiveProfileContext(string profileFile)
     {
+        try {
+            File.ReadAllBytes(profileFile);
+            LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", "38;5;76");
+        }
+        catch (FileNotFoundException e) {
+            LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", "38;5;203");
+            SaveProfileContext(profileFile);
+        }
         string jsonString = File.ReadAllText(profileFile);
         ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
         if (!file.NoProfiles()) {
@@ -108,9 +116,9 @@ public static class ProfileManager
             return activeProfile;
 
         } else {
-            return DefaultProfiles.ErrorProfile;
             LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", "38;5;203");
-            // TODO: Save to profile file
+            SaveProfileContext(profileFile);
+            return DefaultProfiles.DefaultProfile;
         }
 
         // Ok so we have a profile file in this form
@@ -126,9 +134,12 @@ public static class ProfileManager
         // Done
     }
 
-    public static void SaveProfileContext(string profileFile, Profile profile)
+    public static void SaveProfileContext(string profileFile, Profile? profile = null)
     {
         // TODO: fix
+        if (profile == null) {
+            profile = DefaultProfiles.DefaultProfile;
+        }
         ProfileFile Existing = GetProfileFile(profileFile);
         if (Existing.ActiveProfile == "ERROR")
         {
@@ -145,7 +156,7 @@ public static class ProfileManager
         var Options = new JsonSerializerOptions { WriteIndented = true };
         string JsonToWrite = JsonSerializer.Serialize(File, Options);
 
-        LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} succesfully.", "ProfileManager");
+        LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} successfully.", "ProfileManager");
         
     }
 
