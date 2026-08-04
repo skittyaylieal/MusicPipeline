@@ -5,6 +5,9 @@ PROFILES:
 To add values to the profile file, go to the Profiles folder
 you will need to edit the definition of the Profile class in Profile.cs, and the DefaultProfiles.cs DefaultProfile object
 
+In future: let you choose a default profile that is inherited from when creating new profiles
+and let you inherit from any profile
+
 
 LOGGING:
 
@@ -16,4 +19,3 @@ The main log function, LogEngine.Out(), is in Tools/LogEngine.cs
 	ColourGuide.txt
 	Use the new Gadgets/Colours.py to convert a given hex code into the closest ansi
 
-	

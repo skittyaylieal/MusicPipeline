@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Profiles;
 namespace MusicPipeline.Orchestrator;
@@ -5,16 +6,21 @@ namespace MusicPipeline.Orchestrator;
 public static class Orchestrator
 {
     // So I don't need to invoke this class itself
-    private static readonly string logFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
-    private static readonly string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfileFile.json";
+    private static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
+    private static readonly string ProfileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfileFile.json";
     // Need tools
     // 
-    public static void Start(string ProfileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
+    public static void Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
     {
-        LogEngine.Wipe(logFile, "Orchestrator");
-        LogEngine.Out(logFile, "Test", "Orchestrator", "38;5;203");
-        LogEngine.Out(logFile, "Test Number 2", "Orchestrator", "38;5;213");
-        ProfileManager.LoadProfileContext(profileFile);
+        LogEngine.Wipe(LogFile, "Orchestrator");
+        LogEngine.Out(LogFile, "Test", "Orchestrator", "38;5;203");
+        LogEngine.Out(LogFile, "Test Number 2", "Orchestrator", "38;5;213");
+        Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfileContext(profileFile);
+        LogEngine.Out(LogFile, JsonSerializer.Serialize(ActiveProfile), "Orchestrator", "38;5;54");
+        ActiveProfile.ScannerSleepIntervalSec = 30;
+        ProfileManager.SaveProfileContext(profileFile, ActiveProfile);
+        Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfileContext(profileFile);
+        LogEngine.Out(LogFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", "38;5;36");
     }
 
 

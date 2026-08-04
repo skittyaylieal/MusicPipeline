@@ -99,14 +99,17 @@ public static class ProfileManager
 {
 
     public static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
-    public static void LoadProfileContext(string profileFile)
+    public static Profile LoadActiveProfileContext(string profileFile)
     {
         string jsonString = File.ReadAllText(profileFile);
         ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
         if (!file.NoProfiles()) {
             Profile activeProfile = file.GetActiveProfile();
+            return activeProfile;
+
         } else {
-            LogEngine.Out(@"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log", $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", "38;5;203");
+            return DefaultProfiles.ErrorProfile;
+            LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", "38;5;203");
             // TODO: Save to profile file
         }
 
