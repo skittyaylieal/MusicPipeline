@@ -2,8 +2,12 @@
 function Load-ProfileContext {
     try {
         $Global:ProfileData = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
-        $Active = $Global:ProfileData.activeProfile
-        $Global:ActiveConfig = $Global:ProfileData.profiles.$Active
+        $Active = $Global:ProfileData.ActiveProfile
+        for ($Config in $Global:ProfileData.Profiles) {
+            if ($Config.Name = $Active) {
+                $Global:ActiveConfig = $Config
+            }
+        }
 
         # Context-mapping active configurations down into script runspace memory references
         $Global:BackupDir               = $Global:ActiveConfig.BackupDir

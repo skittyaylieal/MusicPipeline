@@ -39,7 +39,8 @@ function Load-ProfileContext {
         $DefaultTemplate = @{
             ActiveProfile = "Default"
             Profiles = @{
-                Default = @{
+                @{
+                    Name                    = "Default"
                     BackupDir               = "C:\Users\filip\Music\YT_Music_Backup"
                     MobileDir               = "C:\Users\filip\Music\YT_Music_Mobile"
                     BrokenSongsFile         = "C:\MusicTools\MusicPipeline\Config\broken_songs.json"
@@ -56,8 +57,8 @@ function Load-ProfileContext {
                     MaxSleepInterval        = 12
                     SleepRequests           = 3
                     MaxCompressThreads      = 3
-                    MaxDownloadThreads      = 3
-                    MaxLyricThreads         = 3
+                    MaxDownloadThreads      = 8
+                    MaxLyricThreads         = 6
                     ScannerSleepIntervalSec = 60
                     ChronDaemonSleepSec     = 1800 
 
@@ -98,8 +99,12 @@ function Load-ProfileContext {
     try {
         $Global:ProfileData = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
         $Active = $Global:ProfileData.ActiveProfile
-        $Global:ActiveConfig = $Global:ProfileData.Profiles.$Active
-
+        for ($Config in $Global:ProfileData.Profiles) {
+            if ($Config.Name = $Active) {
+                $Global:ActiveConfig = $Config
+            }
+        }
+        
         # Context-mapping active configurations down into script runspace memory references
         $Global:BackupDir               = $Global:ActiveConfig.BackupDir
         $Global:MobileDir               = $Global:ActiveConfig.MobileDir

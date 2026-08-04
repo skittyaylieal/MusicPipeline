@@ -23,7 +23,11 @@ function Load-ProfileContext {
     try {
         $Global:ProfileData = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
         $Active = $Global:ProfileData.ActiveProfile
-        $Global:ActiveConfig = $Global:ProfileData.Profiles.$Active
+        for ($Config in $Global:ProfileData.Profiles) {
+            if ($Config.Name = $Active) {
+                $Global:ActiveConfig = $Config
+            }
+        }
 
         $Global:OutputLogFile             = $Global:ActiveConfig.DiagLogFile
         $Global:CookiePath              = $Global:ActiveConfig.CookieFile
