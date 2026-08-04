@@ -151,10 +151,11 @@ public static class ProfileManager
         } else {
             Existing.Profiles.Add(profile);
         }
-        ProfileFile File = new ProfileFile(Existing.Profiles, profile.Name);
+        ProfileFile ProfileFile = new ProfileFile(Existing.Profiles, profile.Name);
 
         var Options = new JsonSerializerOptions { WriteIndented = true };
-        string JsonToWrite = JsonSerializer.Serialize(File, Options);
+        string JsonToWrite = JsonSerializer.Serialize(ProfileFile, Options);
+        File.WriteAllText(profileFile, JsonToWrite);
 
         LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} successfully.", "ProfileManager");
         
