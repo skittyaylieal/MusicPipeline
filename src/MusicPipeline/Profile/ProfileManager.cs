@@ -124,17 +124,12 @@ public static class ProfileManager
         }
         Existing.Profiles.Add(profile);
         ProfileFile File = new ProfileFile(Existing.Profiles, profile.Name);
-        LogEngine.Out(LogFile, "Did something", "ProfileManager");
-        
 
         var Options = new JsonSerializerOptions { WriteIndented = true };
-        /* 
-        List<Profile> TestProfiles = new List<Profile>(){DefaultProfiles.DefaultProfile, new Profile(), DefaultProfiles.ErrorProfile};
-        ProfileFile TestProfileFile = new ProfileFile(TestProfiles);
-        string TestJsonString = JsonSerializer.Serialize(TestProfileFile, Options);
-        string TestJsonFileName = @"C:\MusicTools\MusicPipeline\Sandbox\TestJsonFile.json";
-        File.WriteAllText(TestJsonFileName, TestJsonString);
-        */
+        string JsonToWrite = JsonSerializer.Serialize(File, Options);
+
+        LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} succesfully.", "ProfileManager");
+        
     }
 
     public static void SwitchProfileContext(string profileFile)
