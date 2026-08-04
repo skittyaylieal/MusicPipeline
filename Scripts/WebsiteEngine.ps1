@@ -99,8 +99,8 @@ function Load-ProfileContext {
     try {
         $Global:ProfileData = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
         $Active = $Global:ProfileData.ActiveProfile
-        for ($Config in $Global:ProfileData.Profiles) {
-            if ($Config.Name = $Active) {
+        foreach ($Config in $Global:ProfileData.Profiles) {
+            if ($Config.Name -eq $Active) {
                 $Global:ActiveConfig = $Config
             }
         }
