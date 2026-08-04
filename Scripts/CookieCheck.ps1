@@ -22,8 +22,8 @@ function Log-Engine([string]$Message, [string]$AnsiStyle = "1;32") {
 function Load-ProfileContext {
     try {
         $Global:ProfileData = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
-        $Active = $Global:ProfileData.activeProfile
-        $Global:ActiveConfig = $Global:ProfileData.profiles.$Active
+        $Active = $Global:ProfileData.ActiveProfile
+        $Global:ActiveConfig = $Global:ProfileData.Profiles.$Active
 
         $Global:OutputLogFile             = $Global:ActiveConfig.DiagLogFile
         $Global:CookiePath              = $Global:ActiveConfig.CookieFile

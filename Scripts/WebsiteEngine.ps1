@@ -37,8 +37,8 @@ function Load-ProfileContext {
         
         # Comprehensive profile matrix template - all presets moved completely into config mapping
         $DefaultTemplate = @{
-            activeProfile = "Default"
-            profiles = @{
+            ActiveProfile = "Default"
+            Profiles = @{
                 Default = @{
                     BackupDir               = "C:\Users\filip\Music\YT_Music_Backup"
                     MobileDir               = "C:\Users\filip\Music\YT_Music_Mobile"
@@ -97,8 +97,8 @@ function Load-ProfileContext {
 
     try {
         $Global:ProfileData = Get-Content -LiteralPath $ProfilesFile -Raw | ConvertFrom-Json
-        $Active = $Global:ProfileData.activeProfile
-        $Global:ActiveConfig = $Global:ProfileData.profiles.$Active
+        $Active = $Global:ProfileData.ActiveProfile
+        $Global:ActiveConfig = $Global:ProfileData.Profiles.$Active
 
         # Context-mapping active configurations down into script runspace memory references
         $Global:BackupDir               = $Global:ActiveConfig.BackupDir
