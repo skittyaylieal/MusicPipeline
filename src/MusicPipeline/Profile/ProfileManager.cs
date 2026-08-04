@@ -143,8 +143,7 @@ public static class ProfileManager
         ProfileFile Existing = GetProfileFile(profileFile);
         if (Existing.ActiveProfile == "ERROR")
         {
-            LogEngine.Out(LogFile, "Failed", "ProfileManager", "38;5;124");
-            return;
+            LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", "38;5;203");
         }
         if (Existing.ProfileAlreadyExists(profile)) {
             Existing.Profiles = new List<Profile>() {profile};
@@ -168,14 +167,12 @@ public static class ProfileManager
 
     public static ProfileFile GetProfileFile(string profileFile)
     {
-        try 
-        {
+        try {
             ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(profileFile);
             return file;
         }
-        catch
-        {
-            LogEngine.Out(LogFile, "Getting profile file failed", "ProfileManager", "38;5;124");
+        catch (FileNotFoundException e) {
+            LogEngine.Out(LogFile, "Getting ProfileFile failed", "ProfileManager", "38;5;203");
             return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
         }
     }
