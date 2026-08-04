@@ -82,6 +82,16 @@ public class ProfileFile
         }
         Profiles = profiles;
     }
+    public bool ProfileAlreadyExists(Profile profileToCheck)
+    {
+        int Count = 0;
+        foreach (Profile p in this.Profiles) {
+            if (p.Name == profileToCheck.Name) {
+                Count += 1;
+            }
+        }
+        return Count > 0;
+    }
 }
 
 
@@ -117,12 +127,16 @@ public static class ProfileManager
     {
         // TODO: fix
         ProfileFile Existing = GetProfileFile(profileFile);
-        if (Existing.ActiveProfile == "Error")
+        if (Existing.ActiveProfile == "ERROR")
         {
             LogEngine.Out(LogFile, "Failed", "ProfileManager", "38;5;124");
             return;
         }
-        Existing.Profiles.Add(profile);
+        if (Existing.ProfileAlreadyExists(profile)) {
+            Existing.Profiles = new List<Profile>() {profile};
+        } else {
+            Existing.Profiles.Add(profile);
+        }
         ProfileFile File = new ProfileFile(Existing.Profiles, profile.Name);
 
         var Options = new JsonSerializerOptions { WriteIndented = true };
