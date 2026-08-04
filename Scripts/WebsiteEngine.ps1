@@ -39,7 +39,7 @@ function Load-ProfileContext {
         $DefaultTemplate = @{
             ActiveProfile = "Default"
             Profiles = @{
-                @{
+                {
                     Name                    = "Default"
                     BackupDir               = "C:\Users\filip\Music\YT_Music_Backup"
                     MobileDir               = "C:\Users\filip\Music\YT_Music_Mobile"
