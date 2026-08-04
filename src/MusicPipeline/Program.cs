@@ -10,3 +10,5 @@ ProfileFile TestProfileFile = new ProfileFile(TestProfiles);
 string TestJsonString = JsonSerializer.Serialize(TestProfileFile, Options);
 string TestJsonFileName = @"C:\MusicTools\MusicPipeline\Sandbox\TestJsonFile.json";
 File.WriteAllText(TestJsonFileName, TestJsonString);
+
+// Working!
