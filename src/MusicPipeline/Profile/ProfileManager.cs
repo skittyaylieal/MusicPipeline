@@ -110,6 +110,7 @@ public static class ProfileManager
             SaveProfileContext(profileFile);
         }
         string jsonString = File.ReadAllText(profileFile);
+        LogEngine.Out(LogFile, jsonString, "Debug", "38;5;145");
         ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
         if (!file.NoProfiles()) {
             Profile activeProfile = file.GetActiveProfile();
