@@ -30,7 +30,9 @@ public class ProfileFile
     public ProfileFile(List<Profile>? profiles = null, string activeProfile = "Default")
     {
         ActiveProfile = activeProfile;
-        profiles = new List<Profile>(){DefaultProfiles.DefaultProfile};
+        if (profiles == null) {
+            profiles = new List<Profile>(){DefaultProfiles.DefaultProfile};
+        }
         Profiles = profiles;
     }
 }
