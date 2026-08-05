@@ -146,7 +146,7 @@ public static class ProfileManager
         {
             LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", "38;5;203");
         }
-        if (Existing.ProfileAlreadyExists(profile)) {
+        if (Existing.ProfileAlreadyExists(profile) || Existing.ActiveProfile=="ERROR") {
             Existing.Profiles = new List<Profile>() {profile};
         } else {
             Existing.Profiles.Add(profile);
