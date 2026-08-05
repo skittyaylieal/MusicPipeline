@@ -168,13 +168,13 @@ public static class ProfileManager
 
     public static ProfileFile GetProfileFile(string profileFile)
     {
-        try {
-            ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(profileFile);
-            return file;
+        if (File.Exists(profileFile)) {
+            ProfileFile Result =  JsonSerializer.Deserialize<ProfileFile>(profileFile);
+            return Result;
         }
-        catch (FileNotFoundException e) {
-            LogEngine.Out(LogFile, "Getting ProfileFile failed", "ProfileManager", "38;5;203");
+        else {
             return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
+            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", "38;5;203");
         }
     }
 }
