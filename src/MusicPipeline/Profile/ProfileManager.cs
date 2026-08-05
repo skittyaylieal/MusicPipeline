@@ -169,7 +169,8 @@ public static class ProfileManager
     public static ProfileFile GetProfileFile(string profileFile)
     {
         if (File.Exists(profileFile)) {
-            ProfileFile Result =  JsonSerializer.Deserialize<ProfileFile>(profileFile);
+            string jsonString = File.ReadAllText(profileFile);
+            ProfileFile Result =  JsonSerializer.Deserialize<ProfileFile>(jsonString);
             return Result;
         }
         else {
