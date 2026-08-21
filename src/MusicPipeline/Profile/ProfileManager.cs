@@ -103,21 +103,21 @@ public static class ProfileManager
     {
         try {
             File.ReadAllBytes(profileFile);
-            LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", "76");
+            LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", 76);
         }
         catch (FileNotFoundException) {
-            LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", "203");
+            LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", 203);
             SaveProfileContext(profileFile);
         }
         string jsonString = File.ReadAllText(profileFile);
-        LogEngine.Out(LogFile, jsonString, "Debug", "145");
+        LogEngine.Out(LogFile, jsonString, "Debug", 145);
         ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
         if (!file.NoProfiles()) {
             Profile activeProfile = file.GetActiveProfile();
             return activeProfile;
 
         } else {
-            LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", "203");
+            LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", 203);
             SaveProfileContext(profileFile);
             return DefaultProfiles.DefaultProfile;
         }
