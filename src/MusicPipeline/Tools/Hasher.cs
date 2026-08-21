@@ -1,6 +1,6 @@
 using System.Text;
 using HashifyNet;
-using HasifyNet.Algorithms.xxHash3;
+using HashifyNet.Algorithms.xxHash3;
 namespace MusicPipeline.Tools.Hasher;
 
 public static class Hasher
