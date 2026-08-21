@@ -7,14 +7,15 @@ public class Result
 	// The time the step took
 	// Any errors
 	// Any processed songs and what to do with them
-
+	public string Step;
 	public  bool Outcome;
 	public  TimeSpan Elapsed;
 	public string? Error;
 	public List<SongIdentifier>? Songs;
 	
-	public Result(bool outcome, TimeSpan elapsed, string error = "", List<SongIdentifier>? songs = null)
+	public Result(string step, bool outcome, TimeSpan elapsed, string error = "", List<SongIdentifier>? songs = null)
 	{
+		Step = step;
 		Outcome = outcome;
 		Elapsed = elapsed;
 		Error = error;

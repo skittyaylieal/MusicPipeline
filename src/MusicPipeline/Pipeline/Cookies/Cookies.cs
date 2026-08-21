@@ -1,7 +1,6 @@
 using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Profiles;
 using MusicPipeline.Results;
-using MusicPipeline.Results.Defaults;
 using MusicPipeline.SongIdentifiers;
 using System.Diagnostics;
 namespace MusicPipeline.Pipeline;
@@ -53,14 +52,14 @@ class Cookies
         		DateTime End = DateTime.UtcNow;
 				TimeSpan Elapsed = End - Start;
 				//Result res = new Result(true, Elapsed, "no error", new List<MSongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "NONE", 0, "m4a", 6.90, 4.20, false, true, true, false)));
-        		return new Result(true, Elapsed);
+        		return new Result("Cookie Verification", true, Elapsed);
         	}
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
         	DateTime End = DateTime.UtcNow;
 			TimeSpan Elapsed = End - Start;
-        	return new Result(false, Elapsed, ex.Message);
+        	return new Result("Cookie Verification", false, Elapsed, ex.Message);
         }
 
 	}
