@@ -12,14 +12,11 @@ string secondString = "Another string!";
 byte[] firstBytes = Encoding.UTF8.GetBytes(firstString);
 byte[] secondBytes = Encoding.UTF8.GetBytes(secondString);
 
-// Create XxHash64 instance
-XxHash64 xxHash = new XxHash64();
+// Hash the first string using the static method
+ulong firstHash = XxHash64.Hash(firstBytes);
 
-// Hash the first string
-ulong firstHash = xxHash.Hash(firstBytes);
-
-// Hash the second string
-ulong secondHash = xxHash.Hash(secondBytes);
+// Hash the second string using the static method
+ulong secondHash = XxHash64.Hash(secondBytes);
 
 
 //Orchestrator.Start();
