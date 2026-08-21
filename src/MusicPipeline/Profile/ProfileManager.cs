@@ -144,7 +144,7 @@ public static class ProfileManager
         ProfileFile Existing = GetProfileFile(profileFile);
         if (Existing.ActiveProfile == "ERROR")
         {
-            LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", "203");
+            LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", 203);
         }
         if (Existing.ProfileAlreadyExists(profile) || Existing.ActiveProfile=="ERROR") {
             Existing.Profiles = new List<Profile>() {profile};
@@ -175,7 +175,7 @@ public static class ProfileManager
         }
         else {
             return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
-            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", "203");
+            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", 203);
         }
     }
 }
