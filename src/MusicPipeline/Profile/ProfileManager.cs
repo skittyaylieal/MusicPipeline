@@ -105,7 +105,7 @@ public static class ProfileManager
             File.ReadAllBytes(profileFile);
             LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", "38;5;76");
         }
-        catch (FileNotFoundException e) {
+        catch (FileNotFoundException) {
             LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", "38;5;203");
             SaveProfileContext(profileFile);
         }
