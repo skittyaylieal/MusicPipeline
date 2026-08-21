@@ -5,7 +5,7 @@ public class SongIdentifier
 	public required string Title {get; set;}
 	public required string Artist {get; set;}
 	public required string Album {get; set;}
-	public required string PermenantID {get; set;}
+	public required UInt64 PermenantID {get; set;}
 	public required string Type {get; set;}
 	public int SizeMB {get; set;}
 	public int SizeCompressed {get; set;}

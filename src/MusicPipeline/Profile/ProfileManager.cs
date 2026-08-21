@@ -103,21 +103,21 @@ public static class ProfileManager
     {
         try {
             File.ReadAllBytes(profileFile);
-            LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", "38;5;76");
+            LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", "76");
         }
         catch (FileNotFoundException) {
-            LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", "38;5;203");
+            LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", "203");
             SaveProfileContext(profileFile);
         }
         string jsonString = File.ReadAllText(profileFile);
-        LogEngine.Out(LogFile, jsonString, "Debug", "38;5;145");
+        LogEngine.Out(LogFile, jsonString, "Debug", "145");
         ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
         if (!file.NoProfiles()) {
             Profile activeProfile = file.GetActiveProfile();
             return activeProfile;
 
         } else {
-            LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", "38;5;203");
+            LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", "203");
             SaveProfileContext(profileFile);
             return DefaultProfiles.DefaultProfile;
         }
@@ -144,7 +144,7 @@ public static class ProfileManager
         ProfileFile Existing = GetProfileFile(profileFile);
         if (Existing.ActiveProfile == "ERROR")
         {
-            LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", "38;5;203");
+            LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", "203");
         }
         if (Existing.ProfileAlreadyExists(profile) || Existing.ActiveProfile=="ERROR") {
             Existing.Profiles = new List<Profile>() {profile};
@@ -175,7 +175,7 @@ public static class ProfileManager
         }
         else {
             return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
-            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", "38;5;203");
+            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", "203");
         }
     }
 }

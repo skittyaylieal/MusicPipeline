@@ -9,7 +9,7 @@ public class LogEngine
     private const char esc = '\u001B';
     private const string reset = $"\u001B[0m";
 
-    public static void Out(string LogFile, string Message, string User = "System", string Style = "1;36") 
+    public static void Out(string LogFile, string Message, string User = "System", int Style = 36) 
     {
         /*ArgumentException.ThrowIfNullOrEmpty(LogFile);
         ArgumentException.ThrowIfNullOrEmpty(Message);
@@ -21,7 +21,7 @@ public class LogEngine
         var l = new LogEngine();
         DateTime current = DateTime.Now;
         string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-        string colPrefix = $"{esc}[{Style}m{timeStamp} [{User}] {reset}";
+        string colPrefix = $"{esc}[38;5;{Style.ToString()}m{timeStamp} [{User}] {reset}";
         string processedMessage = $"{colPrefix} {Message}";
         string processedMessageNl = $"\u000A{processedMessage}";
 
