@@ -16,7 +16,7 @@ public class SongIdentifier
 	public int? LoreDate {get; set;}
 
 	public SongIdentifier(string title, string artist,
-	string album, string id, string type, int sizeMB,
+	string album, UInt64 id, string type, int sizeMB,
 	int sizeCompressed, bool instrumental, bool lyrics,
 	bool syncedLyrics, bool lore, int loreDate)
 	{

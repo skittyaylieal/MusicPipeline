@@ -13,14 +13,14 @@ public static class Orchestrator
     public static void Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
     {
         LogEngine.Wipe(LogFile, "Orchestrator");
-        LogEngine.Out(LogFile, "Test", "Orchestrator", "203");
-        LogEngine.Out(LogFile, "Test Number 2", "Orchestrator", "213");
+        LogEngine.Out(LogFile, "Test", "Orchestrator", 203);
+        LogEngine.Out(LogFile, "Test Number 2", "Orchestrator", 213);
         Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfileContext(profileFile);
-        LogEngine.Out(LogFile, JsonSerializer.Serialize(ActiveProfile), "Orchestrator", "54");
+        LogEngine.Out(LogFile, JsonSerializer.Serialize(ActiveProfile), "Orchestrator", 54);
         ActiveProfile.ScannerSleepIntervalSec = 30;
         ProfileManager.SaveProfileContext(profileFile, ActiveProfile);
         Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfileContext(profileFile);
-        LogEngine.Out(LogFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", "36");
+        LogEngine.Out(LogFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
     }
 
 
