@@ -8,7 +8,7 @@ public static class Hasher
 	{
 		string str = $"{Title}-{Artist}-{Album}";
 		var strBytes = Encoding.UTF8.GetBytes(str);
-		return XxHash64.Hash(BitConverter.ToUInt64(strBytes));
+		return XxHash64.Hash(strBytes);
 	}
 }
 
