@@ -12,7 +12,7 @@ public static class Handler
 		string Success = "";
 		// Cookie Verification finished successfully/with errors in (elapsed time)
 		if (result.Outcome) {Success = "successfully";} else {Success = "with errors";}
-		string ElapsedTime = result.Elapsed.ToString("dd:hh:mm:ss.ffff");
+		string ElapsedTime = result.Elapsed.ToString(@"dd\:hh\:mm\:ss\.ffff");
 		LogEngine.Out(LogFile, $"{result.Step} finished {Success} in {ElapsedTime}");
 		// TODO: Metrics database etc
 	}
