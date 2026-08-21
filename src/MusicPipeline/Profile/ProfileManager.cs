@@ -166,7 +166,7 @@ public static class ProfileManager
         // TODO
     }
 
-    public static ProfileFile GetProfileFile(string profileFile)
+    private static ProfileFile GetProfileFile(string profileFile)
     {
         if (File.Exists(profileFile)) {
             string jsonString = File.ReadAllText(profileFile);
