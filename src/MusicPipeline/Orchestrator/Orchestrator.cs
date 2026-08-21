@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Profiles;
+//using MusicPipeline.Cookies;
 namespace MusicPipeline.Orchestrator;
 
 public static class Orchestrator
@@ -21,6 +22,8 @@ public static class Orchestrator
         ProfileManager.SaveProfileContext(profileFile, ActiveProfile);
         Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfileContext(profileFile);
         LogEngine.Out(LogFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
+
+        MusicPipeline.Cookies.CookieCheck(ProfileFile);
     }
 
 
