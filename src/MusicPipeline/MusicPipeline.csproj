@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="CliWrap" Version="3.10.4" />
+    <PackageReference Include="HashifyNET" Version="7.1.1" />
   </ItemGroup>
 
 </Project>
