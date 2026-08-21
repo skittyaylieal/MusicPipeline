@@ -10,7 +10,7 @@ public static class Hasher
 		// HEAVILY MODIFIED FROM DemarcPoint on Stack Overflow to use Hashify and xxHash64
 		// https://stackoverflow.com/a/35416167/22942130
 
-		var xxHash64 = HashFactory.Cryptographic.xxHash;
+		xxHash3 xxHash64 = HashFactory<xxHash3>.Create();
 		// Compute 64bit hash
 		var result = xxHash64.ComputerHash(Encoding.UTF8.GetBytes(str));
 		return BitConverter.ToUInt64(result.Hash, 0);
