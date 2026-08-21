@@ -2,6 +2,7 @@ using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Profiles;
 using MusicPipeline.Results;
 using MusicPipeline.Results.Defaults;
+using MusicPipeline.SongIdentifiers;
 using System.Diagnostics;
 namespace MusicPipeline.Cookies;
 
@@ -51,6 +52,7 @@ class Cookies
         		YTDLPProcess.WaitForExit();
         		DateTime End = DateTime.UtcNow;
 				TimeSpan Elapsed = End - Start;
+				//Result res = new Result(true, Elapsed, "no error", new List<MSongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "NONE", 0, "m4a", 6.90, 4.20, false, true, true, false)));
         		return new Result(true, Elapsed);
         	}
         }

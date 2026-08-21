@@ -7,18 +7,18 @@ public class SongIdentifier
 	public required string Album {get; set;}
 	public required UInt64 PermenantID {get; set;}
 	public required string Type {get; set;}
-	public int SizeMB {get; set;}
-	public int SizeCompressed {get; set;}
+	public double SizeMB {get; set;}
+	public double SizeCompressed {get; set;}
 	public bool Instrumental {get; set;}
 	public bool? Lyrics {get; set;}
 	public bool? SyncedLyrics {get; set;}
 	public bool Lore {get; set;}
-	public int? LoreDate {get; set;}
+	public DateTime? LoreDate {get; set;}
 
 	public SongIdentifier(string title, string artist,
-	string album, UInt64 id, string type, int sizeMB,
-	int sizeCompressed, bool instrumental, bool lyrics,
-	bool syncedLyrics, bool lore, int loreDate)
+	string album, UInt64 id, string type, double sizeMB,
+	double sizeCompressed, bool instrumental, bool lyrics,
+	bool syncedLyrics, bool lore, DateTime loreDate = new DateTime())
 	{
 		Title = title;
 		Artist = artist;
