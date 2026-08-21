@@ -1,6 +1,6 @@
 using System.Text;
 using HashifyNet;
-using HashifyNet.Algorithms.xxHash3;
+using HashifyNet.Algorithms.xxHash;
 namespace MusicPipeline.Tools.Hasher;
 
 public static class Hasher
@@ -11,7 +11,7 @@ public static class Hasher
 		// HEAVILY MODIFIED FROM DemarcPoint on Stack Overflow to use Hashify and xxHash64
 		// https://stackoverflow.com/a/35416167/22942130
 
-		xxHash3 xxHash3 = HashFactory<xxHash3>.Create();
+		xxHash xxHash3 = HashFactory<xxHash>.Create();
 		// Compute 64bit hash
 		var result = xxHash3.ComputerHash(Encoding.UTF8.GetBytes(str));
 		return BitConverter.ToUInt64(result.Hash, 0);
