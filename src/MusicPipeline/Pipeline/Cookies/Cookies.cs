@@ -4,7 +4,7 @@ using MusicPipeline.Results;
 using MusicPipeline.Results.Defaults;
 using MusicPipeline.SongIdentifiers;
 using System.Diagnostics;
-namespace MusicPipeline.Cookies;
+namespace MusicPipeline.Pipeline;
 
 class Cookies
 {
