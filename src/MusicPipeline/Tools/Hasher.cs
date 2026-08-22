@@ -16,3 +16,6 @@ public static class Hasher
 // TEST STUFF
 
 // describe how it's not working as first step of testing & getting it to work.
+
+// Already fixed, that was done in Program.cs
+// there was some explanation that got deleted

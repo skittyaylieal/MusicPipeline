@@ -53,8 +53,8 @@ class Cookies
         		//check for nulls first
         		// Done?
         		if (YTDLPProcess is null) {
-        			DateTime end = DateTime.UtcNow;
-					TimeSpan elapsed = end - start;
+        			DateTime endError = DateTime.UtcNow;
+					TimeSpan elapsedError = endError - start;
         			return new Result("Cookie Verification", false, elapsed, "YTDLPProcess is Null");
         		}
         		YTDLPProcess.WaitForExit();
