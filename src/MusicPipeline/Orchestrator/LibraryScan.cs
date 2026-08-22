@@ -14,7 +14,8 @@ public class Scanner
 		string backupDir = activeProfile.BackupDir;
 		string mobileDir = activeProfile.MobileDir;
 		List<DirectoryInfo>? compressedDirs = null; // Support for multiple compressed directories will be added at somepoint™
-		string rootDir = "IDFK why it needs this in the source"; // The soure powershell code had this, so in case its neccessary i'm keeping it
+		//string rootDir = "IDFK why it needs this in the source";
+		//^ The soure powershell code had this, so in case its neccessary i'm keeping it
 		string songFileSearchPattern = "*.m4a"; // TODO add this, and most other variables or literals that could conceivably need changing, to the profile
 		string lyricFileSearchPattern = "*.lrc";
 
