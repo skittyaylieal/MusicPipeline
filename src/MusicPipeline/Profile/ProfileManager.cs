@@ -122,10 +122,11 @@ public static class ProfileManager
         string jsonString = File.ReadAllText(profileFile);
         //LogEngine.Out(LogFile, jsonString, "Debug", 145);
         ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
+#pragma warning disable CS8602 // If the file were empty that would've already been caught
         if (!file.NoProfiles()) {
             Profile activeProfile = file.GetActiveProfile();
             return activeProfile;
-
+#pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, i hope my code is safe enough to warrant it
         } else {
             LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", 203);
             SaveProfileContext(profileFile);
@@ -180,11 +181,15 @@ public static class ProfileManager
 
     private static ProfileFile GetProfileFile(string profileFile)
     {
+#pragma warning disable CS8600 // Again, if the file exists it's so likely to be valid these warnings just clutter the output
+#pragma warning disable CS8603
         if (File.Exists(profileFile)) {
             string jsonString = File.ReadAllText(profileFile);
             ProfileFile Result =  JsonSerializer.Deserialize<ProfileFile>(jsonString);
             return Result;
         }
+#pragma warning restore CS8600
+#pragma warning restore CS8603
         else {
             LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", 203);
             return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
