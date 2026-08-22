@@ -9,7 +9,7 @@ public class LogEngine
     private const char esc = '\u001B';
     private const string reset = $"\u001B[0m";
 
-    public static void Out(string LogFile, string Message, string User = "System", int Style = 36) 
+    public static void Out(string LogFile, string Message, string User = "System", int Style = 256) 
     {
         /*ArgumentException.ThrowIfNullOrEmpty(LogFile);
         ArgumentException.ThrowIfNullOrEmpty(Message);

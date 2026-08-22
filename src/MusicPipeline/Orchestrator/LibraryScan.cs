@@ -2,6 +2,7 @@ using System.IO;
 using MusicPipeline.Tools.Hasher;
 using MusicPipeline.Profiles;
 using MusicPipeline.Tools.LogEngine;
+using MusicPipeline.Colours;
 namespace MusicPipeline.Orchestrator;
 
 public class Scanner
@@ -28,7 +29,7 @@ public class Scanner
 			With what you had before, the variables were scoped to the if, and the else respectively.
 			They couldn't be used later on on what is now line 54.
 		*/
-		IEnumerable<string>? masterFiles;
+		IEnumerable<string>? masterFiles; // ? means it initialises as null
 		if (Directory.Exists(backupDir)) {
 			masterFiles = Directory.EnumerateFiles(backupDir, songFileSearchPattern, SearchOption.AllDirectories);
 			LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner", colourCode);
@@ -54,7 +55,7 @@ public class Scanner
 		var files = masterFiles ?? mobileFiles;
 		if (files is null) {
 			// TODO, once theres multiple compressed folders then text should read "None of {List of folder names} exist or are empty. Exiting"
-			LogEngine.Out(logFile, "Neither Backup nor Mobile Directory exist or are empty. Exiting", "LibraryScanner", 203);
+			LogEngine.Out(logFile, "Neither Backup nor Mobile Directory exist or are empty. Exiting", "LibraryScanner", DefaultColours.Error);
 			return;
 		}
 		

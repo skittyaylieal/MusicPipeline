@@ -12,6 +12,11 @@ and let you inherit from any profile
 LOGGING:
 
 The main log function, LogEngine.Out(), is in Tools/LogEngine.cs
+
+	LogEngine.Out(LogFile, "Message", "Test");
+	outputs
+	{current time} [Test] Message
+	everything before message is coloured cream, ansi colour 230
 	Colours:
 	Supports all colours the website does, all ANSI
 	Colour Guide:
@@ -19,10 +24,13 @@ The main log function, LogEngine.Out(), is in Tools/LogEngine.cs
 	ColourGuide.txt
 	Use the new Gadgets/Colours.py to convert a given hex code into the closest ansi
 
+	see src/MusicPipeline/Colours/ColourDefaults.cs
+
 	use 203 for error
 	76 for success
 	145 for debug
-	111 for cookies, general or info
+	230 for System
+	112 for cookies, general or info
 	213 for Orchestrator
 	177 for LibraryScanner
-	112 for Handler
+	77 for Handler
