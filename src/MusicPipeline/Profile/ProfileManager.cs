@@ -100,7 +100,7 @@ public class ProfileFile
         }
         return count > 0;
     }*/
-    public bool ProfileAlreadyExists(string profileName) => Profiles.Any(p => p.Name == profileName);
+    public bool ProfileAlreadyExists(Profile profileToCheck) => Profiles.Any(p => p.Name == profileToCheck.Name);
     //the above method can be done more easily like this
     //public bool ProfileAlreadyExists(string profileName) => Profiles.Any(p => p.Name == profileName);
     // I don't understand those operators, but i'll merge it in once i do
