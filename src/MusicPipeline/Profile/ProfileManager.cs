@@ -186,9 +186,10 @@ public static class ProfileManager
             return Result;
         }
         else {
+            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", 203);
             return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
             //can't do anything after it has already returned, line below is unreachable.
-            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", 203);
+            // Yes I thought i swapped them a while ago
         }
     }
 }
