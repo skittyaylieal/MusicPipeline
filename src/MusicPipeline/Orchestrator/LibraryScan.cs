@@ -20,7 +20,7 @@ public class Scanner
 
 		// OK Directory.EnumerateFiles should work?
 		
-		if (Directory.Exists(backupDir) {
+		if (Directory.Exists(backupDir)) {
 			var masterFiles = Directory.EnumerateFiles(backupDir, songFileSearchPattern, SearchOption.AllDirectories);
 			LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner", 177);
 			var lrcFiles = Directory.EnumerateFiles(backupDir, lyricFileSearchPattern, SearchOption.AllDirectories);
@@ -30,7 +30,7 @@ public class Scanner
 		} else {
 			Directory.CreateDirectory(backupDir);
 		}
-		if (Directory.Exists(mobileDir) {
+		if (Directory.Exists(mobileDir)) {
 			var mobileFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
 			LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner", 177);
 			double mobileSize = 0.00;
