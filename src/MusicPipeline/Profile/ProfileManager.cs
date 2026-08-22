@@ -7,9 +7,10 @@ namespace MusicPipeline.Profiles;
 
 public class ProfileFile
 {
-    // public static readonly Profile DefaultProfile = DefaultProfiles.DefaultProfile;
+    //public static readonly Profile DefaultProfile = DefaultProfiles.DefaultProfile;
     //if the values below do match your DefaultProfiles.DefaultProfile, I think the line above that you commented out makes sense.
-    public static readonly Profile DefaultProfile = new Profile
+    // Sublime text complains that DefaultProfiles doesn't exist in this context, that's probably why i did it
+    /*public static readonly Profile DefaultProfile = new Profile
     {
         Name = "Default",
         BackupDir = @"C:\Users\filip\Music\YT_Music_Backup",
@@ -55,7 +56,7 @@ public class ProfileFile
         ],
         LastCleanRunEpoch = 1785532108,
         LastNormalRunEpoch = 1785673837
-    };
+    };*/
     public static readonly Profile NullProfile = new Profile();
     public string ActiveProfile {get; set;}
     public List<Profile> Profiles {get; set;}
@@ -80,22 +81,27 @@ public class ProfileFile
         ActiveProfile = activeProfile;
         if (profiles == null) {
             //you can use this directly. DefaultProfils.DefaultProfile. Skip having a readonly static field for it
-            profiles = new List<Profile>(){DefaultProfile};
+            // a couple lines up i used NullProfile directly, i'll try that here
+            // Seems to want DefaultProfiles.
+            // we'll see what happens
+            // oh i do that down in ProfileManager.LoadActiveProfileContext()
+            profiles = new List<Profile>(){DefaultProfiles.DefaultProfile};
         }
         Profiles = profiles;
     }
     public bool ProfileAlreadyExists(Profile profileToCheck)
     {
-        int Count = 0;
+        int count = 0;
         foreach (Profile p in this.Profiles) {
             if (p.Name == profileToCheck.Name) {
-                Count += 1;
+                count += 1;
             }
         }
-        return Count > 0;
+        return count > 0;
     }
     //the above method can be done more easily like this
     //public bool ProfileAlreadyExists(string profileName) => Profiles.Any(p => p.Name == profileName);
+    // I don't understand those operators, but i'll merge it in once i do
 }
 
 
@@ -143,6 +149,7 @@ public static class ProfileManager
     {
         // TODO: fix
         //next step of todo, name what is broken :)
+        // i think i fixed it already actually lol
         if (profile == null) {
             profile = DefaultProfiles.DefaultProfile;
         }

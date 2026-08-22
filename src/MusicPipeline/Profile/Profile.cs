@@ -8,6 +8,8 @@ namespace MusicPipeline.Profiles;
 //Profile myCurrentProfile = DefaultProfiles.DefaultProfile;
 //do whatever you want with myCurrentProfile.
 
+// Its more getting a set of defaults that will work and i can have like to post publicly
+
 public class Profile
 {
     public string Name {get; set;} = "Null";

@@ -23,7 +23,13 @@ public class LogEngine
         string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
         //what is colPrefix, the 38 and the 5?
         //these would be called "magic numbers" if it's not clear from the code what they are.
+        // I've been meaning to put more explanatory comments for a bit
         string colPrefix = $"{esc}[38;5;{Style.ToString()}m{timeStamp} [{User}] {reset}";
+        // colPrefix
+        // The escape marks that this is ANSI escaped colouring, not raw text
+        // The [38;5; marks that the following value is an ANSI256 colour code.
+        // The reset resets the text colour back to white for the actual message
+        // I have considered adding an option to make the whole message that colour
         string processedMessage = $"{colPrefix} {Message}";
         string processedMessageNl = $"\u000A{processedMessage}";
 
@@ -32,6 +38,8 @@ public class LogEngine
 
     }
 
+    // I think theres some kind of summary thing i'm supposed to use for this but idk how that works
+    // Wipe just overwrites the file with a simple file cleared message
     public static void Wipe(string LogFile, string User = "System")
     {
         var l = new LogEngine();

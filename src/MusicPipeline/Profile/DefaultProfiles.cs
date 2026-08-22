@@ -1,7 +1,8 @@
 namespace MusicPipeline.Profiles;
 
 //you can mark this class static because all of its members are static
-public class DefaultProfiles
+// Gotcha
+public static class DefaultProfiles
 {
 	public static readonly Profile DefaultProfile = new Profile
 	{
