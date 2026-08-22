@@ -19,3 +19,10 @@ The main log function, LogEngine.Out(), is in Tools/LogEngine.cs
 	ColourGuide.txt
 	Use the new Gadgets/Colours.py to convert a given hex code into the closest ansi
 
+	use 203 for error
+	76 for success
+	145 for debug
+	111 for cookies, general or info
+	213 for Orchestrator
+	177 for LibraryScanner
+	112 for Handler

@@ -8,6 +8,8 @@ namespace MusicPipeline.Orchestrator;
 
 public static class Orchestrator
 {
+    // Class Colour code is 213
+    
     // So I don't need to invoke this class itself
     //yes, you can call the methods directy from the class without an instance of the class.
     //Orchestrator.Start(); in program.cs

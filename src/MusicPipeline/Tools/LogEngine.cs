@@ -18,7 +18,7 @@ public class LogEngine
             throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
         }*/
 
-        var l = new LogEngine(); //looks like this variable is not used.
+        //var l = new LogEngine(); //looks like this variable is not used.
         DateTime current = DateTime.Now; //because this variable is used online once you can inline it below.
         string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
         //what is colPrefix, the 38 and the 5?
