@@ -12,7 +12,9 @@ public class Scanner
 		string logFile = activeProfile.DiagLogFile;
 		string backupDir = activeProfile.BackupDir;
 		string mobileDir = activeProfile.MobileDir;
-		string rootDir = "IDFK why it needs this in the source";
+		List<DirectoryInfo>? compressedDirs = null; // Support for multiple compressed directories will be added at somepoint™
+		//string rootDir = "IDFK why it needs this in the source";
+		//^ The soure powershell code had this, so in case its neccessary i'm keeping it
 		string songFileSearchPattern = "*.m4a"; // TODO add this, and most other variables or literals that could conceivably need changing, to the profile
 		string lyricFileSearchPattern = "*.lrc";
 
@@ -29,6 +31,7 @@ public class Scanner
 			foreach (var f in masterFiles) {masterSize += f.Length;}
 		} else {
 			Directory.CreateDirectory(backupDir);
+			var masterFiles = null;
 		}
 		if (Directory.Exists(mobileDir)) {
 			var mobileFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
@@ -37,10 +40,25 @@ public class Scanner
 			foreach (var f in mobileFiles) {mobileSize += f.Length;}
 		} else {
 			Directory.CreateDirectory(mobileDir);
+			var mobileFiles = null;
+		}
+
+		var files = masterFiles ?? mobileFiles;
+		if (files is null) {
+			// TODO, once theres multiple compressed folders then text should read "None of {List of folder names} exist or are empty. Exiting"
+			LogEngine.Out(logFile, "Neither Backup nor Mobile Directory exist or are empty. Exiting", "LibraryScanner", 203);
+			return;
 		}
 		
 		// Oh god now i need to make a database or something
-		
+		// I need a list of Identifiers
+
+		foreach (var f in files) {
+
+		}
+
+		// so i have to go through every file in the masterfiles and make an Identifier object for it, then link the lrc and any compressed paths
+
 		// Go through each and get info
 		// Compile info and Metric cache
 
