@@ -89,6 +89,7 @@ public class ProfileFile
         }
         Profiles = profiles;
     }
+    /*
     public bool ProfileAlreadyExists(Profile profileToCheck)
     {
         int count = 0;
@@ -98,10 +99,19 @@ public class ProfileFile
             }
         }
         return count > 0;
-    }
+    }*/
+    public bool ProfileAlreadyExists(string profileName) => Profiles.Any(p => p.Name == profileName);
     //the above method can be done more easily like this
     //public bool ProfileAlreadyExists(string profileName) => Profiles.Any(p => p.Name == profileName);
     // I don't understand those operators, but i'll merge it in once i do
+    // Thanks for the explanation, this will work fine!
+    // So the => replaces {} on one line
+    // The Profiles.Any is LINQ, basically just the for loop i had before
+    // And the p => p.Name == profileName
+    // the p is the profile its doing 
+    // (for Profile p in this.Profiles)
+    // then its just returning whether or not it hits a Profile p satisfying p.Name == profileName
+    // Simples!
 }
 
 

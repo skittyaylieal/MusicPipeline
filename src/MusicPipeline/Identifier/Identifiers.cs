@@ -10,6 +10,7 @@ public class SongIdentifier
 	public required string Title {get; set;}
 	public required string Artist {get; set;}
 	public required string Album {get; set;}
+	public required List<FileInfo> Paths {get; set;}
 	public UInt64 PermenantID {get; set;}
 	public required string Type {get; set;}
 	public double SizeMB {get; set;}
@@ -17,17 +18,19 @@ public class SongIdentifier
 	public bool Instrumental {get; set;}
 	public bool Lyrics {get; set;}
 	public bool SyncedLyrics {get; set;}
+	public FileInfo LyricsPath {get; set;}
 	public bool Lore {get; set;}
 	public DateTime LoreDate {get; set;}
 
 	public SongIdentifier(string title, string artist,
-	string album, UInt64? id, string type, double sizeMB,
+	string album, List<FileInfo> paths, UInt64? id, string type, double sizeMB,
 	double sizeCompressed, bool instrumental, bool lyrics,
-	bool syncedLyrics, bool lore, DateTime loreDate = new DateTime())
+	bool syncedLyrics, FileInfo? lyricsPath, bool lore, DateTime loreDate = new DateTime())
 	{
 		Title = title;
 		Artist = artist;
 		Album = album;
+		Paths = paths;
 		PermenantID = id ?? Hasher.GetHashForSong(title, artist, album);
 		Type = type;
 		SizeMB = sizeMB;
@@ -36,6 +39,14 @@ public class SongIdentifier
 		Lyrics = lyrics;
 		if (lyrics) {
 			SyncedLyrics = syncedLyrics;
+			if (SyncedLyrics) {
+				// From LukeH https://stackoverflow.com/a/2201648/22942130
+				int index = paths[0].FullName.IndexOf(paths[0].Extension);
+				string cleanPath = ( index < 0)
+					? paths[0].FullName
+					: paths[0].FullName.Remove(index, paths[0].Extension.Length);
+				LyricsPath = lyricsPath ?? new FileInfo($"{cleanPath}.lrc"); 
+			}
 		}
 		Lore = lore;
 		if (lore) {
