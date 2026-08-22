@@ -14,3 +14,5 @@ public static class Hasher
 
 // NOT WORKING
 // TEST STUFF
+
+// describe how it's not working as first step of testing & getting it to work.

@@ -18,9 +18,11 @@ public class LogEngine
             throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
         }*/
 
-        var l = new LogEngine();
-        DateTime current = DateTime.Now;
+        var l = new LogEngine(); //looks like this variable is not used.
+        DateTime current = DateTime.Now; //because this variable is used online once you can inline it below.
         string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
+        //what is colPrefix, the 38 and the 5?
+        //these would be called "magic numbers" if it's not clear from the code what they are.
         string colPrefix = $"{esc}[38;5;{Style.ToString()}m{timeStamp} [{User}] {reset}";
         string processedMessage = $"{colPrefix} {Message}";
         string processedMessageNl = $"\u000A{processedMessage}";

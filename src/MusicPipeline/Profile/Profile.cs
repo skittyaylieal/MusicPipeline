@@ -2,6 +2,12 @@ namespace MusicPipeline.Profiles;
 
 //TODO: make the profile initialise to defaults
 
+//by having default values down below, that's sort of the default.
+//if you're wanting to be able to swap out different defaults like the two in DefaultProfiles,
+//  it's less about swapping, and more about just using those ones. 
+//Profile myCurrentProfile = DefaultProfiles.DefaultProfile;
+//do whatever you want with myCurrentProfile.
+
 public class Profile
 {
     public string Name {get; set;} = "Null";

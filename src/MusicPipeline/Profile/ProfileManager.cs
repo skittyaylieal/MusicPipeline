@@ -8,6 +8,7 @@ namespace MusicPipeline.Profiles;
 public class ProfileFile
 {
     // public static readonly Profile DefaultProfile = DefaultProfiles.DefaultProfile;
+    //if the values below do match your DefaultProfiles.DefaultProfile, I think the line above that you commented out makes sense.
     public static readonly Profile DefaultProfile = new Profile
     {
         Name = "Default",
@@ -78,6 +79,7 @@ public class ProfileFile
     {
         ActiveProfile = activeProfile;
         if (profiles == null) {
+            //you can use this directly. DefaultProfils.DefaultProfile. Skip having a readonly static field for it
             profiles = new List<Profile>(){DefaultProfile};
         }
         Profiles = profiles;
@@ -92,6 +94,8 @@ public class ProfileFile
         }
         return Count > 0;
     }
+    //the above method can be done more easily like this
+    //public bool ProfileAlreadyExists(string profileName) => Profiles.Any(p => p.Name == profileName);
 }
 
 
@@ -138,6 +142,7 @@ public static class ProfileManager
     public static void SaveProfileContext(string profileFile, Profile? profile = null)
     {
         // TODO: fix
+        //next step of todo, name what is broken :)
         if (profile == null) {
             profile = DefaultProfiles.DefaultProfile;
         }
@@ -175,6 +180,7 @@ public static class ProfileManager
         }
         else {
             return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
+            //can't do anything after it has already returned, line below is unreachable.
             LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", 203);
         }
     }

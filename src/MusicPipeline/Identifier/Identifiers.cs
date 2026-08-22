@@ -3,6 +3,9 @@ namespace MusicPipeline.SongIdentifiers;
 
 public class SongIdentifier
 {
+	//for your nullable propeties, the ones followed by ?, favor their non-nullable counterparts unless you have a reason to have them be null sometimes.
+    //AI says on the subject "Using nullable types like bool? or DateTime? without a clear architectural need introduces unnecessary complexity,
+   	//increases the surface area for bugs, and forces downstream developers to write defensive boilerplate code."
 	public required string Title {get; set;}
 	public required string Artist {get; set;}
 	public required string Album {get; set;}

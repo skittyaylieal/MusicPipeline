@@ -7,6 +7,7 @@ public static class Handler
 {
 	public static void HandleResult(Result result, string ProfileFile)
 	{
+		//I don't know if Sublime points it out, but the leading "Profiles" on the line below is not required because you have a using statement for it up above.
 		Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfileContext(ProfileFile);
 		string LogFile = ActiveProfile.DiagLogFile;
 		string Success = "";

@@ -1,7 +1,7 @@
 using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Profiles;
 using MusicPipeline.Results;
-using MusicPipeline.SongIdentifiers;
+using MusicPipeline.SongIdentifiers; //not currently used 
 using System.Diagnostics;
 namespace MusicPipeline.Pipeline;
 
@@ -9,6 +9,7 @@ class Cookies
 {
 	public static Result CookieCheck(string ProfileFile)
 	{
+		//in C# local variables should start with lower case, camel case.
 		Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfileContext(ProfileFile);
 		string LogFile = ActiveProfile.DiagLogFile;
 		string CookieFile = ActiveProfile.CookieFile;
@@ -36,7 +37,7 @@ class Cookies
 
 		LogEngine.Out(LogFile, "[+] Cookie and YTDLP files located sucsessfully!", "Cookies", 76);
 		LogEngine.Out(LogFile, "[*] Testing cookies on YouTube.", "Cookies", 111);
-
+		//this object initialization can be simplified, or you can create a constructor for ProcessStartInfo.
 		ProcessStartInfo startInfo = new ProcessStartInfo();
         startInfo.CreateNoWindow = false;
         startInfo.UseShellExecute = false;
@@ -48,6 +49,7 @@ class Cookies
         {
         	using (Process? YTDLPProcess = Process.Start(startInfo))
         	{
+        		//check for nulls first
         		YTDLPProcess.WaitForExit();
         		DateTime End = DateTime.UtcNow;
 				TimeSpan Elapsed = End - Start;
