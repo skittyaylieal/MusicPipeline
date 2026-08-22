@@ -12,7 +12,8 @@ public class Scanner
 		string logFile = activeProfile.DiagLogFile;
 		string backupDir = activeProfile.BackupDir;
 		string mobileDir = activeProfile.MobileDir;
-		string rootDir = "IDFK why it needs this in the source";
+		//string rootDir = "IDFK why it needs this in the source";
+		//what did you mean here with your comment above? this variable isn't used.
 		string songFileSearchPattern = "*.m4a"; // TODO add this, and most other variables or literals that could conceivably need changing, to the profile
 		string lyricFileSearchPattern = "*.lrc";
 
