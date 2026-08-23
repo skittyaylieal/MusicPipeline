@@ -19,6 +19,7 @@ public class Scanner
 		string songFileSearchPattern = "*.m4a"; // TODO add this, and most other variables or literals that could conceivably need changing, to the profile
 		string lyricFileSearchPattern = "*.lrc";
 
+		const int colourCode = 117;
 
 		// OK Directory.EnumerateFiles should work?
 		/*
@@ -28,22 +29,22 @@ public class Scanner
 			With what you had before, the variables were scoped to the if, and the else respectively.
 			They couldn't be used later on on what is now line 54.
 		*/
-		IEnumerable<string>? masterFiles; // ? means it initialises as null
+		IEnumerable<string>? masterFiles = null;
 		if (Directory.Exists(backupDir)) {
 			masterFiles = Directory.EnumerateFiles(backupDir, songFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner");
+			LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner", colourCode);
 			var lrcFiles = Directory.EnumerateFiles(backupDir, lyricFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner");
+			LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner", colourCode);
 			double masterSize = 0.00;
 			foreach (var f in masterFiles) {masterSize += f.Length;}
 		} else {
 			Directory.CreateDirectory(backupDir);
 		}
 
-        IEnumerable<string>? mobileFiles;
+        IEnumerable<string> mobileFiles = null;
         if (Directory.Exists(mobileDir)) {
 			mobileFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner");
+			LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner", colourCode);
 			double mobileSize = 0.00;
 			foreach (var f in mobileFiles) {mobileSize += f.Length;}
 		} else {
@@ -62,7 +63,7 @@ public class Scanner
 		// I need a list of Identifiers
 
 		foreach (var f in files) {
-
+			
 		}
 
 		// so i have to go through every file in the masterfiles and make an Identifier object for it, then link the lrc and any compressed paths
