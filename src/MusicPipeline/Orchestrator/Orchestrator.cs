@@ -23,11 +23,11 @@ public static class Orchestrator
         LogEngine.Wipe(LogFile, "Orchestrator");
         LogEngine.Out(LogFile, "Test", "Orchestrator", 203);
         LogEngine.Out(LogFile, "Test Number 2", "Orchestrator");
-        Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfileContext(profileFile);
+        Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfile(profileFile);
         LogEngine.Out(LogFile, JsonSerializer.Serialize(ActiveProfile), "Orchestrator", 54);
         ActiveProfile.ScannerSleepIntervalSec = 30;
         ProfileManager.SaveProfileContext(profileFile, ActiveProfile);
-        Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfileContext(profileFile);
+        Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfile(profileFile);
         LogEngine.Out(LogFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
 
         Result Step1Result = Cookies.CookieCheck(ProfileFile);

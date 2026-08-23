@@ -12,7 +12,7 @@ class Cookies
 	public static Result CookieCheck(string ProfileFile)
 	{
 		//in C# local variables should start with lower case, camel case.
-		Profiles.Profile activeProfile = ProfileManager.LoadActiveProfileContext(ProfileFile);
+		Profiles.Profile activeProfile = ProfileManager.LoadActiveProfile(ProfileFile);
 		string logFile = activeProfile.DiagLogFile;
 		string cookieFile = activeProfile.CookieFile;
 		string YTDLPPath = activeProfile.YTDLPExe;

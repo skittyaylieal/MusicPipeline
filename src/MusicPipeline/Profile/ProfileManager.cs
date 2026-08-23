@@ -85,7 +85,7 @@ public class ProfileFile
             // a couple lines up i used NullProfile directly, i'll try that here
             // Seems to want DefaultProfiles.
             // we'll see what happens
-            // oh i do that down in ProfileManager.LoadActiveProfileContext()
+            // oh i do that down in ProfileManager.LoadActiveProfile()
             profiles = new List<Profile>(){DefaultProfiles.DefaultProfile};
         }
         Profiles = profiles;
@@ -120,7 +120,7 @@ public static class ProfileManager
 {
 
     public static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
-    public static Profile LoadActiveProfileContext(string profileFile)
+    public static Profile LoadActiveProfile(string profileFile)
     {
         try {
             File.ReadAllBytes(profileFile);

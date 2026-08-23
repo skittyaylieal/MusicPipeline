@@ -9,7 +9,7 @@ public class Scanner
 {
 	public async void ScanLibrary(string ProfileFile)
 	{
-		Profile activeProfile = ProfileManager.LoadActiveProfileContext(ProfileFile);
+		Profile activeProfile = ProfileManager.LoadActiveProfile(ProfileFile);
 		string logFile = activeProfile.DiagLogFile;
 		string backupDir = activeProfile.BackupDir;
 		string mobileDir = activeProfile.MobileDir;

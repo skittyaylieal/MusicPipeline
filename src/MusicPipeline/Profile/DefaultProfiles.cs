@@ -4,7 +4,56 @@ namespace MusicPipeline.Profiles;
 // Gotcha
 public static class DefaultProfiles
 {
+	// OK I have decided that the default profile shall be fully sandboxed
+
 	public static readonly Profile DefaultProfile = new Profile
+	{
+		Name = "Default",
+		BackupDir = @"C:\MusicTools\MusicPipeline\Sandbox_Backup",
+		MobileDir = @"C:\MusicTools\MusicPipeline\Sandbox_Mobile",
+		BrokenSongsFile = @"C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Config\broken_songs.json",
+		DiagLogFile = @"C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Config\web_console_stream.log",
+		CacheFile = @"C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Config\dashboard_cache.json",
+		TimingFile = @"C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Config\timing_history.json",
+		CookieFile = @"C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Config\cookies.txt",
+		HistoryFile = @"C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Config\downloaded_history.txt",
+		YTDLPExe = @"C:\MusicTools\yt-dlp.exe",
+		FFmpegExe = @"C:\MusicTools\ffmpeg.exe",
+		FirefoxExe = @"C:\Program Files\Mozilla Firefox\firefox.exe",
+		CheckURL = @"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		RootDir = @"C:\MusicTools\MusicPipeline",
+		SleepInterval = 4,
+		MaxSleepInterval = 12, 
+		SleepRequests = 3,
+		MaxCompressThreads = 8,
+		MaxDownloadThreads = 6,
+		MaxLyricThreads = 3,
+		ScannerSleepIntervalSec = 60,
+		ChronDaemonSleepSec = 1800,
+		MaxStreamReturnLines = 15000,
+		StartingWebServerPort = 50001,
+		NormalIntervalSec = 1800,
+		CleanIntervalSec = 604800,
+		NormalStep1 = true,
+		NormalStep2 = true,
+		NormalStep3 = true,
+		NormalStep4 = true,
+		NormalStep5 = true,
+		NormalStep6 = true,
+		NormalStep7 = true,
+		CleanSweepDownload = true,
+		CleanSweepLyrics = true,
+		CleanSweepCompress = true,
+		CleanSweepLore = true,
+		Playlists = [
+		"https://music.youtube.com/playlist?list=PLqcuYaDDgyad1-o1HTVnTiZKoluY5enwk"
+		],
+		LastCleanRunEpoch = 1785532108,
+		LastNormalRunEpoch = 1785673837
+	};
+
+	//This is the actual one, not to be used until pushing to production
+	public static readonly Profile WorkingDefaultProfile = new Profile
 	{
 		Name = "Default",
 		BackupDir = @"C:\Users\filip\Music\YT_Music_Backup",
@@ -19,6 +68,7 @@ public static class DefaultProfiles
 		FFmpegExe = @"C:\MusicTools\ffmpeg.exe",
 		FirefoxExe = @"C:\Program Files\Mozilla Firefox\firefox.exe",
 		CheckURL = @"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		RootDir = @"C:\MusicTools\MusicPipeline",
 		SleepInterval = 4,
 		MaxSleepInterval = 12, 
 		SleepRequests = 3,
@@ -69,6 +119,7 @@ public static class DefaultProfiles
 		FFmpegExe = "ERROR",
 		FirefoxExe = "ERROR",
 		CheckURL = "ERROR",
+		RootDir = "ERROR",
 		SleepInterval = 2147483647,
 		MaxSleepInterval = 2147483647, 
 		SleepRequests = 2147483647,
