@@ -29,6 +29,7 @@ The main log function, LogEngine.Out(), is in Tools/LogEngine.cs
 	use 203 for error
 	76 for success
 	145 for debug
+	220 for warning
 	230 for System
 	112 for cookies, general or info
 	213 for Orchestrator
