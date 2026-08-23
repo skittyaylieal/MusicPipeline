@@ -19,7 +19,6 @@ public class Scanner
 		string songFileSearchPattern = "*.m4a"; // TODO add this, and most other variables or literals that could conceivably need changing, to the profile
 		string lyricFileSearchPattern = "*.lrc";
 
-		const int colourCode = 117;
 
 		// OK Directory.EnumerateFiles should work?
 		/*
@@ -32,9 +31,9 @@ public class Scanner
 		IEnumerable<string>? masterFiles; // ? means it initialises as null
 		if (Directory.Exists(backupDir)) {
 			masterFiles = Directory.EnumerateFiles(backupDir, songFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner", colourCode);
+			LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner");
 			var lrcFiles = Directory.EnumerateFiles(backupDir, lyricFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner", colourCode);
+			LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner");
 			double masterSize = 0.00;
 			foreach (var f in masterFiles) {masterSize += f.Length;}
 		} else {
@@ -44,7 +43,7 @@ public class Scanner
         IEnumerable<string>? mobileFiles;
         if (Directory.Exists(mobileDir)) {
 			mobileFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner", colourCode);
+			LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner");
 			double mobileSize = 0.00;
 			foreach (var f in mobileFiles) {mobileSize += f.Length;}
 		} else {

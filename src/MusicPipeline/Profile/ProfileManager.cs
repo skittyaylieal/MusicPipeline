@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Collections.Generic;
 using MusicPipeline.Tools.LogEngine;
+using MusicPipeline.Colours;
 namespace MusicPipeline.Profiles;
 
 
@@ -123,10 +124,10 @@ public static class ProfileManager
     {
         try {
             File.ReadAllBytes(profileFile);
-            LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", 76);
+            LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", DefaultColours.Success);
         }
         catch (FileNotFoundException) {
-            LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", 203);
+            LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", DefaultColours.Error);
             SaveProfileContext(profileFile);
         }
         string jsonString = File.ReadAllText(profileFile);
@@ -138,7 +139,7 @@ public static class ProfileManager
             return activeProfile;
 #pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, i hope my code is safe enough to warrant it
         } else {
-            LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", 203);
+            LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", DefaultColours.Error);
             SaveProfileContext(profileFile);
             return DefaultProfiles.DefaultProfile;
         }
@@ -167,7 +168,7 @@ public static class ProfileManager
         ProfileFile Existing = GetProfileFile(profileFile);
         if (Existing.ActiveProfile == "ERROR")
         {
-            LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", 203);
+            LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", DefaultColours.Error);
         }
         if (Existing.ProfileAlreadyExists(profile) || Existing.ActiveProfile=="ERROR") {
             Existing.Profiles = new List<Profile>() {profile};
@@ -201,7 +202,7 @@ public static class ProfileManager
 #pragma warning restore CS8600
 #pragma warning restore CS8603
         else {
-            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", 203);
+            LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", DefaultColours.Error);
             return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
             //can't do anything after it has already returned, line below is unreachable.
             // Yes I thought i swapped them a while ago

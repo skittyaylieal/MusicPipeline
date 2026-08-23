@@ -5,7 +5,6 @@ namespace MusicPipeline.StepHandler;
 
 public static class Handler
 {
-	// Class Colour Code is 77
 	public static void HandleResult(Result result, string ProfileFile)
 	{
 		//I don't know if Sublime points it out, but the leading "Profiles" on the line below is not required because you have a using statement for it up above.
@@ -18,7 +17,7 @@ public static class Handler
 		// Cookie Verification finished successfully/with errors in (elapsed time)
 		if (result.Outcome) {Success = "successfully";} else {Success = "with errors";}
 		string ElapsedTime = result.Elapsed.ToString(@"dd\:hh\:mm\:ss\.ffff");
-		LogEngine.Out(LogFile, $"{result.Step} finished {Success} in {ElapsedTime}", "StepHandler", 77);
+		LogEngine.Out(LogFile, $"{result.Step} finished {Success} in {ElapsedTime}", "StepHandler");
 		// TODO: Metrics database etc
 	}
 }

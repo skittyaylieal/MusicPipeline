@@ -1,4 +1,5 @@
 using MusicPipeline.Tools.LogEngine;
+using MusicPipeline.Colours;
 using MusicPipeline.Profiles;
 using MusicPipeline.Results;
 using MusicPipeline.SongIdentifiers; //not currently used 
@@ -19,25 +20,25 @@ class Cookies
 
 		DateTime start = DateTime.UtcNow;
 
-		LogEngine.Out(logFile, "==============================================", "Cookies", 111);
-		LogEngine.Out(logFile, "                Cookie Checker                ", "Cookies", 111);
-		LogEngine.Out(logFile, "==============================================", "Cookies", 111);
+		LogEngine.Out(logFile, "==============================================", "Cookies");
+		LogEngine.Out(logFile, "                Cookie Checker                ", "Cookies");
+		LogEngine.Out(logFile, "==============================================", "Cookies");
 
 		if (!File.Exists(cookieFile)){
-			LogEngine.Out(logFile, "[ERROR] Cookie File could not be found. Please export one.", "Cookies", 203);
+			LogEngine.Out(logFile, "[ERROR] Cookie File could not be found. Please export one.", "Cookies", DefaultColours.Error);
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
 			return CookieDefaults.FileError(false, elapsed);
 		}
 		if (!File.Exists(YTDLPPath)){
-			LogEngine.Out(logFile, "[ERROR] YTDLP Executable could not be found.", "Cookies", 203);
+			LogEngine.Out(logFile, "[ERROR] YTDLP Executable could not be found.", "Cookies", DefaultColours.Error);
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
 			return CookieDefaults.FileError(true, elapsed);
 		}
 
 		LogEngine.Out(logFile, "[+] Cookie and YTDLP files located sucsessfully!", "Cookies", 76);
-		LogEngine.Out(logFile, "[*] Testing cookies on YouTube.", "Cookies", 111);
+		LogEngine.Out(logFile, "[*] Testing cookies on YouTube.", "Cookies");
 		//this object initialization can be simplified, or you can create a constructor for ProcessStartInfo.
 		// TODO: Make some general thing for every step to use
 		ProcessStartInfo startInfo = new ProcessStartInfo();

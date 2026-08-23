@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MusicPipeline.Tools.LogEngine;
+using MusicPipeline.Colours;
 using MusicPipeline.Profiles;
 using MusicPipeline.Pipeline;
 using MusicPipeline.StepHandler;
@@ -9,7 +10,7 @@ namespace MusicPipeline.Orchestrator;
 public static class Orchestrator
 {
     // Class Colour code is 213
-    
+
     // So I don't need to invoke this class itself
     //yes, you can call the methods directy from the class without an instance of the class.
     //Orchestrator.Start(); in program.cs
@@ -21,7 +22,7 @@ public static class Orchestrator
     {
         LogEngine.Wipe(LogFile, "Orchestrator");
         LogEngine.Out(LogFile, "Test", "Orchestrator", 203);
-        LogEngine.Out(LogFile, "Test Number 2", "Orchestrator", 213);
+        LogEngine.Out(LogFile, "Test Number 2", "Orchestrator");
         Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfileContext(profileFile);
         LogEngine.Out(LogFile, JsonSerializer.Serialize(ActiveProfile), "Orchestrator", 54);
         ActiveProfile.ScannerSleepIntervalSec = 30;
