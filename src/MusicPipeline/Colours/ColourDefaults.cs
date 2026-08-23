@@ -9,5 +9,5 @@ public class DefaultColours
 	public const int Cookies = 112;
 	public const int Orchestrator = 213;
 	public const int LibraryScanner = 177;
-	public const int Handler = 77;
+	public const int StepHandler = 77;
 }
