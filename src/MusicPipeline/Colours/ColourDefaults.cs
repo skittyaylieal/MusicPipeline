@@ -10,4 +10,5 @@ public class DefaultColours
 	public const int Orchestrator = 213;
 	public const int LibraryScanner = 177;
 	public const int StepHandler = 77;
+	public const int Downloader = 121;
 }

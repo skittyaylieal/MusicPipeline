@@ -19,6 +19,8 @@ public class LogEngine
             throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
         }*/
 
+        // TODO: Make this a case switch thingy
+
         if (style is null) {
             // Should've been omitted
             var field = typeof(DefaultColours).GetField(user);
@@ -30,6 +32,11 @@ public class LogEngine
                 style = 36;
                 Out(logFile, "Given username was invalid or not in the default colours", "System", DefaultColours.Warning);
             }
+        }
+
+        if (style == 0) {
+            style = 36;
+            Out(logFile, "0 is black, do not use it", "System", DefaultColours.Error);
         }
 
         //var l = new LogEngine(); //looks like this variable is not used.
