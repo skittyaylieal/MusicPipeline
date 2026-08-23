@@ -181,7 +181,7 @@ public static class ProfileManager
         string JsonToWrite = JsonSerializer.Serialize(ProfileFile, Options);
         File.WriteAllText(profileFile, JsonToWrite);
 
-        LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} successfully.", "ProfileManager");
+        LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} successfully.", "ProfileManager", DefaultColours.Success);
         
     }
 
