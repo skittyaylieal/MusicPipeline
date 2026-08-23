@@ -56,18 +56,24 @@ class Downloader
 	{
 		int? colourCode = null;
 		switch (index) {
-                case == 1:
-                colourCode = 51; // Cyan
-                case == 2:
-                 colourCode = 201;  // Magenta
-                case == 3:
-                 colourCode =  //;ellow
-                case == 4:
-                 colourCode = 135; // Purple
-                case == 5:
-                 colourCode = 22; // Forest
-                case == 6:
-                 colourCode = 217; // Peach
+                case 1:
+                	colourCode = 51; // Cyan
+                	break; 
+                case 2:
+                	colourCode = 201;  // Magenta
+                	break; 
+                case 3:
+                	colourCode = 33; //yellow
+                	break; 
+                case 4:
+                	colourCode = 135; // Purple
+                	break; 
+                case 5:
+                	colourCode = 22; // Forest
+                	break; 
+                case 6:
+                	colourCode = 217; // Peach
+                	break; 
         }
 	}
 }
