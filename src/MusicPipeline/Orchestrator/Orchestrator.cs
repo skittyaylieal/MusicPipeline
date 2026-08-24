@@ -31,9 +31,10 @@ public static class Orchestrator
         Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfile(profileFile);
         LogEngine.Out(LogFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
         */
-        
+
         Result Step1Result = Cookies.CookieCheck(ProfileFile);
-        Handler.HandleResult(Step1Result, ProfileFile);
+        //Handler.HandleResult(Step1Result, ProfileFile);
+        Handler.HandleResult(Cookies.CookieCheck(ProfileFile), ProfileFile);
     }
 
 
