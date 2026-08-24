@@ -132,7 +132,7 @@ public static class ProfileManager
 		}
 		string jsonString = File.ReadAllText(profileFile);
 		await LogEngine.Out(LogFile, jsonString, "Debug", 145);
-		ProfileFile? file = await JsonSerializer.DeserializeAsync<ProfileFile>(jsonString);
+		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
 			Profile activeProfile = file.GetActiveProfile();
