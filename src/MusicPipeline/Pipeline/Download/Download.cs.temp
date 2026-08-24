@@ -44,9 +44,9 @@ class Downloader
 
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
 
-		LogEngine.Out(logFile, "=============================================", "Downloader");
-		LogEngine.Out(logFile, "			YTDLP Song Downloader			", "Downloader");
-		LogEngine.Out(logFile, "=============================================", "Downloader");
+		await LogEngine.Out(logFile, "=============================================", "Downloader");
+		await LogEngine.Out(logFile, "			YTDLP Song Downloader			", "Downloader");
+		await LogEngine.Out(logFile, "=============================================", "Downloader");
 
 		if (!Directory.Exists(backupDir)) {
 			Directory.CreateDirectory(backupDir);

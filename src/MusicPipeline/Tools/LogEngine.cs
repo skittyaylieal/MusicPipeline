@@ -10,7 +10,7 @@ public class LogEngine
 	private const char esc = '\u001B';
 	private const string reset = $"\u001B[0m";
 
-	public static async void Out(string logFile, string message, string user = "System", int? style = null) 
+	public static async Task Out(string logFile, string message, string user = "System", int? style = null) 
 	{
 		/*ArgumentException.ThrowIfNullOrEmpty(LogFile);
 		ArgumentException.ThrowIfNullOrEmpty(Message);
@@ -30,13 +30,13 @@ public class LogEngine
 			else {
 				// Wrong Username given
 				style = 36;
-				Out(logFile, "Given username was invalid or not in the default colours", "System", DefaultColours.Warning);
+				await Out(logFile, "Given username was invalid or not in the default colours", "System", DefaultColours.Warning);
 			}
 		}
 
 		if (style == 0) {
 			style = 36;
-			Out(logFile, "0 is black, do not use it", "System", DefaultColours.Error);
+			await Out(logFile, "0 is black, do not use it", "System", DefaultColours.Error);
 		}
 
 		//var l = new LogEngine(); //looks like this variable is not used.
@@ -61,12 +61,12 @@ public class LogEngine
 
 	// I think theres some kind of summary thing i'm supposed to use for this but idk how that works
 	// Wipe just overwrites the file with a simple file cleared message
-	public static void Wipe(string logFile, string user = "System")
+	public static async Task WipeAsync(string logFile, string user = "System")
 	{
 		//var l = new LogEngine();
 		DateTime current = DateTime.Now;
 		string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
 		string colPrefix = $"{esc}[1;36m{timeStamp}";
-		File.WriteAllText(logFile, $"{colPrefix} File Cleared by {user}{reset}");
+		await File.WriteAllTextAsync(logFile, $"{colPrefix} File Cleared by {user}{reset}");
 	}
 }

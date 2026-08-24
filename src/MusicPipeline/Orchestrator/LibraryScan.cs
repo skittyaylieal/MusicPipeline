@@ -32,9 +32,9 @@ public class Scanner
 		IEnumerable<string>? masterFiles = null;
 		if (Directory.Exists(backupDir)) {
 			masterFiles = Directory.EnumerateFiles(backupDir, songFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner", colourCode);
+			await LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner", colourCode);
 			var lrcFiles = Directory.EnumerateFiles(backupDir, lyricFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner", colourCode);
+			await LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner", colourCode);
 			double masterSize = 0.00;
 			foreach (var f in masterFiles) {masterSize += f.Length;}
 		} else {
@@ -44,7 +44,7 @@ public class Scanner
 		IEnumerable<string> mobileFiles = null;
 		if (Directory.Exists(mobileDir)) {
 			mobileFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
-			LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner", colourCode);
+			await LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner", colourCode);
 			double mobileSize = 0.00;
 			foreach (var f in mobileFiles) {mobileSize += f.Length;}
 		} else {
@@ -55,7 +55,7 @@ public class Scanner
 		var files = masterFiles ?? mobileFiles;
 		if (files is null) {
 			// TODO, once theres multiple compressed folders then text should read "None of {List of folder names} exist or are empty. Exiting"
-			LogEngine.Out(logFile, "Neither Backup nor Mobile Directory exist or are empty. Exiting", "LibraryScanner", DefaultColours.Error);
+			await LogEngine.Out(logFile, "Neither Backup nor Mobile Directory exist or are empty. Exiting", "LibraryScanner", DefaultColours.Error);
 			return;
 		}
 		

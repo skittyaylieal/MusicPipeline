@@ -13,7 +13,7 @@ LOGGING:
 
 The main log function, LogEngine.Out(), is in Tools/LogEngine.cs
 
-	LogEngine.Out(LogFile, "Message", "Test");
+	await LogEngine.Out(LogFile, "Message", "Test");
 	outputs
 	{current time} [Test] Message
 	everything before message is coloured cream, ansi colour 230
@@ -35,3 +35,4 @@ The main log function, LogEngine.Out(), is in Tools/LogEngine.cs
 	213 for Orchestrator
 	177 for LibraryScanner
 	77 for Handler
+	121 for Download

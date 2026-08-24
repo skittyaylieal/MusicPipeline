@@ -14,36 +14,36 @@ class Cookies
 		//in C# local variables should start with lower case, camel case.
 		Profiles.Profile activeProfile = ProfileManager.LoadActiveProfile(ProfileFile);
 		string logFile = activeProfile.DiagLogFile;
-		LogEngine.Out(logFile, "Profile Done", "Cookies", DefaultColours.Debug);
+		await LogEngine.Out(logFile, "Profile Done", "Cookies", DefaultColours.Debug);
 		string cookieFile = activeProfile.CookieFile;
 		string YTDLPPath = activeProfile.YTDLPExe;
 		string testURL = activeProfile.CheckURL;
 
-		LogEngine.Out(logFile, "Variables Done", "Cookies", DefaultColours.Debug);
+		await LogEngine.Out(logFile, "Variables Done", "Cookies", DefaultColours.Debug);
 
 		DateTime start = DateTime.UtcNow;
 
-		LogEngine.Out(logFile, "Started timer", "Cookies", DefaultColours.Debug);
+		await LogEngine.Out(logFile, "Started timer", "Cookies", DefaultColours.Debug);
 
-		LogEngine.Out(logFile, "==============================================", "Cookies");
-		LogEngine.Out(logFile, "                Cookie Checker                ", "Cookies");
-		LogEngine.Out(logFile, "==============================================", "Cookies");
+		await LogEngine.Out(logFile, "==============================================", "Cookies");
+		await LogEngine.Out(logFile, "                Cookie Checker                ", "Cookies");
+		await LogEngine.Out(logFile, "==============================================", "Cookies");
 
 		if (!File.Exists(cookieFile)){
-			LogEngine.Out(logFile, "[ERROR] Cookie File could not be found. Please export one.", "Cookies", DefaultColours.Error);
+			await LogEngine.Out(logFile, "[ERROR] Cookie File could not be found. Please export one.", "Cookies", DefaultColours.Error);
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
 			return CookieDefaults.FileError(false, elapsed);
 		}
 		if (!File.Exists(YTDLPPath)){
-			LogEngine.Out(logFile, "[ERROR] YTDLP Executable could not be found.", "Cookies", DefaultColours.Error);
+			await LogEngine.Out(logFile, "[ERROR] YTDLP Executable could not be found.", "Cookies", DefaultColours.Error);
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
 			return CookieDefaults.FileError(true, elapsed);
 		}
 
-		LogEngine.Out(logFile, "[+] Cookie and YTDLP files located sucsessfully!", "Cookies", DefaultColours.Success);
-		LogEngine.Out(logFile, "[*] Testing cookies on YouTube.", "Cookies");
+		await LogEngine.Out(logFile, "[+] Cookie and YTDLP files located sucsessfully!", "Cookies", DefaultColours.Success);
+		await LogEngine.Out(logFile, "[*] Testing cookies on YouTube.", "Cookies");
 		//this object initialization can be simplified, or you can create a constructor for ProcessStartInfo.
 		// TODO: Make some general thing for every step to use
 		ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -69,7 +69,7 @@ class Cookies
 					
 					if (currentLine != null) {
 						// 1. Flash it to your master console/global log stream
-						LogEngine.Out(logFile, currentLine, "Cookies");
+						await LogEngine.Out(logFile, currentLine, "Cookies");
 					}
 				}
 

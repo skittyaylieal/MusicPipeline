@@ -17,7 +17,7 @@ public static class Handler
 		// Cookie Verification finished successfully/with errors in (elapsed time)
 		if (result.Outcome) {Success = "successfully";} else {Success = "with errors";}
 		string ElapsedTime = result.Elapsed.ToString(@"dd\:hh\:mm\:ss\.ffff");
-		LogEngine.Out(LogFile, $"{result.Step} finished {Success} in {ElapsedTime}", "StepHandler");
+		await LogEngine.Out(LogFile, $"{result.Step} finished {Success} in {ElapsedTime}", "StepHandler");
 		// TODO: Metrics database etc
 	}
 }

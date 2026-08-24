@@ -124,14 +124,14 @@ public static class ProfileManager
 	{
 		try {
 			File.ReadAllBytes(profileFile);
-			LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", DefaultColours.Success);
+			await LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", DefaultColours.Success);
 		}
 		catch (FileNotFoundException) {
-			LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", DefaultColours.Error);
+			await LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", DefaultColours.Error);
 			SaveProfileContext(profileFile);
 		}
 		string jsonString = File.ReadAllText(profileFile);
-		LogEngine.Out(LogFile, jsonString, "Debug", 145);
+		await LogEngine.Out(LogFile, jsonString, "Debug", 145);
 		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
@@ -139,7 +139,7 @@ public static class ProfileManager
 			return activeProfile;
 #pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, i hope my code is safe enough to warrant it
 		} else {
-			LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", DefaultColours.Error);
+			await LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", DefaultColours.Error);
 			SaveProfileContext(profileFile);
 			return DefaultProfiles.DefaultProfile;
 		}
@@ -168,7 +168,7 @@ public static class ProfileManager
 		ProfileFile Existing = GetProfileFile(profileFile);
 		if (Existing.ActiveProfile == "ERROR")
 		{
-			LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", DefaultColours.Error);
+			await LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", DefaultColours.Error);
 		}
 		if (Existing.ProfileAlreadyExists(profile) || Existing.ActiveProfile=="ERROR") {
 			Existing.Profiles = new List<Profile>() {profile};
@@ -181,14 +181,14 @@ public static class ProfileManager
 		string JsonToWrite = JsonSerializer.Serialize(ProfileFile, Options);
 		File.WriteAllText(profileFile, JsonToWrite);
 
-		LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} successfully.", "ProfileManager", DefaultColours.Success);
+		await LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} successfully.", "ProfileManager", DefaultColours.Success);
 		
 	}
 
 	public static void SwitchProfileContext(string profileFile)
 	{
 		// TODO
-		LogEngine.Out(LogFile, "Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning);
+		await LogEngine.Out(LogFile, "Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning);
 	}
 
 	private static ProfileFile GetProfileFile(string profileFile)
@@ -200,13 +200,13 @@ public static class ProfileManager
 				ProfileFile Result =  JsonSerializer.Deserialize<ProfileFile>(jsonString);
 				return Result;
 			} else {
-				LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", DefaultColours.Error);
+				await LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", DefaultColours.Error);
 				return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
 				//can't do anything after it has already returned, line below is unreachable.
 				// Yes I thought i swapped them a while ago
 			}
 		} else {
-			LogEngine.Out(LogFile, $"Parent directory to profile file path {profileFile} doesn't exist. Creating", "ProfileManager");
+			await LogEngine.Out(LogFile, $"Parent directory to profile file path {profileFile} doesn't exist. Creating", "ProfileManager");
 			Directory.CreateDirectory(Directory.GetParent(profileFile).Name);
 			return GetProfileFile(profileFile);
 		}
