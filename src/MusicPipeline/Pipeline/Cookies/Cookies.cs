@@ -73,6 +73,7 @@ class Cookies
 					try {
 						currentLine = await YTDLPProcess.StandardOutput.ReadLineAsync();
 						if (currentLine != null) {
+							await LogEngine.Out(logFile, "Outputted", "Cookies", DefaultColours.Debug);
 							break;
 						}
 					} catch {
@@ -80,6 +81,7 @@ class Cookies
 						while (true)
 						{
 						    //some other processing to do possible
+						    await LogEngine.Out(logFile, "Waiting", "Cookies", DefaultColours.Debug);
 						    if (stopwatch.ElapsedMilliseconds >= 5)
 						    {
 						        break;
