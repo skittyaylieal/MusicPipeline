@@ -18,7 +18,7 @@ public class SongIdentifier
 	public bool Instrumental {get; set;}
 	public bool Lyrics {get; set;}
 	public bool SyncedLyrics {get; set;}
-	public FileInfo LyricsPath {get; set;}
+	public FileInfo? LyricsPath {get; set;}
 	public bool Lore {get; set;}
 	public DateTime LoreDate {get; set;}
 
