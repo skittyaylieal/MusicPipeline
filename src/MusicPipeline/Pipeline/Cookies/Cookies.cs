@@ -37,7 +37,7 @@ class Cookies
 			return CookieDefaults.FileError(true, elapsed);
 		}
 
-		LogEngine.Out(logFile, "[+] Cookie and YTDLP files located sucsessfully!", "Cookies", 76);
+		LogEngine.Out(logFile, "[+] Cookie and YTDLP files located sucsessfully!", "Cookies", DefaultColours.Success);
 		LogEngine.Out(logFile, "[*] Testing cookies on YouTube.", "Cookies");
 		//this object initialization can be simplified, or you can create a constructor for ProcessStartInfo.
 		// TODO: Make some general thing for every step to use
@@ -59,6 +59,15 @@ class Cookies
 					TimeSpan elapsedError = endError - start;
         			return new Result("Cookie Verification", false, elapsedError, "YTDLPProcess is Null");
         		}
+        		while (!YTDLPProcess.StandardOutput.EndOfStream) {
+	                string? currentLine = YTDLPProcess.StandardOutput.ReadLine();
+	                
+	                if (currentLine != null) {
+	                    // 1. Flash it to your master console/global log stream
+	                    LogEngine.Out(logFile, currentLine, "Cookies");
+	                }
+	            }
+
         		YTDLPProcess.WaitForExit();
         		DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;

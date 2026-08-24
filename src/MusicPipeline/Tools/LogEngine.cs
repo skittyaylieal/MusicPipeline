@@ -10,7 +10,7 @@ public class LogEngine
     private const char esc = '\u001B';
     private const string reset = $"\u001B[0m";
 
-    public static void Out(string logFile, string message, string user = "System", int? style = null) 
+    public static async void Out(string logFile, string message, string user = "System", int? style = null) 
     {
         /*ArgumentException.ThrowIfNullOrEmpty(LogFile);
         ArgumentException.ThrowIfNullOrEmpty(Message);
@@ -54,7 +54,7 @@ public class LogEngine
         string processedMessage = $"{colPrefix} {message}";
         string processedMessageNl = $"\u000A{processedMessage}";
 
-        File.AppendAllText(logFile, processedMessageNl);
+        await File.AppendAllTextAsync(logFile, processedMessageNl);
         Console.WriteLine(processedMessage);
 
     }

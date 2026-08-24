@@ -1,0 +1,117 @@
+using System.Threading; // System comes first
+using MusicPipeline.Results; // These are in whatever order they're first used
+using MusicPipeline.Profiles;
+using MusicPipeline.Colours; // Colours always before Logging
+using MusicPipeline.Tools.LogEngine; // Tools last
+namespace MusicPipeline.Pipeline;
+
+class Downloader
+{
+	/* First use of Profiles*/ private Profile activeProfile = "Null";
+	private string logFile = "Null";
+	private string backupDir = "Null";
+	private string YTDLPPath = "Null";
+	private string cookiePath = "Null";
+	private string historyPath = "Null";
+	private string[] playlists = ["Null"];
+	private string configDir = "Null";
+	private string cacheDir = "Null";
+	private int sleepInterval = 0;
+	private int maxSleepInterval = 0;
+	private int sleepRequests = 0;
+	private int maxDownloadThreads = 0;
+	private bool cleanSweep = false;
+
+	public Result /* First use of Results */ Download(string profileFile)
+	{
+		activeProfile = ProfileManager.LoadActiveProfile(profileFile);
+		logFile = activeProfile.DiagLogFile;
+		backupDir = activeProfile.BackupDir;
+		YTDLPPath = activeProfile.YTDLPExe;
+		cookiePath = activeProfile.CookieFile;
+		historyPath = activeProfile.HistoryFile;
+		playlists = activeProfile.Playlists;
+		configDir = $@"{activeProfile.RootDir}\Config";
+		cacheDir = $@"{configDir}\.cache";
+		sleepInterval = activeProfile.SleepInterval;
+		maxSleepInterval = activeProfile.MaxSleepInterval;
+		sleepRequests = activeProfile.SleepRequests;
+		maxDownloadThreads = activeProfile.MaxDownloadThreads;
+		cleanSweep = activeProfile.CleanSweepDownload; // Note: Make sure that the profile value of CleanSweepDownload is correct before running
+		// TODO add the ytdlp flags to profile file
+
+		DateTime start = DateTime.UtcNow;
+
+		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
+
+		LogEngine.Out(logFile, "=============================================", "Downloader");
+		LogEngine.Out(logFile, "			YTDLP Song Downloader			", "Downloader");
+		LogEngine.Out(logFile, "=============================================", "Downloader");
+
+		if (!Directory.Exists(backupDir)) {
+			Directory.CreateDirectory(backupDir);
+		}
+
+		string outputTemplate = $"{backupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s";
+
+		if (cleanSweep) {
+			historyPath = $@"{configDir}\pipeline_null_history_{Guid.NewGuid()}.txt";
+			// Remove at the end
+		}
+
+		// URLs should be sanitised already
+
+		// Ok how tf does threading work i'm stuck
+		// WAIT
+		// If i just make these all private fields
+		// And then use foreach parallel to get the index variable
+		// Tada!
+
+		// From JleruOHeP on https://stackoverflow.com/questions/23419396/can-you-assign-a-value-only-if-its-greater-less-than-the-current-value#comment35888947_23419396
+		maxDownloadThreads = maxDownloadThreads < playlists.Count() ? playlists.Count() : maxDownloadThreads;
+		// I believe this effectively does
+		/*
+		if (maxDownloadThreads < playlist.Count()) {
+			maxDownloadThreads = maxDownloadThreads;
+		} else {
+			maxDownloadThreads = playlist.Count();
+		}
+
+		But I'm not 100% sure how the ternary operator works
+		*/
+
+		Parallel.For(0, maxDownloadThreads, DownloadThread);
+
+	}
+
+	private void DownloadThread(int index)
+	{
+		int? colourCode = null;
+		switch (index) {
+			case 1:
+				colourCode = 51; // Cyan
+				break; 
+			case 2:
+				colourCode = 201;  // Magenta
+				break; 
+			case 3:
+				colourCode = 33; //yellow
+				break; 
+			case 4:
+				colourCode = 135; // Purple
+				break; 
+			case 5:
+				colourCode = 22; // Forest
+				break; 
+			case 6:
+				colourCode = 217; // Peach
+				break;
+		}
+
+		string errorLogPath = $@"{configDir}playlist${index}_run_errors.txt";
+		if (File.Exists(errorLogPath)) {File.Delete(errorLogPath);}
+
+
+
+	}
+}
