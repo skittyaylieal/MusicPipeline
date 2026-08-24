@@ -20,15 +20,15 @@ public static class Orchestrator
 	{
 		
 
-		Profiles.Profile activeProfile = ProfileManager.LoadActiveProfile(profileFile);
+		Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		string logFile = activeProfile.DiagLogFile;
 		await LogEngine.WipeAsync(logFile, "Orchestrator");
 		await LogEngine.Out(logFile, "Test", "Orchestrator", 203);
 		await LogEngine.Out(logFile, "Test Number 2", "Orchestrator");
 		await LogEngine.Out(logFile, JsonSerializer.Serialize(activeProfile), "Orchestrator", 54);
 		activeProfile.ScannerSleepIntervalSec = 30;
-		ProfileManager.SaveProfileContext(profileFile, activeProfile);
-		Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfile(profileFile);
+		await ProfileManager.SaveProfileContext(profileFile, activeProfile);
+		Profiles.Profile NewActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		await LogEngine.Out(logFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
 		
 

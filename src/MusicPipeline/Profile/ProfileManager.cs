@@ -128,11 +128,11 @@ public static class ProfileManager
 		}
 		catch (FileNotFoundException) {
 			await LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", DefaultColours.Error);
-			SaveProfileContext(profileFile);
+			await SaveProfileContext(profileFile);
 		}
 		string jsonString = File.ReadAllText(profileFile);
 		await LogEngine.Out(LogFile, jsonString, "Debug", 145);
-		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
+		ProfileFile? file = await JsonSerializer.DeserializeAsync<ProfileFile>(jsonString);
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
 			Profile activeProfile = file.GetActiveProfile();
@@ -140,7 +140,7 @@ public static class ProfileManager
 #pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, i hope my code is safe enough to warrant it
 		} else {
 			await LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", DefaultColours.Error);
-			SaveProfileContext(profileFile);
+			await SaveProfileContext(profileFile);
 			return DefaultProfiles.DefaultProfile;
 		}
 
@@ -157,7 +157,7 @@ public static class ProfileManager
 		// Done
 	}
 
-	public static async void SaveProfileContext(string profileFile, Profile? profile = null)
+	public static async Task SaveProfileContext(string profileFile, Profile? profile = null)
 	{
 		// TODO: fix
 		//next step of todo, name what is broken :)
@@ -165,7 +165,7 @@ public static class ProfileManager
 		if (profile == null) {
 			profile = DefaultProfiles.DefaultProfile;
 		}
-		ProfileFile Existing = GetProfileFile(profileFile);
+		ProfileFile Existing = await GetProfileFile(profileFile);
 		if (Existing.ActiveProfile == "ERROR")
 		{
 			await LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", DefaultColours.Error);
@@ -185,7 +185,7 @@ public static class ProfileManager
 		
 	}
 
-	public static async void SwitchProfileContext(string profileFile)
+	public static async Task SwitchProfileContext(string profileFile)
 	{
 		// TODO
 		await LogEngine.Out(LogFile, "Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning);
