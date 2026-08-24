@@ -11,7 +11,7 @@ public static class Handler
 		// It complains endlessly when i miss it out
 		// "Profile is a namespace but being used a type"
 		// NOTHING USES IT AS A NAMESPACE
-		Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfile(ProfileFile);
+		Profiles.Profile ActiveProfile = await ProfileManager.LoadActiveProfile(ProfileFile);
 		string LogFile = ActiveProfile.DiagLogFile;
 		string Success = "";
 		// Cookie Verification finished successfully/with errors in (elapsed time)
