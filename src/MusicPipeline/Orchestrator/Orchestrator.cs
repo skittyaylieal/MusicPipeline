@@ -20,6 +20,7 @@ public static class Orchestrator
     // 
     public static void Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
     {
+        /*
         LogEngine.Wipe(LogFile, "Orchestrator");
         LogEngine.Out(LogFile, "Test", "Orchestrator", 203);
         LogEngine.Out(LogFile, "Test Number 2", "Orchestrator");
@@ -29,7 +30,8 @@ public static class Orchestrator
         ProfileManager.SaveProfileContext(profileFile, ActiveProfile);
         Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfile(profileFile);
         LogEngine.Out(LogFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
-
+        */
+        
         Result Step1Result = Cookies.CookieCheck(ProfileFile);
         Handler.HandleResult(Step1Result, ProfileFile);
     }
