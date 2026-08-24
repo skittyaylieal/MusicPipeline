@@ -16,7 +16,7 @@ public static class Orchestrator
 	//Orchestrator.Start(); in program.cs
 	// Need tools
 	// 
-	public static void Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
+	public static async void Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
 	{
 		
 
@@ -32,9 +32,8 @@ public static class Orchestrator
 		await LogEngine.Out(logFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
 		
 
-		Result Step1Result = Cookies.CookieCheck(profileFile);
-		//Handler.HandleResult(Step1Result, ProfileFile);
-		Handler.HandleResult(Cookies.CookieCheck(profileFile), profileFile);
+		Result Step1Result = await Cookies.CookieCheck(profileFile);
+		Handler.HandleResult(Step1Result, profileFile);
 	}
 
 

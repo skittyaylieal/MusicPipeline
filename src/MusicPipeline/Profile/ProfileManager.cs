@@ -120,7 +120,7 @@ public static class ProfileManager
 {
 
 	public static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
-	public static Profile LoadActiveProfile(string profileFile)
+	public async static Task<Profile> LoadActiveProfile(string profileFile)
 	{
 		try {
 			File.ReadAllBytes(profileFile);
@@ -157,7 +157,7 @@ public static class ProfileManager
 		// Done
 	}
 
-	public static void SaveProfileContext(string profileFile, Profile? profile = null)
+	public static async void SaveProfileContext(string profileFile, Profile? profile = null)
 	{
 		// TODO: fix
 		//next step of todo, name what is broken :)
@@ -185,13 +185,13 @@ public static class ProfileManager
 		
 	}
 
-	public static void SwitchProfileContext(string profileFile)
+	public static async void SwitchProfileContext(string profileFile)
 	{
 		// TODO
 		await LogEngine.Out(LogFile, "Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning);
 	}
 
-	private static ProfileFile GetProfileFile(string profileFile)
+	private static async Task<ProfileFile> GetProfileFile(string profileFile)
 	{
 #pragma warning disable CS8600, CS8603, CS8602 // Again, if the file exists it's so likely to be valid these warnings just clutter the output
 		if(Directory.Exists(Directory.GetParent(profileFile).Name)) {
@@ -208,7 +208,7 @@ public static class ProfileManager
 		} else {
 			await LogEngine.Out(LogFile, $"Parent directory to profile file path {profileFile} doesn't exist. Creating", "ProfileManager");
 			Directory.CreateDirectory(Directory.GetParent(profileFile).Name);
-			return GetProfileFile(profileFile);
+			return await GetProfileFile(profileFile);
 		}
 #pragma warning restore CS8600, CS8603, CS8602
 	}

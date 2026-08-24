@@ -9,7 +9,7 @@ namespace MusicPipeline.Pipeline;
 class Cookies
 {
 	// Class Colour Code is 112
-	public static Result CookieCheck(string ProfileFile)
+	public static async Task<Result> CookieCheck(string ProfileFile)
 	{
 		//in C# local variables should start with lower case, camel case.
 		Profiles.Profile activeProfile = ProfileManager.LoadActiveProfile(ProfileFile);

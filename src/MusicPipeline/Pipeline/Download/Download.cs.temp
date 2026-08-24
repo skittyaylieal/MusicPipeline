@@ -22,7 +22,7 @@ class Downloader
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
 
-	public Result /* First use of Results */ Download(string profileFile)
+	public async Task<Result> /* First use of Results */ Download(string profileFile)
 	{
 		activeProfile = ProfileManager.LoadActiveProfile(profileFile);
 		logFile = activeProfile.DiagLogFile;
@@ -84,7 +84,7 @@ class Downloader
 
 	}
 
-	private void DownloadThread(int index)
+	private async Task<void> DownloadThread(int index)
 	{
 		int? colourCode = null;
 		switch (index) {
