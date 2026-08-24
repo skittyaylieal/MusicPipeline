@@ -13,12 +13,17 @@ class Cookies
 	{
 		//in C# local variables should start with lower case, camel case.
 		Profiles.Profile activeProfile = ProfileManager.LoadActiveProfile(ProfileFile);
+		LogEngine.Out(logFile, "Profile Done", "Cookies", DefaultColours.Debug);
 		string logFile = activeProfile.DiagLogFile;
 		string cookieFile = activeProfile.CookieFile;
 		string YTDLPPath = activeProfile.YTDLPExe;
 		string testURL = activeProfile.CheckURL;
 
+		LogEngine.Out(logFile, "Variables Done", "Cookies", DefaultColours.Debug);
+
 		DateTime start = DateTime.UtcNow;
+
+		LogEngine.Out(logFile, "Started timer", "Cookies", DefaultColours.Debug);
 
 		LogEngine.Out(logFile, "==============================================", "Cookies");
 		LogEngine.Out(logFile, "                Cookie Checker                ", "Cookies");
