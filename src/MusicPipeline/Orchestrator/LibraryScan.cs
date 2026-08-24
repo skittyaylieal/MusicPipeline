@@ -13,7 +13,7 @@ public class Scanner
 		string logFile = activeProfile.DiagLogFile;
 		string backupDir = activeProfile.BackupDir;
 		string mobileDir = activeProfile.MobileDir;
-		List<DirectoryInfo>? compressedDirs = null; // Support for multiple compressed directories will be added at somepoint™
+		//List<DirectoryInfo>? compressedDirs = null; // Support for multiple compressed directories will be added at somepoint™
 		//string rootDir = "IDFK why it needs this in the source";
 		//^ The soure powershell code had this, so in case its neccessary i'm keeping it
 		string songFileSearchPattern = "*.m4a"; // TODO add this, and most other variables or literals that could conceivably need changing, to the profile
@@ -41,7 +41,7 @@ public class Scanner
 			Directory.CreateDirectory(backupDir);
 		}
 
-		IEnumerable<string> mobileFiles = null;
+		IEnumerable<string>? mobileFiles = null;
 		if (Directory.Exists(mobileDir)) {
 			mobileFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
 			await LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner", colourCode);
