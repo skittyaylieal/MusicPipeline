@@ -22,6 +22,7 @@ public static class Orchestrator
 
 		Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		string logFile = activeProfile.DiagLogFile;
+		Console.WriteLine("Test");
 		await LogEngine.WipeAsync(logFile, "Orchestrator");
 		await LogEngine.Out(logFile, "Test", "Orchestrator", 203);
 		await LogEngine.Out(logFile, "Test Number 2", "Orchestrator");
