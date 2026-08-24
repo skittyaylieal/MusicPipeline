@@ -47,45 +47,45 @@ class Cookies
 		//this object initialization can be simplified, or you can create a constructor for ProcessStartInfo.
 		// TODO: Make some general thing for every step to use
 		ProcessStartInfo startInfo = new ProcessStartInfo();
-        startInfo.CreateNoWindow = false;
-        startInfo.UseShellExecute = false;
-        startInfo.FileName = YTDLPPath;
-        startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-        startInfo.Arguments = $"--cookies \"{cookieFile}\" --simulate --quiet {testURL}";
+		startInfo.CreateNoWindow = false;
+		startInfo.UseShellExecute = false;
+		startInfo.FileName = YTDLPPath;
+		startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+		startInfo.Arguments = $"--cookies \"{cookieFile}\" --simulate --quiet {testURL}";
 
-        try
-        {
-        	using (Process? YTDLPProcess = Process.Start(startInfo))
-        	{
-        		//check for nulls first
-        		// Done?
-        		if (YTDLPProcess is null) {
-        			DateTime endError = DateTime.UtcNow;
+		try
+		{
+			using (Process? YTDLPProcess = Process.Start(startInfo))
+			{
+				//check for nulls first
+				// Done?
+				if (YTDLPProcess is null) {
+					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - start;
-        			return new Result("Cookie Verification", false, elapsedError, "YTDLPProcess is Null");
-        		}
-        		while (!YTDLPProcess.StandardOutput.EndOfStream) {
-	                string? currentLine = YTDLPProcess.StandardOutput.ReadLine();
-	                
-	                if (currentLine != null) {
-	                    // 1. Flash it to your master console/global log stream
-	                    LogEngine.Out(logFile, currentLine, "Cookies");
-	                }
-	            }
+					return new Result("Cookie Verification", false, elapsedError, "YTDLPProcess is Null");
+				}
+				while (!YTDLPProcess.StandardOutput.EndOfStream) {
+					string? currentLine = YTDLPProcess.StandardOutput.ReadLine();
+					
+					if (currentLine != null) {
+						// 1. Flash it to your master console/global log stream
+						LogEngine.Out(logFile, currentLine, "Cookies");
+					}
+				}
 
-        		YTDLPProcess.WaitForExit();
-        		DateTime end = DateTime.UtcNow;
+				YTDLPProcess.WaitForExit();
+				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;
 				//Result res = new Result(true, Elapsed, "no error", new List<MSongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "NONE", 0, "m4a", 6.90, 4.20, false, true, true, false)));
-        		return new Result("Cookie Verification", true, elapsed);
-        	}
-        }
-        catch (System.ComponentModel.Win32Exception ex)
-        {
-        	DateTime end = DateTime.UtcNow;
+				return new Result("Cookie Verification", true, elapsed);
+			}
+		}
+		catch (System.ComponentModel.Win32Exception ex)
+		{
+			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
-        	return new Result("Cookie Verification", false, elapsed, ex.Message);
-        }
+			return new Result("Cookie Verification", false, elapsed, ex.Message);
+		}
 
 	}
 }

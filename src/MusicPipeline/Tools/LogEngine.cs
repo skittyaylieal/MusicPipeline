@@ -3,70 +3,70 @@ namespace MusicPipeline.Tools.LogEngine;
 
 public class LogEngine
 {
-    // Logs to the file
-    // Takes ASCII codes
-    // Takes the message
-    // Takes the profile file? or just the log file
-    private const char esc = '\u001B';
-    private const string reset = $"\u001B[0m";
+	// Logs to the file
+	// Takes ASCII codes
+	// Takes the message
+	// Takes the profile file? or just the log file
+	private const char esc = '\u001B';
+	private const string reset = $"\u001B[0m";
 
-    public static async void Out(string logFile, string message, string user = "System", int? style = null) 
-    {
-        /*ArgumentException.ThrowIfNullOrEmpty(LogFile);
-        ArgumentException.ThrowIfNullOrEmpty(Message);
-        ArgumentException.ThrowIfNullOrEmpty(Style);
-        if (!File.Exists(LogFile)) {
-            throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
-        }*/
+	public static async void Out(string logFile, string message, string user = "System", int? style = null) 
+	{
+		/*ArgumentException.ThrowIfNullOrEmpty(LogFile);
+		ArgumentException.ThrowIfNullOrEmpty(Message);
+		ArgumentException.ThrowIfNullOrEmpty(Style);
+		if (!File.Exists(LogFile)) {
+			throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
+		}*/
 
-        // TODO: Make this a case switch thingy
+		// TODO: Make this a case switch thingy
 
-        if (style is null) {
-            // Should've been omitted
-            var field = typeof(DefaultColours).GetField(user);
-            if (field != null) {
-                style = (int)field.GetValue(null)!;
-            }
-            else {
-                // Wrong Username given
-                style = 36;
-                Out(logFile, "Given username was invalid or not in the default colours", "System", DefaultColours.Warning);
-            }
-        }
+		if (style is null) {
+			// Should've been omitted
+			var field = typeof(DefaultColours).GetField(user);
+			if (field != null) {
+				style = (int)field.GetValue(null)!;
+			}
+			else {
+				// Wrong Username given
+				style = 36;
+				Out(logFile, "Given username was invalid or not in the default colours", "System", DefaultColours.Warning);
+			}
+		}
 
-        if (style == 0) {
-            style = 36;
-            Out(logFile, "0 is black, do not use it", "System", DefaultColours.Error);
-        }
+		if (style == 0) {
+			style = 36;
+			Out(logFile, "0 is black, do not use it", "System", DefaultColours.Error);
+		}
 
-        //var l = new LogEngine(); //looks like this variable is not used.
-        DateTime current = DateTime.Now; //because this variable is used online once you can inline it below.
-        string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-        //what is colPrefix, the 38 and the 5?
-        //these would be called "magic numbers" if it's not clear from the code what they are.
-        // I've been meaning to put more explanatory comments for a bit
-        string colPrefix = $"{esc}[38;5;{style.ToString()}m{timeStamp} [{user}] {reset}";
-        // colPrefix
-        // The escape marks that this is ANSI escaped colouring, not raw text
-        // The [38;5; marks that the following value is an ANSI256 colour code.
-        // The reset resets the text colour back to white for the actual message
-        // I have considered adding an option to make the whole message that colour
-        string processedMessage = $"{colPrefix} {message}";
-        string processedMessageNl = $"\u000A{processedMessage}";
+		//var l = new LogEngine(); //looks like this variable is not used.
+		DateTime current = DateTime.Now; //because this variable is used online once you can inline it below.
+		string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
+		//what is colPrefix, the 38 and the 5?
+		//these would be called "magic numbers" if it's not clear from the code what they are.
+		// I've been meaning to put more explanatory comments for a bit
+		string colPrefix = $"{esc}[38;5;{style.ToString()}m{timeStamp} [{user}] {reset}";
+		// colPrefix
+		// The escape marks that this is ANSI escaped colouring, not raw text
+		// The [38;5; marks that the following value is an ANSI256 colour code.
+		// The reset resets the text colour back to white for the actual message
+		// I have considered adding an option to make the whole message that colour
+		string processedMessage = $"{colPrefix} {message}";
+		string processedMessageNl = $"\u000A{processedMessage}";
 
-        await File.AppendAllTextAsync(logFile, processedMessageNl);
-        Console.WriteLine(processedMessage);
+		await File.AppendAllTextAsync(logFile, processedMessageNl);
+		Console.WriteLine(processedMessage);
 
-    }
+	}
 
-    // I think theres some kind of summary thing i'm supposed to use for this but idk how that works
-    // Wipe just overwrites the file with a simple file cleared message
-    public static void Wipe(string logFile, string user = "System")
-    {
-        //var l = new LogEngine();
-        DateTime current = DateTime.Now;
-        string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-        string colPrefix = $"{esc}[1;36m{timeStamp}";
-        File.WriteAllText(logFile, $"{colPrefix} File Cleared by {user}{reset}");
-    }
+	// I think theres some kind of summary thing i'm supposed to use for this but idk how that works
+	// Wipe just overwrites the file with a simple file cleared message
+	public static void Wipe(string logFile, string user = "System")
+	{
+		//var l = new LogEngine();
+		DateTime current = DateTime.Now;
+		string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
+		string colPrefix = $"{esc}[1;36m{timeStamp}";
+		File.WriteAllText(logFile, $"{colPrefix} File Cleared by {user}{reset}");
+	}
 }

@@ -19,8 +19,8 @@ public static class CookieDefaults
 		// Added
 
 		var error = "Cookie file not found";
-        if (YTDLP)
-            error = "YTDLP executable not found";
+		if (YTDLP)
+			error = "YTDLP executable not found";
 		return new Result("Cookie Verification", false, Elapsed, error);
 		
 	}

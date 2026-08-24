@@ -41,8 +41,8 @@ public class Scanner
 			Directory.CreateDirectory(backupDir);
 		}
 
-        IEnumerable<string> mobileFiles = null;
-        if (Directory.Exists(mobileDir)) {
+		IEnumerable<string> mobileFiles = null;
+		if (Directory.Exists(mobileDir)) {
 			mobileFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
 			LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner", colourCode);
 			double mobileSize = 0.00;
