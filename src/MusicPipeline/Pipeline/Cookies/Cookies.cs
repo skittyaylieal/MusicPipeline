@@ -65,10 +65,7 @@ class Cookies
 					return new Result("Cookie Verification", false, elapsedError, "YTDLPProcess is Null");
 				}
 				string? currentLine;
-				// This while decleration is an absolute mess, but basically it assigns the variable and then checks if it's null
-				// To not set the variable to the bool "await YTDLPProcess.StandardOutput.ReadLineAsync() == null"
-				// You need all those brackets
-				// Maybe some helper function? StandardOutputAsync or smth
+				/*
 				while (true) {
 					try {
 						currentLine = await YTDLPProcess.StandardOutput.ReadLineAsync();
@@ -90,6 +87,16 @@ class Cookies
 						continue;
 					}
 				}
+				*/
+				// Ok don't do that lol
+				// It doesn't exit
+				// Weird, because that implies that it was never getting an output, and just crashing
+				// Meaning something else isn't working properly
+				// But it should be outputting on standard
+				// This while decleration is an absolute mess, but basically it assigns the variable and then checks if it's null
+				// To not set the variable to the bool "await YTDLPProcess.StandardOutput.ReadLineAsync() == null"
+				// You need all those brackets
+				// Maybe some helper function? StandardOutputAsync or smth
 				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
 						// 1. Flash it to your master console/global log stream
