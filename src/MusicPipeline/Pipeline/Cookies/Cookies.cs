@@ -76,7 +76,7 @@ class Cookies
 							await LogEngine.Out(logFile, "Outputted", "Cookies", DefaultColours.Debug);
 							break;
 						}
-					} catch {
+					} catch (InvalidOperationException) {
 						Stopwatch stopwatch = Stopwatch.StartNew();
 						while (true)
 						{
@@ -87,6 +87,7 @@ class Cookies
 						        break;
 						    }
 						}
+						continue;
 					}
 				}
 				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
