@@ -64,9 +64,11 @@ class Cookies
 					TimeSpan elapsedError = endError - start;
 					return new Result("Cookie Verification", false, elapsedError, "YTDLPProcess is Null");
 				}
-				while (!YTDLPProcess.StandardOutput.EndOfStream) {
-					string? currentLine = YTDLPProcess.StandardOutput.ReadLine();
-					
+				string? currentLine;
+				// This while decleration is an absolute mess, but basically it assigns the variable and then checks if it's null
+				// To not set the variable to the bool "await YTDLPProcess.StandardOutput.ReadLineAsync() == null"
+				// You need all those brackets
+				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
 						// 1. Flash it to your master console/global log stream
 						await LogEngine.Out(logFile, currentLine, "Cookies");
