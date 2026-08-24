@@ -69,18 +69,7 @@ class Cookies
 				// To not set the variable to the bool "await YTDLPProcess.StandardOutput.ReadLineAsync() == null"
 				// You need all those brackets
 				// Maybe some helper function? StandardOutputAsync or smth
-				bool streamStarted = false;
-				while (!streamStarted) {
-					try {
-						currentLine = YTDLPProcess.StandardOutput.ReadLine();
-					}
-					catch (InvalidOperationException) {
-						streamStarted = false;
-					}
-					finally {
-						streamStarted = true;
-					}
-				}
+				
 				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
 						// 1. Flash it to your master console/global log stream
