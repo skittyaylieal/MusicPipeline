@@ -72,9 +72,10 @@ class Cookies
 				bool streamStarted = false;
 				while (!streamStarted) {
 					try {
-						currentLine = await YTDLPProcess.StandardOutput.ReadLineAsync();
+						currentLine = YTDLPProcess.StandardOutput.ReadLine();
 					}
-					catch (InvalidOperationException ex) {
+					catch (InvalidOperationException) {
+						streamStarted = false;
 						continue;
 					}
 					finally {
