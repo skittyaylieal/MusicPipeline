@@ -76,7 +76,6 @@ class Cookies
 					}
 					catch (InvalidOperationException) {
 						streamStarted = false;
-						continue;
 					}
 					finally {
 						streamStarted = true;
