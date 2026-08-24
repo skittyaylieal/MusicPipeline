@@ -14,23 +14,23 @@ public static class Orchestrator
     // So I don't need to invoke this class itself
     //yes, you can call the methods directy from the class without an instance of the class.
     //Orchestrator.Start(); in program.cs
-    private static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
-    private static readonly string ProfileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfileFile.json";
     // Need tools
     // 
     public static void Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
     {
-        /*
+        
+
+        Profiles.Profile activeProfile = ProfileManager.LoadActiveProfile(profileFile);
+        string logFile = activeProfile.DiagLogFile;
         LogEngine.Wipe(LogFile, "Orchestrator");
         LogEngine.Out(LogFile, "Test", "Orchestrator", 203);
         LogEngine.Out(LogFile, "Test Number 2", "Orchestrator");
-        Profiles.Profile ActiveProfile = ProfileManager.LoadActiveProfile(profileFile);
-        LogEngine.Out(LogFile, JsonSerializer.Serialize(ActiveProfile), "Orchestrator", 54);
-        ActiveProfile.ScannerSleepIntervalSec = 30;
-        ProfileManager.SaveProfileContext(profileFile, ActiveProfile);
+        LogEngine.Out(LogFile, JsonSerializer.Serialize(activeProfile), "Orchestrator", 54);
+        activeProfile.ScannerSleepIntervalSec = 30;
+        ProfileManager.SaveProfileContext(profileFile, activeProfile);
         Profiles.Profile NewActiveProfile = ProfileManager.LoadActiveProfile(profileFile);
         LogEngine.Out(LogFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
-        */
+        
 
         Result Step1Result = Cookies.CookieCheck(ProfileFile);
         //Handler.HandleResult(Step1Result, ProfileFile);
