@@ -131,7 +131,7 @@ public static class ProfileManager
             SaveProfileContext(profileFile);
         }
         string jsonString = File.ReadAllText(profileFile);
-        //LogEngine.Out(LogFile, jsonString, "Debug", 145);
+        LogEngine.Out(LogFile, jsonString, "Debug", 145);
         ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
         if (!file.NoProfiles()) {
