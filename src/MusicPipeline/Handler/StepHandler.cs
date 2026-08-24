@@ -19,5 +19,6 @@ public static class Handler
 		string ElapsedTime = result.Elapsed.ToString(@"dd\:hh\:mm\:ss\.ffff");
 		await LogEngine.Out(LogFile, $"{result.Step} finished {Success} in {ElapsedTime}", "StepHandler");
 		// TODO: Metrics database etc
+		// As in, make it handle the songs and things that were affected by the step and do what's necessary
 	}
 }
