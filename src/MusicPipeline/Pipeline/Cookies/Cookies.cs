@@ -68,6 +68,19 @@ class Cookies
 				// This while decleration is an absolute mess, but basically it assigns the variable and then checks if it's null
 				// To not set the variable to the bool "await YTDLPProcess.StandardOutput.ReadLineAsync() == null"
 				// You need all those brackets
+				// Maybe some helper function? StandardOutputAsync or smth
+				bool streamStarted = false;
+				while (!streamStarted) {
+					try {
+						currentLine = await YTDLPProcess.StandardOutput.ReadLineAsync();
+					}
+					catch (InvalidOperationException ex) {
+						continue;
+					}
+					finally {
+						streamStarted = true;
+					}
+				}
 				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
 						// 1. Flash it to your master console/global log stream
@@ -75,7 +88,7 @@ class Cookies
 					}
 				}
 
-				YTDLPProcess.WaitForExit();
+				YTDLPProcess.WaitForExitAsync();
 				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;
 				//Result res = new Result(true, Elapsed, "no error", new List<MSongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "NONE", 0, "m4a", 6.90, 4.20, false, true, true, false)));
