@@ -16,7 +16,7 @@ public static class Orchestrator
 	//Orchestrator.Start(); in program.cs
 	// Need tools
 	// 
-	public static async void Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
+	public static async Task Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
 	{
 		
 

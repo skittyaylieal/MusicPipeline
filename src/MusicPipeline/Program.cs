@@ -2,7 +2,7 @@
 using MusicPipeline.Orchestrator;
 // using MusicPipeline.Profiles;
 // using System.Text.Json;
-Orchestrator.Start();
+await Orchestrator.Start();
 
 
 // Working!
