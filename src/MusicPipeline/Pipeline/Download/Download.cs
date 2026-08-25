@@ -16,6 +16,8 @@ class Downloader
 	private string[] playlists = ["Null"];
 	private string configDir = "Null";
 	private string cacheDir = "Null";
+	private string outputTemplate = "Null";
+	private string downloadArguments = "Null";
 	private int sleepInterval = 0;
 	private int maxSleepInterval = 0;
 	private int sleepRequests = 0;
@@ -33,6 +35,7 @@ class Downloader
 		playlists = activeProfile.Playlists;
 		configDir = $@"{activeProfile.RootDir}\Config";
 		cacheDir = $@"{configDir}\.cache";
+		outputTemplate = activeProfile.OutputTemplate;
 		sleepInterval = activeProfile.SleepInterval;
 		maxSleepInterval = activeProfile.MaxSleepInterval;
 		sleepRequests = activeProfile.SleepRequests;
@@ -79,6 +82,8 @@ class Downloader
 
 		But I'm not 100% sure how the ternary operator works
 		*/
+
+		downloadArguments =  "--no-colors --verbose --newline --sleep-interval {sleepInterval} --max-sleep-interval {maxSleepInterval} --sleep-requests {sleepRequests} --embed-thumbnail --convert-thumbnails jpg --ppa EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih --embed-metadata --parse-metadata title:%(artist)s - %(title)s --parse-metadata uploader:%(artist)s --no-keep-video --force-overwrites --cookies {cookiePath} -P {backupDir} -o {outputTemplate} --cache-dir {cacheDir} --geo-bypass --js-runtime deno --extractor-args youtube:player_js_variant=tv -f bestaudio/best --extract-audio --audio-format m4a --audio-quality 0 --download-archive {historyPath} --ignore-errors --no-abort-on-error --legacy-server-connect --socket-timeout 30 {playlists[index]}";
 
 		Parallel.For(0, maxDownloadThreads, async i => await DownloadThread(i));
 
