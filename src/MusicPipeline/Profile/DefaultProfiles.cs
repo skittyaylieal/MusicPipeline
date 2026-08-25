@@ -10,7 +10,7 @@ public static class DefaultProfiles
 	{
 		Name = "Default",
 		BackupDir = @"C:\MusicTools\MusicPipeline\Sandbox_Backup",
-		MobileDir = @"C:\MusicTools\MusicPipeline\Sandbox_Mobile",
+		CompressedDirs = [@"C:\MusicTools\MusicPipeline\Sandbox_Mobile"],
 		BrokenSongsFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\broken_songs.json",
 		DiagLogFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\csLogFile.log",
 		CacheFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\dashboard_cache.json",
@@ -57,7 +57,7 @@ public static class DefaultProfiles
 	{
 		Name = "Default",
 		BackupDir = @"C:\Users\filip\Music\YT_Music_Backup",
-		MobileDir = @"C:\Users\filip\Music\YT_Music_Mobile",
+		CompressedDirs = [@"C:\Users\filip\Music\YT_Music_Mobile"],
 		BrokenSongsFile = @"C:\MusicTools\MusicPipeline\Config\broken_songs.json",
 		DiagLogFile = @"C:\MusicTools\MusicPipeline\Config\web_console_stream.log",
 		CacheFile = @"C:\MusicTools\MusicPipeline\Config\dashboard_cache.json",
@@ -108,7 +108,7 @@ public static class DefaultProfiles
 	{
 		Name = "ERROR",
 		BackupDir = "ERROR",
-		MobileDir = "ERROR",
+		CompressedDirs = ["ERROR"],
 		BrokenSongsFile = "ERROR",
 		DiagLogFile = "ERROR",
 		CacheFile = "ERROR",

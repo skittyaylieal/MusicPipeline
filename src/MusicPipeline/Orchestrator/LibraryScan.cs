@@ -12,14 +12,13 @@ public class Scanner
         Profile activeProfile = await ProfileManager.LoadActiveProfile(ProfileFile);
         string logFile = activeProfile.DiagLogFile;
         string backupDir = activeProfile.BackupDir;
-        string mobileDir = activeProfile.MobileDir;
+        List<string> compressedDirs = activeProfile.CompressedDirs;
         //List<DirectoryInfo>? compressedDirs = null; // Support for multiple compressed directories will be added at somepoint™
         //string rootDir = "IDFK why it needs this in the source";
         //^ The soure powershell code had this, so in case its neccessary i'm keeping it
         string songFileSearchPattern = "*.m4a"; // TODO add this, and most other variables or literals that could conceivably need changing, to the profile
         string lyricFileSearchPattern = "*.lrc";
 
-        const int colourCode = 117;
 
         // OK Directory.EnumerateFiles should work?
         /*
@@ -49,34 +48,29 @@ public class Scanner
         //  for unused variables, either use them or lose them :)
         //ok so I'll name it GetMasterFiles()
 
-        IEnumerable<string>? masterFiles = await GetMasterFiles(logFile, backupDir, songFileSearchPattern, lyricFileSearchPattern, colourCode);
+        IEnumerable<string>? masterFiles = await GetMasterFiles(logFile, backupDir, songFileSearchPattern, lyricFileSearchPattern);
 
         //so this refactor benefits us in many ways
         //1) ScanLibrary() is shorter and more expressive.
         //2) the piece of code that is now GetMasterFiles is more testable.
         //3) seeing it as GetMasterFiles() can spur some ideas like "hey, this is real similar to my next step of getting mobile files!"
         //      maybe a single method could handle both? (yes probably, and we can look into that later)
+        // A single method could probably handle both but I think a compressed dir method would be better
+        // I'm thinking how to make the mobile directory use the compressed dirs list instead of being a special case
         //4) I don't know how it is in Sublime, but for VS if you click the method name usage, and press F12, it goes to the definition of that method.
         //      I mention this because my coworker hates when I extract to method refactor, because he claims it makes it harder for him to read...
         //      Addressing what I feel is an invalid criticism of the refactor.
         //5) IDK, I'm just trying to come up with a bunch of junk :) do you like having me as a tutor? I'm enjoying myself!
         //6) I'm sure there are lots of other reasons too!
 
-        IEnumerable<string>? mobileFiles = null;
-        if (Directory.Exists(mobileDir))
-        {
-            mobileFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
-            await LogEngine.Out(logFile, $"Found {mobileFiles.Count()} song files in mobile directory ({mobileDir})", "LibraryScanner", colourCode);
-            double mobileSize = 0.00;
-            foreach (var f in mobileFiles) { mobileSize += f.Length; }
-        }
-        else
-        {
-            Directory.CreateDirectory(mobileDir);
-        }
+        Dictionary<string,IEnumerable<string>?>? compressedFiles = await GetCompressedFiles(logFile, compressedDirs, songFileSearchPattern);
 
         //what are you trying to do with this line below?
-        var files = masterFiles ?? mobileFiles;
+        //var files = masterFiles ?? mobileFiles;
+        //maxDownloadThreads = maxDownloadThreads < playlists.Count() ? playlists.Count() : maxDownloadThreads;
+        var files = masterFiles.Count < MaxCountAnyList(compressedFiles) ? compressedFiles : masterFiles;
+        await files.Count > masterFiles.Count ? LogEngine.Out(logFile, $"Compressed Directory {MaxCountAnyList(compressedFiles, true)} has {MaxCountAnyList(compressedFiles) - masterFiles.Count} more songs than Master", "LibraryScanner", DefaultColours.Warning) : LogEngine.Out(logFile, $"The largest compressed directory, {MaxCountAnyList(compressedFiles, true)}, has {MaxCountAnyList(compressedFiles) - masterFiles.Count} fewer songs that Master. Declare this directory a subset to dismiss.", "LibraryScanner", DefaultColours.Warning)
+        //var files;
         if (files is null)
         {
             // TODO, once theres multiple compressed folders then text should read "None of {List of folder names} exist or are empty. Exiting"
@@ -99,16 +93,18 @@ public class Scanner
 
     }
 
-    private static async Task<IEnumerable<string>?> GetMasterFiles(string logFile, string backupDir, string songFileSearchPattern, string lyricFileSearchPattern, int colourCode)
+    private static async Task<IEnumerable<string>?> GetMasterFiles(string logFile, string backupDir, string songFileSearchPattern, string lyricFileSearchPattern)
     {
         //maybe tomorrow we'll break this method into smaller pieces because it's doing too many disparate things.
+        // FYI, doesn't need to know colour code as the LogEngine works out the correct colour from the Username
+        // As long as you use "LibraryScanner" then it'll get the right colour
         IEnumerable<string>? masterFiles = null;
         if (Directory.Exists(backupDir))
         {
             masterFiles = Directory.EnumerateFiles(backupDir, songFileSearchPattern, SearchOption.AllDirectories);
-            await LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner", colourCode);
+            await LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner");
             var lrcFiles = Directory.EnumerateFiles(backupDir, lyricFileSearchPattern, SearchOption.AllDirectories);
-            await LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner", colourCode);
+            await LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner");
             double masterSize = 0.00;
             foreach (var f in masterFiles) { masterSize += f.Length; }
         }
@@ -118,5 +114,27 @@ public class Scanner
         }
 
         return masterFiles;
+    }
+
+
+    private static async Task<Dictionary<string,IEnumerable<string>?>?> GetCompressedFiles(string logFile, List<string> compressedDirs, string songFileSearchPattern)
+    {
+        Dictionary<string,IEnumerable<string>?>? compressedFiles = null;
+        IEnumerable<string>? directoryFiles = null;
+        foreach (string mobileDir in compressedDirs) {
+            if (Directory.Exists(mobileDir))
+            {
+                directoryFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
+                await LogEngine.Out(logFile, $"Found {directoryFiles.Count()} song files in compressed directory ({mobileDir})", "LibraryScanner");
+                double mobileSize = 0.00;
+                foreach (var f in directoryFiles) { mobileSize += f.Length; }
+                compressedFiles.Add(mobileDir,  directoryFiles);
+            }
+            else
+            {
+                Directory.CreateDirectory(mobileDir);
+            }
+        }
+        return compressedFiles;
     }
 }

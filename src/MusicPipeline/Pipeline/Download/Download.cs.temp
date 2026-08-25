@@ -1,13 +1,13 @@
-using System.Threading; // System comes first
-using MusicPipeline.Results; // These are in whatever order they're first used
+using System.Threading;
+using MusicPipeline.Results;
 using MusicPipeline.Profiles;
-using MusicPipeline.Colours; // Colours always before Logging
-using MusicPipeline.Tools.LogEngine; // Tools last
+using MusicPipeline.Colours; 
+using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Pipeline;
 
 class Downloader
 {
-	/* First use of Profiles*/ private Profile activeProfile = "Null";
+	private Profile activeProfile = "Null";
 	private string logFile = "Null";
 	private string backupDir = "Null";
 	private string YTDLPPath = "Null";
@@ -22,7 +22,7 @@ class Downloader
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
 
-	public async Task<Result> /* First use of Results */ Download(string profileFile)
+	public async Task<Result>Download(string profileFile)
 	{
 		activeProfile = ProfileManager.LoadActiveProfile(profileFile);
 		logFile = activeProfile.DiagLogFile;

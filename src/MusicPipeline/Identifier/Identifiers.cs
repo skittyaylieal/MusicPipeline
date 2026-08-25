@@ -14,7 +14,7 @@ public class SongIdentifier
 	public UInt64 PermenantID {get; set;}
 	public required string Type {get; set;}
 	public double SizeMB {get; set;}
-	public double SizeCompressed {get; set;}
+	public List<double> SizesCompressed {get; set;}
 	public bool Instrumental {get; set;}
 	public bool Lyrics {get; set;}
 	public bool SyncedLyrics {get; set;}
@@ -24,7 +24,7 @@ public class SongIdentifier
 
 	public SongIdentifier(string title, string artist,
 	string album, List<FileInfo> paths, UInt64? id, string type, double sizeMB,
-	double sizeCompressed, bool instrumental, bool lyrics,
+	List<double> sizesCompressed, bool instrumental, bool lyrics,
 	bool syncedLyrics, FileInfo? lyricsPath, bool lore, DateTime loreDate = new DateTime())
 	{
 		Title = title;
@@ -34,11 +34,12 @@ public class SongIdentifier
 		PermenantID = id ?? Hasher.GetHashForSong(title, artist, album);
 		Type = type;
 		SizeMB = sizeMB;
-		SizeCompressed = sizeCompressed;
+		SizesCompressed = sizesCompressed;
 		Instrumental = instrumental;
 		Lyrics = lyrics;
 		if (lyrics) {
 			SyncedLyrics = syncedLyrics;
+			// TODO: make this code properly support different extensions and actually providing lyric paths
 			if (SyncedLyrics) {
 				// From LukeH https://stackoverflow.com/a/2201648/22942130
 				int index = paths[0].FullName.IndexOf(paths[0].Extension);

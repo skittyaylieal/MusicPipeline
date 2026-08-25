@@ -14,7 +14,7 @@ public class Profile
 {
 	public string Name {get; set;} = "Null";
 	public string BackupDir {get; set;} = "Null";
-	public string MobileDir {get; set;} = "Null";
+	public List<string> CompressedDirs {get; set;} = ["Null"];
 	public string BrokenSongsFile {get; set;} = "Null";
 	public string DiagLogFile {get; set;} = "Null";
 	public string CacheFile {get; set;} = "Null";

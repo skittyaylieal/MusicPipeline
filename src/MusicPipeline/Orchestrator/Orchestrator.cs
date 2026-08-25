@@ -1,10 +1,10 @@
-using System.Text.Json;
-using MusicPipeline.Tools.LogEngine;
-using MusicPipeline.Colours;
-using MusicPipeline.Profiles;
+using System.Text.Json; // System comes first
+using MusicPipeline.Profiles; // These are in whatever order they're first used
+using MusicPipeline.Results;
 using MusicPipeline.Pipeline;
 using MusicPipeline.StepHandler;
-using MusicPipeline.Results;
+using MusicPipeline.Colours; // Colours always before Logging
+using MusicPipeline.Tools.LogEngine; // Tools last
 namespace MusicPipeline.Orchestrator;
 
 public static class Orchestrator
@@ -20,7 +20,7 @@ public static class Orchestrator
 	{
 		
 
-		Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		/* First use of Profiles*/ Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		string logFile = activeProfile.DiagLogFile;
 		Console.WriteLine("Test");
 		await LogEngine.WipeAsync(logFile, "Orchestrator");
@@ -32,7 +32,7 @@ public static class Orchestrator
 		Profiles.Profile NewActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		await LogEngine.Out(logFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
 		
-
+ 		// First use of Results
 		Result Step1Result = await Cookies.CookieCheck(profileFile);
 		Handler.HandleResult(Step1Result, profileFile);
 	}
