@@ -1,9 +1,10 @@
-using MusicPipeline.Tools.LogEngine;
-using MusicPipeline.Colours;
-using MusicPipeline.Profiles;
-using MusicPipeline.Results;
-using MusicPipeline.SongIdentifiers; //not currently used 
 using System.Diagnostics;
+using MusicPipeline.Results;
+using MusicPipeline.Profiles;
+using MusicPipeline.SongIdentifiers; //not currently used 
+using MusicPipeline.Colours;
+using MusicPipeline.Tools.LogEngine;
+using MusicPipeline.Pipeline.Helpers.Execute;
 namespace MusicPipeline.Pipeline;
 
 class Cookies
@@ -31,84 +32,38 @@ class Cookies
 
 		if (!File.Exists(cookieFile)){
 			await LogEngine.Out(logFile, "[ERROR] Cookie File could not be found. Please export one.", "Cookies", DefaultColours.Error);
-			DateTime end = DateTime.UtcNow;
-			TimeSpan elapsed = end - start;
-			return CookieDefaults.FileError(false, elapsed);
+			return CookieDefaults.FileError(false, start);
 		}
 		if (!File.Exists(YTDLPPath)){
 			await LogEngine.Out(logFile, "[ERROR] YTDLP Executable could not be found.", "Cookies", DefaultColours.Error);
-			DateTime end = DateTime.UtcNow;
-			TimeSpan elapsed = end - start;
-			return CookieDefaults.FileError(true, elapsed);
+			return CookieDefaults.FileError(true, start);
 		}
 
 		await LogEngine.Out(logFile, "[+] Cookie and YTDLP files located sucsessfully!", "Cookies", DefaultColours.Success);
 		await LogEngine.Out(logFile, "[*] Testing cookies on YouTube.", "Cookies");
-		//this object initialization can be simplified, or you can create a constructor for ProcessStartInfo.
-		// TODO: Make some general thing for every step to use
-		ProcessStartInfo startInfo = new ProcessStartInfo();
-		startInfo.CreateNoWindow = true;
-		startInfo.UseShellExecute = false;
-		startInfo.FileName = YTDLPPath;
-		startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-		startInfo.RedirectStandardOutput = true;
-		startInfo.Arguments = $"--cookies \"{cookieFile}\" --simulate --quiet {testURL}";
-
 		try
 		{
-			using (Process? YTDLPProcess = Process.Start(startInfo))
+			using (Process YTDLPProcess = await Helper.Execute(YTDLPPath, $"--cookies \"{cookieFile}\" --simulate --quiet {testURL}"))
 			{
-				//check for nulls first
-				// Done?
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - start;
 					return new Result("Cookie Verification", false, elapsedError, "YTDLPProcess is Null");
 				}
-				string? currentLine;
+				// The cookie check uses --quiet so doesn't have any output
+				// But this is a useful example for other programs
 				/*
-				while (true) {
-					try {
-						currentLine = await YTDLPProcess.StandardOutput.ReadLineAsync();
-						if (currentLine != null) {
-							await LogEngine.Out(logFile, "Outputted", "Cookies", DefaultColours.Debug);
-							break;
-						}
-					} catch (InvalidOperationException) {
-						Stopwatch stopwatch = Stopwatch.StartNew();
-						while (true)
-						{
-						    //some other processing to do possible
-						    await LogEngine.Out(logFile, "Waiting", "Cookies", DefaultColours.Debug);
-						    if (stopwatch.ElapsedMilliseconds >= 5)
-						    {
-						        break;
-						    }
-						}
-						continue;
-					}
-				}
-				*/
-				// Ok don't do that lol
-				// It doesn't exit
-				// Weird, because that implies that it was never getting an output, and just crashing
-				// Meaning something else isn't working properly
-				// But it should be outputting on standard
-				// This while decleration is an absolute mess, but basically it assigns the variable and then checks if it's null
-				// To not set the variable to the bool "await YTDLPProcess.StandardOutput.ReadLineAsync() == null"
-				// You need all those brackets
-				// Maybe some helper function? StandardOutputAsync or smth
+				string? currentLine;
 				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
-						// 1. Flash it to your master console/global log stream
 						await LogEngine.Out(logFile, currentLine, "Cookies");
 					}
 				}
+				*/
 
 				await YTDLPProcess.WaitForExitAsync();
 				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;
-				//Result res = new Result(true, Elapsed, "no error", new List<MSongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "NONE", 0, "m4a", 6.90, 4.20, false, true, true, false)));
 				return new Result("Cookie Verification", true, elapsed);
 			}
 		}

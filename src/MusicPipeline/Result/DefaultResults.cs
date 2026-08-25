@@ -2,7 +2,7 @@ namespace MusicPipeline.Results;
 
 public static class CookieDefaults
 {
-	public static Result FileError(bool YTDLP, TimeSpan Elapsed)
+	public static Result FileError(bool YTDLP, DateTime start)
 	{
 		/*
 		Result Res = new Result("Cookie Verification", false, Elapsed);
@@ -18,10 +18,13 @@ public static class CookieDefaults
 		// I prefer this, much more what i was going for, thanks
 		// Added
 
+		DateTime end = DateTime.UtcNow;
+		TimeSpan elapsed = end - start;
+
 		var error = "Cookie file not found";
 		if (YTDLP)
 			error = "YTDLP executable not found";
-		return new Result("Cookie Verification", false, Elapsed, error);
+		return new Result("Cookie Verification", false, elapsed, error);
 		
 	}
 }
