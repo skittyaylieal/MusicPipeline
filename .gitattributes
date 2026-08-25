@@ -1,0 +1,17 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Force C# source code and Razor views to use LF on check-in
+*.cs text diff=csharp eol=lf
+*.cshtml text eol=lf
+
+# Standard .NET text assets
+*.sln text eol=crlf
+*.csproj text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+# Treat binary files as binary so Git doesn't mess with them
+*.png binary
+*.jpg binary
+*.dll binary
