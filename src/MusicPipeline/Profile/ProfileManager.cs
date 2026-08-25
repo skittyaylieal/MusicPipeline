@@ -189,6 +189,7 @@ public static class ProfileManager
 	{
 		// TODO
 		await LogEngine.Out(LogFile, "Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning);
+		throw new NotImplementedException();
 	}
 
 	private static async Task<ProfileFile> GetProfileFile(string profileFile)

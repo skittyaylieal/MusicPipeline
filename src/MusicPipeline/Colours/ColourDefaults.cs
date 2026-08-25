@@ -7,6 +7,7 @@ public class DefaultColours
 	public const int Debug = 145;
 	public const int Warning = 220;
 	public const int Cookies = 112;
+	public const int System = 230;
 	public const int Orchestrator = 213;
 	public const int LibraryScanner = 177;
 	public const int StepHandler = 77;

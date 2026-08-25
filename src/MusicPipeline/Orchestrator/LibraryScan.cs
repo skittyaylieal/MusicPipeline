@@ -1,8 +1,9 @@
 using System.IO;
-using MusicPipeline.Tools.Hasher;
 using MusicPipeline.Profiles;
-using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Colours;
+using MusicPipeline.Tools.LogEngine;
+using MusicPipeline.Tools.Hasher;
+using MusicPipeline.Tools.ListTools;
 namespace MusicPipeline.Orchestrator;
 
 public class Scanner
@@ -68,8 +69,8 @@ public class Scanner
         //what are you trying to do with this line below?
         //var files = masterFiles ?? mobileFiles;
         //maxDownloadThreads = maxDownloadThreads < playlists.Count() ? playlists.Count() : maxDownloadThreads;
-        var files = masterFiles.Count < MaxCountAnyList(compressedFiles) ? compressedFiles : masterFiles;
-        await files.Count > masterFiles.Count ? LogEngine.Out(logFile, $"Compressed Directory {MaxCountAnyList(compressedFiles, true)} has {MaxCountAnyList(compressedFiles) - masterFiles.Count} more songs than Master", "LibraryScanner", DefaultColours.Warning) : LogEngine.Out(logFile, $"The largest compressed directory, {MaxCountAnyList(compressedFiles, true)}, has {MaxCountAnyList(compressedFiles) - masterFiles.Count} fewer songs that Master. Declare this directory a subset to dismiss.", "LibraryScanner", DefaultColours.Warning)
+        IEnumerable<string>? files = masterFiles?.Count() < Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) ? compressedFiles[await ListTools.MaxCountAnyList(compressedFiles, true)] : masterFiles;
+        await (files?.Count() > masterFiles?.Count() ? LogEngine.Out(logFile, $"Compressed Directory {await ListTools.MaxCountAnyList(compressedFiles, true)} has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} more songs than Master", "LibraryScanner", DefaultColours.Warning) : LogEngine.Out(logFile, $"The largest compressed directory, {await ListTools.MaxCountAnyList(compressedFiles, true)}, has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} fewer songs that Master. Declare this directory a subset to dismiss.", "LibraryScanner", DefaultColours.Warning));
         //var files;
         if (files is null)
         {
@@ -81,7 +82,7 @@ public class Scanner
         // Oh god now i need to make a database or something
         // I need a list of Identifiers
 
-        foreach (var f in files)
+        foreach (string f in files)
         {
 
         }
