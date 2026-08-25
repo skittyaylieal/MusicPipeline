@@ -1,0 +1,13 @@
+# Handle line endings automatically for text files
+* text=auto
+
+# Explicitly declare text files you want to always normalize to LF on check-in
+*.js text
+*.ts text
+*.html text
+*.css text
+*.json text
+*.md text
+*.txt text
+*.cs text
+*.cshtml text
