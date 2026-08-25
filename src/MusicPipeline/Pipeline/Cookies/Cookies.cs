@@ -47,7 +47,7 @@ class Cookies
 		//this object initialization can be simplified, or you can create a constructor for ProcessStartInfo.
 		// TODO: Make some general thing for every step to use
 		ProcessStartInfo startInfo = new ProcessStartInfo();
-		startInfo.CreateNoWindow = false;
+		startInfo.CreateNoWindow = true;
 		startInfo.UseShellExecute = false;
 		startInfo.FileName = YTDLPPath;
 		startInfo.WindowStyle = ProcessWindowStyle.Hidden;
