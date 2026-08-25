@@ -13,6 +13,7 @@ startInfo.CreateNoWindow = false;
 startInfo.UseShellExecute = false;
 startInfo.FileName = @"C:\MusicTools\yt-dlp.exe";
 startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+startInfo.RedirectStandardOutput = true;
 startInfo.Arguments = @"--cookies C:\MusicTools\MusicPipeline\Sandbox\Config\cookies.txt --simulate --quiet https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
 try

@@ -51,6 +51,7 @@ class Cookies
 		startInfo.UseShellExecute = false;
 		startInfo.FileName = YTDLPPath;
 		startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+		startInfo.RedirectStandardOutput = true;
 		startInfo.Arguments = $"--cookies \"{cookieFile}\" --simulate --quiet {testURL}";
 
 		try
