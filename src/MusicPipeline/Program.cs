@@ -9,8 +9,8 @@ using System.Diagnostics;
 // Ok lets test stuff
 
 ProcessStartInfo startInfo = new ProcessStartInfo();
-startInfo.CreateNoWindow = false;
-startInfo.UseShellExecute = false;
+startInfo.CreateNoWindow = true;
+startInfo.UseShellExecute = true;
 startInfo.FileName = @"C:\MusicTools\yt-dlp.exe";
 startInfo.WindowStyle = ProcessWindowStyle.Hidden;
 startInfo.RedirectStandardOutput = true;
