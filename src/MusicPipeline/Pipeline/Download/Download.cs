@@ -172,7 +172,7 @@ class Downloader
 			$"--audio-format m4a ", // Use m4a as the audio format to output
 			$"--audio-quality 0 ", // 0 is best
 			$"--download-archive {historyPath} ", // The history file containing all the processed songs
-			$"--ignore-errors ", // If a song fails, continue
+			//$"--ignore-errors ", // If a song fails, continue
 			$"--no-abort-on-error ", // See above
 			$"--legacy-server-connect ", // Supports connecting to legacy youtube servers
 			//^ Per YTDLPs README "Explicitly allow HTTPS connection to servers that do not support RFC 5746 secure renegotiation"
