@@ -128,7 +128,7 @@ public static class ProfileManager
 		}
 		catch (FileNotFoundException) {
 			await LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", DefaultColours.Error);
-			await SaveProfileContext(profileFile);
+			await SaveProfile(profileFile);
 		}
 		string jsonString = File.ReadAllText(profileFile);
 		await LogEngine.Out(LogFile, jsonString, "Debug", 145);
@@ -140,7 +140,7 @@ public static class ProfileManager
 #pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, i hope my code is safe enough to warrant it
 		} else {
 			await LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", DefaultColours.Error);
-			await SaveProfileContext(profileFile);
+			await SaveProfile(profileFile);
 			return DefaultProfiles.DefaultProfile;
 		}
 
@@ -157,7 +157,7 @@ public static class ProfileManager
 		// Done
 	}
 
-	public static async Task SaveProfileContext(string profileFile, Profile? profile = null)
+	public static async Task SaveProfile(string profileFile, Profile? profile = null)
 	{
 		// TODO: fix
 		//next step of todo, name what is broken :)
@@ -185,7 +185,7 @@ public static class ProfileManager
 		
 	}
 
-	public static async Task SwitchProfileContext(string profileFile)
+	public static async Task SwitchProfile(string profileFile)
 	{
 		// TODO
 		await LogEngine.Out(LogFile, "Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning);
