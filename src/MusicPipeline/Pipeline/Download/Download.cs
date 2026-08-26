@@ -50,6 +50,14 @@ class Downloader
 
 		DateTime start = DateTime.UtcNow;
 
+		if (Directory.Exists(configDir)) {
+			IEnumerable<string> allSubFiles = Directory.EnumerateFiles(configDir, @"run_errors_playlist\d+.txt", SearchOption.AllDirectories);
+			foreach (string file in allSubFiles) {
+				LogEngine.Out(logFile, $"File found {file}", "Downloader", DefaultColours.Debug);
+				// Temporary debug to check that it's finding the right files
+			}
+		}
+
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
 
 		await LogEngine.Out(logFile, "==============================================", "Downloader");
