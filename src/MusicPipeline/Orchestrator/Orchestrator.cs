@@ -7,7 +7,7 @@ using MusicPipeline.Colours; // Colours always before Logging
 using MusicPipeline.Tools.LogEngine; // Tools last
 namespace MusicPipeline.Orchestrator;
 
-public static class Orchestrator
+public class Orchestrator
 {
 	// Class Colour code is 213
 
@@ -16,8 +16,9 @@ public static class Orchestrator
 	//Orchestrator.Start(); in program.cs
 	// Need tools
 	// 
-	public static async Task Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
+	public async Task Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
 	{
+		var orc = new Orchestrator();
 		
 
 		/* First use of Profiles*/ Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
@@ -31,10 +32,15 @@ public static class Orchestrator
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
 		Profiles.Profile NewActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		await LogEngine.Out(logFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
-		
+		await ProfileManager.SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
+
  		// First use of Results
 		Result Step1Result = await Cookies.CookieCheck(profileFile);
 		Handler.HandleResult(Step1Result, profileFile);
+		List<Result> Step2Results = await Downloader.Download(profileFile);
+		foreach (Result r in Step2Results) {
+			Handler.HandleResult(r, profileFile);
+		}
 	}
 
 
