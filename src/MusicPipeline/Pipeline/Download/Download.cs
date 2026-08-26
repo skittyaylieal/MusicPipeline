@@ -88,8 +88,9 @@ class Downloader
 		But I'm not 100% sure how the ternary operator works
 		*/
 
-
-		Parallel.For(0, maxDownloadThreads, async i => await DownloadThread(i));
+		Task? j = null;
+		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
+		await j;
 		List<Result>? results = null;
 		foreach (Result r in res) {
 			results.Add(r);
