@@ -1,5 +1,3 @@
-using MusicPipeline.Colours;
-using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Tools.Hasher;
 namespace MusicPipeline.SongIdentifiers;
 
@@ -24,42 +22,36 @@ public class SongIdentifier
 	public bool Lore {get; set;}
 	public DateTime LoreDate {get; set;}
 
-	public async Task<SongIdentifier> SongIdentifier(string title, string artist,
-	string album, List<FileInfo> paths, UInt64? id = null, string type, double sizeMB,
+	public SongIdentifier(string title, string artist,
+	string album, List<FileInfo> paths, UInt64? id, string type, double sizeMB,
 	List<double> sizesCompressed, bool instrumental, bool lyrics,
-	bool syncedLyrics, FileInfo? lyricsPath, bool lore, DateTime? loreDate = null)
+	bool syncedLyrics, FileInfo? lyricsPath, bool lore, DateTime loreDate = new DateTime())
 	{
-		this.Title = title;
-		this.Artist = artist;
-		this.Album = album;
-		this.Paths = paths;
-		this.PermenantID = id ?? Hasher.GetHashForSong(title, artist, album);
-		this.Type = type;
-		this.SizeMB = sizeMB;
-		this.SizesCompressed = sizesCompressed;
-		this.Instrumental = instrumental;
-		this.Lyrics = lyrics;
+		Title = title;
+		Artist = artist;
+		Album = album;
+		Paths = paths;
+		PermenantID = id ?? Hasher.GetHashForSong(title, artist, album);
+		Type = type;
+		SizeMB = sizeMB;
+		SizesCompressed = sizesCompressed;
+		Instrumental = instrumental;
+		Lyrics = lyrics;
 		if (lyrics) {
-			this.SyncedLyrics = syncedLyrics;
+			SyncedLyrics = syncedLyrics;
 			// TODO: make this code properly support different extensions and actually providing lyric paths
-			if (this.SyncedLyrics) {
+			if (SyncedLyrics) {
 				// From LukeH https://stackoverflow.com/a/2201648/22942130
 				int index = paths[0].FullName.IndexOf(paths[0].Extension);
 				string cleanPath = ( index < 0)
 					? paths[0].FullName
 					: paths[0].FullName.Remove(index, paths[0].Extension.Length);
-				this.LyricsPath = lyricsPath ?? new FileInfo($"{cleanPath}.lrc"); 
+				LyricsPath = lyricsPath ?? new FileInfo($"{cleanPath}.lrc"); 
 			}
 		}
-		this.Lore = lore;
+		Lore = lore;
 		if (lore) {
-			if (loreDate == null) {
-				this.LoreDate = new DateTime();
-				await LogEngine.Out(null, "LoreDate has not been provided. Please fix.", "SongIdentifierConstructor", DefaultColours.Error);
-			} else {
-				this.LoreDate = loreDate;
-			}
+			LoreDate = loreDate;
 		}
-		return this;
 	}
 }
