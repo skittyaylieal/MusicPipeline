@@ -1,3 +1,4 @@
+using MusicPipeline.Profiles;
 using MusicPipeline.Colours;
 namespace MusicPipeline.Tools.LogEngine;
 
@@ -10,7 +11,7 @@ public class LogEngine
 	private const char esc = '\u001B';
 	private const string reset = $"\u001B[0m";
 
-	public static async Task Out(string logFile, string message, string user = "System", int? style = null) 
+	public static async Task Out(string? logFile, string message, string user = "System", int? style = null) 
 	{
 		/*ArgumentException.ThrowIfNullOrEmpty(LogFile);
 		ArgumentException.ThrowIfNullOrEmpty(Message);
@@ -19,8 +20,22 @@ public class LogEngine
 			throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
 		}*/
 
-		// TODO: Make this a case switch thingy
+		if (logFile is null) {
+			// This means a system thing like a constructor which doesn't have access to the current LogFile has had to send a message
+			// I don't know what to do here
+			// Directory.GetParent(workingDirectory).Parent.Parent.FullName
+			string? likelyProfileFile = null;
+			string possibleProjectDirectory = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.Parent.Parent.FullName;
+			IEnumerable<string> allSubFiles = Directory.EnumerateFiles(possibleProjectDirectory);
+			foreach (string subFile in allSubFiles) {
+				if (subFile.Contains("profiles.json")) {likelyProfileFile = subFile;}
+			}
+			Profile activeProfile = await ProfileManager.LoadActiveProfile(likelyProfileFile);
+			logFile = activeProfile.DiagLogFile;
+		}
 
+
+		// TODO: Make this a case switch thingy
 		if (style is null) {
 			// Should've been omitted
 			var field = typeof(DefaultColours).GetField(user);
