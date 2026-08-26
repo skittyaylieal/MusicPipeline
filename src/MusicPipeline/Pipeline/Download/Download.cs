@@ -76,7 +76,7 @@ class Downloader
 		// Tada!
 
 		// From JleruOHeP on https://stackoverflow.com/questions/23419396/can-you-assign-a-value-only-if-its-greater-less-than-the-current-value#comment35888947_23419396
-		maxDownloadThreads = maxDownloadThreads < playlists.Count() ? playlists.Count() : maxDownloadThreads;
+		maxDownloadThreads = maxDownloadThreads > playlists.Count() ? playlists.Count() : maxDownloadThreads;
 		// I believe this effectively does
 		/*
 		if (maxDownloadThreads < playlist.Count()) {
