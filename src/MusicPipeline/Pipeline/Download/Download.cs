@@ -163,7 +163,7 @@ class Downloader
 			//^ Per YTDLPs README "Explicitly allow HTTPS connection to servers that do not support RFC 5746 secure renegotiation"
 			$"--socket-timeout 30 ", // If the socket is quiet for more than 30 seconds, give up
 			$"{playlists[index]}" // The url of the current playlist
-			)
+			);
 
 	}
 }
