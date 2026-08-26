@@ -220,8 +220,27 @@ class Downloader
 	private async Task<List<SongIdentifier>> GetAffectedSongInfo()
 	{
 		await LogEngine.Out(logFile, "TODO: URGENT: MAKE GetAffectedSongInfo", "Downloader", DefaultColours.Error);
-		//return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
-		return new List<SongIdentifier>([new SongIdentifier("Null", "Null", "Null", new List<FileInfo>([new FileInfo("Null")]), 0, "Null", 0.0, new List<double>([0.0]), false, false, false, new FileInfo("Null"), false, new DateTime())]);
+        //return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
+        List<FileInfo> paths = [new("Null")];
+        List<double> sizesCompressed = new([0.0]);
+        FileInfo lyricsPath = new("Null");
+        DateTime loreDate = new();
+        SongIdentifier songIdentifier =
+            new(title: "Null",
+            artist: "Null",
+            album:"Null",
+            paths,
+            id: 0,
+            type: "Null",
+            sizeMB: 0.0,
+            sizesCompressed: sizesCompressed,
+            instrumental: false,
+            lyrics: false,
+            syncedLyrics: false,
+            lyricsPath,
+            lore: false,
+            loreDate);
+        return [songIdentifier];
 	}
 
 	private async Task<string> GetErrorsInThread(int threadIndex)
