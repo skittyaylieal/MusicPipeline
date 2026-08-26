@@ -200,7 +200,7 @@ class Downloader
 						lines.Add(currentLine);
 					}
 				}
-				string errorFile = $@"{configDir}\run_errors{index}.txt";
+				string errorFile = $@"{configDir}\run_errors_playlist{index+1}.txt";
 				await File.AppendAllTextAsync(errorFile, String.Join("\n", lines));
 				
 
