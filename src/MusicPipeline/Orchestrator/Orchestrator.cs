@@ -28,7 +28,7 @@ public static class Orchestrator
 		await LogEngine.Out(logFile, "Test Number 2", "Orchestrator");
 		await LogEngine.Out(logFile, JsonSerializer.Serialize(activeProfile), "Orchestrator", 54);
 		activeProfile.ScannerSleepIntervalSec = 30;
-		await ProfileManager.SaveProfileContext(profileFile, activeProfile);
+		await ProfileManager.SaveProfile(profileFile, activeProfile);
 		Profiles.Profile NewActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		await LogEngine.Out(logFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
 		

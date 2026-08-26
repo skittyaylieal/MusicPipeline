@@ -7,20 +7,20 @@ public class SongIdentifier
 	//AI says on the subject "Using nullable types like bool? or DateTime? without a clear architectural need introduces unnecessary complexity,
 	//increases the surface area for bugs, and forces downstream developers to write defensive boilerplate code."
 	// Done
-	public required string Title {get; set;}
-	public required string Artist {get; set;}
-	public required string Album {get; set;}
-	public required List<FileInfo> Paths {get; set;}
-	public UInt64 PermenantID {get; set;}
-	public required string Type {get; set;}
-	public double SizeMB {get; set;}
-	public List<double> SizesCompressed {get; set;}
-	public bool Instrumental {get; set;}
-	public bool Lyrics {get; set;}
-	public bool SyncedLyrics {get; set;}
-	public FileInfo? LyricsPath {get; set;}
-	public bool Lore {get; set;}
-	public DateTime LoreDate {get; set;}
+	public required string Title {get; set;} = "Null";
+	public required string Artist {get; set;} = "Null";
+	public required string Album {get; set;} = "Null";
+	public required List<FileInfo> Paths {get; set;} = new List<FileInfo>([new FileInfo("Null")]);
+	public UInt64 PermenantID {get; set;} = 0;
+	public required string Type {get; set;} = "Null";
+	public double SizeMB {get; set;} = 0.0;
+	public List<double> SizesCompressed {get; set;} = new List<double>([0.0]);
+	public bool Instrumental {get; set;} = false;
+	public bool Lyrics {get; set;} = false;
+	public bool SyncedLyrics {get; set;} = false;
+	public FileInfo? LyricsPath {get; set;} = new FileInfo("Null");
+	public bool Lore {get; set;} = false;
+	public DateTime LoreDate {get; set;} = new DateTime();
 
 	public SongIdentifier(string title, string artist,
 	string album, List<FileInfo> paths, UInt64? id, string type, double sizeMB,

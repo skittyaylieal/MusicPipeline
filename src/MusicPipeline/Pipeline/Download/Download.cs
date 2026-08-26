@@ -61,7 +61,6 @@ class Downloader
 			Directory.CreateDirectory(backupDir);
 		}
 
-		string outputTemplate = $"{backupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s";
 
 		if (cleanSweep) {
 			historyPath = $@"{configDir}\pipeline_null_history_{Guid.NewGuid()}.txt";
@@ -98,7 +97,8 @@ class Downloader
 		}
 		DateTime end = DateTime.UtcNow;
 		TimeSpan elapsed = end - start;
-		return results.Insert(0, new Result("Downloader", true, elapsed, "", await GetAffectedSongInfo()));
+		results.Insert(0, new Result("Downloader", true, elapsed, "", await GetAffectedSongInfo()));
+		return results;
 	}
 
 	private async Task DownloadThread(int index)
@@ -220,7 +220,8 @@ class Downloader
 	private async Task<List<SongIdentifier>> GetAffectedSongInfo()
 	{
 		await LogEngine.Out(logFile, "TODO: URGENT: MAKE GetAffectedSongInfo", "Downloader", DefaultColours.Error);
-		return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
+		//return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
+		return new List<SongIdentifier>([new SongIdentifier("Null", "Null", "Null", new List<FileInfo>([new FileInfo("Null")]), 0, "Null", 0.0, new List<double>([0.0]), false, false, false, new FileInfo("Null"), false, new DateTime())]);
 	}
 
 	private async Task<string> GetErrorsInThread(int threadIndex)

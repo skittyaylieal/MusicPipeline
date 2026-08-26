@@ -8,8 +8,8 @@ public class Result
 	// Any errors
 	// Any processed songs and what to do with them
 	public string Step;
-	public  bool Outcome;
-	public  TimeSpan Elapsed;
+	public bool Outcome;
+	public TimeSpan Elapsed;
 	public string? Error;
 	public List<SongIdentifier>? Songs;
 	
