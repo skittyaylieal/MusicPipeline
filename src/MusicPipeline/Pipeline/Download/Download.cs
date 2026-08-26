@@ -107,7 +107,7 @@ class Downloader
 		await LogEngine.Out(logFile, $"Index = {index} Playlists = {playlists}, sleepInterval = {sleepInterval}", "DownloadThread", DefaultColours.Debug);
 		int? colourCode = null;
 		// I know this isn't technically the same order as the original but the testing only has one playlist and I prefer the peach colour. Sue me.
-		switch (index) {
+		switch (index + 1) {
 			case 1:
 				colourCode = 217; // Peach
 				break; 
