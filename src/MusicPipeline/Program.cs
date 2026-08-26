@@ -4,7 +4,8 @@ using MusicPipeline.Orchestrator;
 // using System.Text.Json;
 // using MusicPipeline.Tools.LogEngine;
 // using System.Diagnostics;
-await Orchestrator.Start();
+var orc = new Orchestrator();
+await orc.Start();
 
 
 

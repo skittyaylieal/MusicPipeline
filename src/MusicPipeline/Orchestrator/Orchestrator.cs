@@ -17,9 +17,7 @@ public class Orchestrator
 	// Need tools
 	// 
 	public async Task Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\csProfiles.json")
-	{
-		var orc = new Orchestrator();
-		
+	{		
 
 		/* First use of Profiles*/ Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		string logFile = activeProfile.DiagLogFile;
@@ -37,7 +35,8 @@ public class Orchestrator
  		// First use of Results
 		Result Step1Result = await Cookies.CookieCheck(profileFile);
 		Handler.HandleResult(Step1Result, profileFile);
-		List<Result> Step2Results = await Downloader.Download(profileFile);
+		var d = new Downloader();
+		List<Result> Step2Results = await d.Download(profileFile);
 		foreach (Result r in Step2Results) {
 			Handler.HandleResult(r, profileFile);
 		}
