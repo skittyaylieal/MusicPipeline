@@ -6,12 +6,15 @@
 *.cshtml text eol=lf
 
 # Standard .NET text assets
-*.sln text eol=crlf
+*.sln text eol=lf
 *.csproj text eol=lf
 *.json text eol=lf
+*.props text eol=lf
+*.targets text eol=lf
 *.md text eol=lf
 
 # Treat binary files as binary so Git doesn't mess with them
 *.png binary
 *.jpg binary
 *.dll binary
+*.cache binary
