@@ -1,0 +1,392 @@
+IDEAS
+
+more subscripts - pipeline, metrics, etc
+all information comes from active profile file, only need to send one parameter
+L profile files store EVERYTHING and new ones arent blank but instead copies of default
+multipage maybe? maybe use online tool
+split out css html and js
+better variable names, more concise
+Art.ps1 which crops the album art to the central square by removing the large blocks of colour then re-embeds the album art
+make every playlist go through vpn by default
+gadgets page in website
+	L allows uploading scripts and different languages to run them with
+custom object for holding all tracks, to go along with the uuid
+make my own colour theme using even spacing around the colour wheel
+use the new colour based system that lyrics.ps1 has in all track by track parallelisable scripts
+
+
+explanation of compressed directory and profile system
+eahc of these directorys is a collection of organisational subdirectories
+they only exist to make the artist album etc clear
+then the file name is the songs title
+essentially they should be transparent to this, but theyre important for output and for clearing up who owns what once you need to automatically put stuff into the database like this is doin
+the YT_Music_Mobile or Backup folders are collections of these songs
+then each profile holds numerous compressed song collections
+or just one uncompressed one
+mobile is optional but ideally youd have a compressed version when actually using this
+the profile also has all the other things like device specfic stuff (thread counts for compression) the songs to download etc etc
+and eventually it'll have like the exact flags to use when downloading and all that
+
+
+
+TODO:
+Make the profile initialise to defaults
+Make lyrics actually remove lyrics if a song is instrumental
+
+in website use the official wikipedia algorithm to find colours
+https://en.wikipedia.org/wiki/ANSI_escape_code
+should be what kitty uses 
+
+need to make a step handler to run each step and handle its Result and side effects
+
+
+TEST STUFFFFFFFF
+
+
+Ok pivoting
+gonna rewrite it all
+maybe
+c++?
+ooo rust
+no rust
+no c#
+no ruby
+hmmmmmmm
+nevermind :C
+eyy c# it is
+
+
+
+
+format of:
+
+$BrokenTracks.Add([PSCustomObject]@{
+                id         = Get-TrackUUID "Unknown" "Playlist $CurrentPlaylistIndex" $VideoID
+                videoId    = $VideoID
+                title      = "Track ID: $VideoID"
+                playlist   = "Playlist $CurrentPlaylistIndex"
+                reason     = $Reason
+                detectedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            })
+
+
+out should be invoke log msg
+
+
+
+outline: 
+	CookieCheck.ps1:
+
+	param (just the profile file) {
+		Param (
+		    [string]$ProfilesFile = "C:\MusicTools\MusicPipeline\Config\profiles.json"
+		)
+
+	}
+	[all the variables we need, mapped to the profile]
+	$watch = start.new.stopwatch()
+	try {
+	    Clear-Host
+	} catch {}
+
+	out "cookie validator"
+	if (!cookiepath.exists()) {
+		out "file couldnt be found"
+		exit
+	}
+	if (!execpath.exists()) {
+		out "executable couldnt be found"
+	}
+
+	out "files located successfully"
+	out "testing cookie status"
+
+	$output = run executable --cookies with cookie path, --simulate $testurl
+
+	if (!lastexitcode==0) {
+		out "auth failed"
+		out "cookies.txt expired or invalid"
+		exit
+	}
+
+	out "auth successfully"
+	$watch.stop()
+	$elapsed = "{0:hh\:mm\:ss}" -f watch.elapsed
+	out "$elapsed"
+	exit 0
+
+
+
+
+	Download.ps1:
+
+	param (profile file, maybe clean run switch)
+
+	local version for threading and access
+
+	stopwatch start
+	try {
+	    Clear-Host
+	} catch {}
+
+	out "Downloader"
+
+	if (!backupdir) {
+		create dir	
+	}
+
+	output template ("$BackupDir/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s")
+
+	cleanurls = $(foreach (url in urls) {
+	    if (url -match ',') {
+	        url -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
+	    } else {
+	        url.Trim().Trim('"').Trim("'")
+	    }
+	}) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+	[System.Collections.Generic.List[string]]$globalurlscopy = cleanurls
+
+
+	cleanurls | foreachobject -Parallel {
+		currurl = $_
+		indexlist = using:globalurlscopy
+		index = indexlist.indexof(currurl) + 1
+
+		activehistorylog = if(using:cleansweep) {
+			joinpath temp "pipeline_null_history_$newguid"_$index.txt"
+		} else {
+			using:historypath
+		}
+
+		errorpath = join-path using:configdir "playlist+{index}_run_errors.txt"
+		if (errorpath.exists) {remove -literalpath errorpath -force -erroraction silentlycontinue }
+
+		func invokelogmsg(text, idx, [switch]error) {
+			if (txt.blank) {return}
+			timestamp = (getdate).tostring("HH:mm:ss")
+
+			esc = [char]27
+			reset = "$esc[0m"
+
+			colcode = switch (idx) {
+				1 : "38;5;51"
+	            2 : "38;5;201"
+	            3 : "33"
+	            4 : "38;5;135"
+	            5 : "38;5;22"
+	            6 : "38;5;217"
+				_ : "32"
+			}
+
+			if (error) {
+				colcode = "1;31"
+			}
+
+			colprefix = "$esc[${colcode}m[$timestamp] [Playlist $idx]$reset"
+			formattedline = colprefix text
+
+			out "$formattedline"
+
+			if (using:logfile.exist) {
+				retry = 0
+				maxretry = 15
+				success = $false
+				while (!success && retry < maxretry) {
+					try {
+						file::appendall(using:logfile, ($formattedline + env::newline()))
+						$success = $true
+					} catch [system.io.ioexception] {
+						retry++
+						thread::sleep(50)
+					} catch {
+						break
+					}
+				}
+			}
+		}
+
+		try {
+			if (currurl.blank) {return}
+			invokelogmsg "Processing Playlist URL: $currurl" $index
+
+			ytdlargs = @(
+	            "--no-colors",
+	            "--verbose",
+	            "--newline",
+	            "--sleep-interval", $using:LocalSleepInterval,
+	            "--max-sleep-interval", $using:LocalMaxSleepInterval,
+	            "--sleep-requests", $using:LocalSleepRequests,
+	            "--embed-thumbnail",
+	            "--convert-thumbnails", "jpg",
+	            "--ppa", "EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih",
+	            "--embed-metadata",
+	            "--flat-playlist",
+	            "--no-keep-video",
+	            "--force-overwrites",
+	            "--cookies", $using:LocalCookiePath,
+	            "-P", $using:LocalBackupDir,
+	            "-o", $using:OutputTemplate,
+	            "--cache-dir", $using:LocalCacheDir,
+	            "--geo-bypass",
+	            "--js-runtime", "deno",
+	            "--extractor-args", "youtube:player_js_variant=tv",
+	            "-f", "bestaudio/best",
+	            "--extract-audio",
+	            "--audio-format", "m4a",
+	            "--audio-quality", "0",
+	            "--download-archive", $LocalActiveHistoryLog, 
+	            "--ignore-errors",
+	            "--no-abort-on-error",
+	            "--legacy-server-connect",
+	            "--socket-timeout", "30",
+	            $currurl
+	        )
+
+	        escapedargs = @()
+	        foreach (arg in ytdlargs) {
+	            if (arg match '[\s\\]' &&  !(arg match '^".*"$')) {
+	                escapedargs += "`"arg`""
+	            } else {
+	                escapedargs += arg
+	            }
+	        }
+	        ytdlargsclean = EscapedArgs join " "
+	        
+	        
+	        command = "`"`"using:ytdlppath`" ytdlargsclean 2>&1`""
+
+	        psi = [System.Diagnostics.ProcessStartInfo]::new()
+	        psi.FileName               = "cmd.exe"
+	        psi.Arguments              = "/c $CommandLine"
+	        psi.UseShellExecute        = False  
+	        psi.CreateNoWindow         = True
+	        $psi.WindowStyle            = [System.Diagnostics.ProcessWindowStyle]::Hidden
+
+	        psi.environmentvariables["PYTHONUNBUFFERED"] = "1"
+
+	        $proc = [System.Diagnostics.Process]::Start($psi)
+
+	        
+	        while (!proc.stdout.endofstream) {
+	        	currline = proc.stdout.readline()
+	        	if (currline != $null) {
+	        		invokelogmsg currline index
+	        		file::appendall(errorpath, currline + env::newline)
+	        	}
+	        }
+
+	        proc.WaitForExit()
+
+	        if (proc.exitcode = 0) {
+	        	invokelogmsg "Playlist completed successfully!" index
+	        } else {
+	        	invokelogmsg "Finished with warnings/errors. Exit Code: $(proc.exitcode)" index
+	        }
+	    } catch {
+	    	internalerrmsg = $_.exception.msg
+	    	failedlinenum = $_.invocinfo.scriptlinenumber
+	    	invokelogmsg "debug alert, execution failed on script line $failedlinenum. error $internalerrmsg" index
+	    } finally {
+	    	if (using:cleansweep && (activehistoryfile.exists())) {
+	    		removeitem activehistoryfile -force -erroraction silentlycontinue
+	    	}
+	    }
+	} -ThrottleLimit maxdownloadthreads
+
+	watch.stop()
+	elapsed = "{0:hh\:mm\:ss}" -f watch.elapsed"
+	out "[METRIC] Total Run Duration: $elapsed"
+	exit 0
+	
+
+
+
+	Fix.ps1:
+
+
+	param (profile file)
+
+	func get-trackuuid (artist, album, title) {
+		$Raw = "$Artist-$Album-$Title".ToLower().Trim()
+		$Hasher = [System.Security.Cryptography.SHA256]::Create()
+		$Bytes = $Hasher.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Raw))
+		$Hash = [System.BitConverter]::ToString($Bytes).Replace("-", "").ToLower()
+		return $Hash.Substring(0, 32)
+	}
+
+	errordbpath = join configdir "broken_songs.json"
+	brokentracks = list[pscustomobject]::new()
+
+	out "Found $BrokenTracks.length tracks that need fixing"
+
+	errorlogs = get-childitem -path configdir filter "playlist*_run_errors.txt" - file
+
+	foreach (log in errorlogs) {
+		if (log.length = 0) {continue}
+
+		rawlines = get-content literalpath log.fullname erroraction silentlycontinue
+		currplaylistidx = if (log.basename match '\d+') {$Matches[0]} else {"Unknown"}
+
+		for (i = 0; i < rawlines.count; i++) {
+			line = rawlines[i] replace '\x1b\[[0-9;]*m', ''
+
+			if (line match "ERROR:\s*\[youtube\]s*([^:]++):\s*(.*)") {
+				videoid = matches[1].trim()
+				reason = matches[2].trim()
+
+				if (i+1 < rawlines.count) {
+					nextline = rawlines[i+1] replace '\x1b\[[0-9;]*m', ''
+					reason += "($($nextline.trim()))"
+				}
+
+				if (! (brokentracks.videoid contains videoid)) {
+					brokentracks.add([pscustomobject]@{
+						id 			= get-trackuuid "Unknown" "Playlist $currplaylistidx" videoid
+						videoid  	= videoid
+						title 		= "Track ID: $VideoID"
+						playlist 	= "Playlist $currplaylistidx"
+						reason 		= reason
+						detectedAt 	= (get-date).tostring("yyyy-MM-dd HH:mm:ss")
+					})
+					out "[!] Flagged broken track: $videoid ($reason)"
+				}
+			}
+		}
+	}
+
+	if (test-path errordbpath) {
+		existingdb = get-content -literalpath errordbpath -raw -erroraction silentlycontinue | convertfrom-json
+		foreach (item in existingdb) {
+			if !(brokentracks.videoid -contains item.videoid) {
+				if (!item.id || item.id.length != 32) {
+					item.id get-trackuuid "Unknown" item.playist item.videoid
+				}
+				brokentracks.add(item)
+			}
+		}
+	}
+
+	brokentracks | conertto-json -depth 4 | out-file -filepath errordbpath -encoding utf8 -force
+	out "Analysis finished. Compiled errored songs to broken_songs.json"
+
+	if (autorecover) {
+		geotracks = brokentracks | where-object { $_.reason -match "available in your country|GeoRestrictedError|not made this video available"}
+		if (geotracks.count > 0 && (test-path protoncli)) {
+			out "Running standalone CLI recovery for the $($geotracks.count) location restricted tracks"
+			& protoncli -c --cc US
+			start-sleep -seconds 8
+			recovered = @()
+			foreach (track in geotracks) {
+				url = "https://www.youtube.com/watch?v=$($track.videoid)"
+				& ytdlppath {{insert ytdlp arguments if i actually do this}}
+				if ($LASTEXITCODE = 0) {recovered += track.videoid}
+			}
+			& protoncli d
+			if (recovered.count > 0) {
+				currdb = get-content -literalpath errordbpath raw | convertfrom-json
+				cleaneddb = currdb | where-object {recovered -notcontains $_.videoid}
+				cleaneddb | convertto-json -depth 4 | out-file -filepath errordpath -encoding utf8 -force
+			}
+		}
+	}

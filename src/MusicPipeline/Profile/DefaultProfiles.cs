@@ -9,8 +9,8 @@ public static class DefaultProfiles
 	public static readonly Profile DefaultProfile = new Profile
 	{
 		Name = "Default",
-		BackupDir = @"C:\MusicTools\MusicPipeline\Sandbox_Backup",
-		CompressedDirs = [@"C:\MusicTools\MusicPipeline\Sandbox_Mobile"],
+		BackupDir = @"C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup",
+		CompressedDirs = [@"C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Mobile"],
 		BrokenSongsFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\broken_songs.json",
 		DiagLogFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\csLogFile.log",
 		CacheFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\dashboard_cache.json",
@@ -20,8 +20,9 @@ public static class DefaultProfiles
 		YTDLPExe = @"C:\MusicTools\yt-dlp.exe",
 		FFmpegExe = @"C:\MusicTools\ffmpeg.exe",
 		FirefoxExe = @"C:\Program Files\Mozilla Firefox\firefox.exe",
-		CheckURL = @"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		CheckURL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		RootDir = @"C:\MusicTools\MusicPipeline",
+		OutputTemplate = $"{BackupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s"
 		SleepInterval = 4,
 		MaxSleepInterval = 12, 
 		SleepRequests = 3,
@@ -69,6 +70,7 @@ public static class DefaultProfiles
 		FirefoxExe = @"C:\Program Files\Mozilla Firefox\firefox.exe",
 		CheckURL = @"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		RootDir = @"C:\MusicTools\MusicPipeline",
+		OutputTemplate = $"{BackupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s"
 		SleepInterval = 4,
 		MaxSleepInterval = 12, 
 		SleepRequests = 3,
@@ -120,6 +122,7 @@ public static class DefaultProfiles
 		FirefoxExe = "ERROR",
 		CheckURL = "ERROR",
 		RootDir = "ERROR",
+		OutputTemplate = "ERROR"
 		SleepInterval = 2147483647,
 		MaxSleepInterval = 2147483647, 
 		SleepRequests = 2147483647,

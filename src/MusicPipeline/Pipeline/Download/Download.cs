@@ -1,6 +1,8 @@
 using System.Threading;
+using System.Diagnostics;
 using MusicPipeline.Results;
 using MusicPipeline.Profiles;
+using MusicPipeline.Pipeline.Helpers.Execute;
 using MusicPipeline.Colours; 
 using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Pipeline;
@@ -23,6 +25,8 @@ class Downloader
 	private int sleepRequests = 0;
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
+	private DateTime start = new DateTime();
+	private Result[]? res;
 
 	public async Task<Result> Download(string profileFile)
 	{
@@ -85,6 +89,7 @@ class Downloader
 
 
 		Parallel.For(0, maxDownloadThreads, async i => await DownloadThread(i));
+
 
 	}
 
@@ -163,8 +168,45 @@ class Downloader
 			//^ Per YTDLPs README "Explicitly allow HTTPS connection to servers that do not support RFC 5746 secure renegotiation"
 			$"--socket-timeout 30 ", // If the socket is quiet for more than 30 seconds, give up
 			$"{playlists[index]}" // The url of the current playlist
-			);
+		);
 
+
+		try
+		{
+			using (Process YTDLPProcess = await Helper.Execute(YTDLPPath, downloadArguments))
+			{
+				if (YTDLPProcess is null) {
+					DateTime endError = DateTime.UtcNow;
+					TimeSpan elapsedError = endError - start;
+					res.Append(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
+					return;
+				}
+				
+				string? currentLine;
+				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
+					if (currentLine != null) {
+						await LogEngine.Out(logFile, currentLine, "DownloaderThread", colourCode);
+					}
+				}
+				
+
+				await YTDLPProcess.WaitForExitAsync();
+				DateTime end = DateTime.UtcNow;
+				TimeSpan elapsed = end - start;
+				res.Append(new Result("DownloaderThread", true, elapsed));
+				return;
+			}
+		}
+		catch (System.ComponentModel.Win32Exception ex)
+		{
+			DateTime end = DateTime.UtcNow;
+			TimeSpan elapsed = end - start;
+			res.Append(new Result("DownloaderThread", false, elapsed, ex.Message));
+		}
+		finally
+		{
+			if (cleanSweep) {File.Delete(historyPath);}
+		}
 
 	}
 }
