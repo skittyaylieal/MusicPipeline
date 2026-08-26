@@ -83,7 +83,6 @@ class Downloader
 		But I'm not 100% sure how the ternary operator works
 		*/
 
-		downloadArguments =  "--no-colors --verbose --newline --sleep-interval {sleepInterval} --max-sleep-interval {maxSleepInterval} --sleep-requests {sleepRequests} --embed-thumbnail --convert-thumbnails jpg --ppa EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih --embed-metadata --parse-metadata title:%(artist)s - %(title)s --parse-metadata uploader:%(artist)s --no-keep-video --force-overwrites --cookies {cookiePath} -P {backupDir} -o {outputTemplate} --cache-dir {cacheDir} --geo-bypass --js-runtime deno --extractor-args youtube:player_js_variant=tv -f bestaudio/best --extract-audio --audio-format m4a --audio-quality 0 --download-archive {historyPath} --ignore-errors --no-abort-on-error --legacy-server-connect --socket-timeout 30 {playlists[index]}";
 
 		Parallel.For(0, maxDownloadThreads, async i => await DownloadThread(i));
 
@@ -120,41 +119,51 @@ class Downloader
 
 		await LogEngine.Out(logFile, $"Processing Playlist URL: {playlists[index]}", "Downloader", colourCode);
 
-
-		/*
-		args in progress
-						"--no-colors
-				--verbose
-				--newline
-				--sleep-interval $using:LocalSleepInterval
-				--max-sleep-interval $using:LocalMaxSleepInterval
-				--sleep-requests $using:LocalSleepRequests
-				--embed-thumbnail
-				--convert-thumbnails jpg
-				--ppa EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih
-				--embed-metadata
-				--parse-metadata title:%(artist)s - %(title)s
-				--parse-metadata uploader:%(artist)s
-				--no-keep-video
-				--force-overwrites
-				--cookies $using:LocalCookiePath
-				-P {LocalBackupDir}
-				-o {OutputTemplate}
-				--cache-dir {LocalCacheDir}
-				--geo-bypass
-				--js-runtime deno
-				--extractor-args youtube:player_js_variant=tv
-				-f bestaudio/best
-				--extract-audio
-				--audio-format m4a
-				--audio-quality 0
-				--download-archive {LocalActiveHistoryLog}
-				--ignore-errors
-				--no-abort-on-error
-				--legacy-server-connect
-				--socket-timeout 30
-				{PlaylistURL}"
-			*/
+		downloadArguments = "".join(
+			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring
+			//^ TODO: test without
+			$"--verbose ", // Provides full output, necessary for working out which songs broke
+			$"--newline ", // Outputs progress bar as new lines, otherwise it would just edit the previous line which doesn't play nice with logging
+			$"--sleep-interval {sleepInterval} ", // Minimum bound for how long to sleep between videos
+			$"--max-sleep-interval {maxSleepInterval} ", // Sleep length randomly chosen between --sleep-interval and this, to emulate a human and hopefully not get flagged
+			$"--sleep-requests {sleepRequests} ", // How long to sleep between every api request, so as to not get throttled or rate limited
+			$"--embed-thumbnail ", // Embed thumbnail into the video file as cover art
+			$"--convert-thumbnails jpg ", // Convert thumbnail to jpg, or any format for consistency
+			//^ I don't know why jpg is used, 
+			//^^ TODO: Test different thumbnail formats for size
+			$"--ppa EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih ",// PostProccessor arguments. This gives the following arguments to ffmpeg when using EmbedThumbnail
+			//^ -vf Video Feed, the thumbnail is embedded as the songs cover art
+			//^^ crop=ih:ih crop to a square by the image height
+			//^^^ NOTE: This doesn't seem to work, unless it was added after the existing files on my phone were generated, so a postprocessing step may have to be done in c# to fix that
+			$"--embed-metadata ", // Embeds youtube metadata into the output file
+			$"--parse-metadata title:%(artist)s - %(title)s ", // Parse metadata so that the title equals Artist - Title
+			//^ This may not be what I want. Further testing required
+			$"--parse-metadata uploader:%(artist)s ", // Sets the artist to the uploader
+			$"--no-keep-video ", // Only download the audio stream
+			$"--force-overwrites ", // If a file exists, overwrite it
+			//^ This is used because a history file is also provided, and if that history file does not contain the video,
+			//^^ Then we must have removed that for a reason like the video being downloaded incorrectly, so you want to overwrite with the correct video
+			$"--cookies {cookiePath} ", // The cookie file
+			$"-P {backupDir} ", // Download intermediary files to the backup directory
+			$"-o {outputTemplate} ", // Use the provided output template to define the path of the output file
+			//^ This a variable that can be changed in the profile
+			//^^ TODO: Make some way for the profile to define these whole arguments
+			$"--cache-dir {cacheDir} ", // Cache things like downloaders and page stuff
+			$"--geo-bypass ", // It tries to bypass georestrictions
+			$"--js-runtime deno ", // Use the deno Javascript runtime to handle challenges
+			$"--extractor-args youtube:player_js_variant=tv ", // Pretend to be a youtube tv client to get easier javascript challenges; TVs are dumb and not very powerful
+			$"-f bestaudio/best ", // Choose the best audio stream quality to download
+			$"--extract-audio ", // Extract the audio streams (duh)
+			$"--audio-format m4a ", // Use m4a as the audio format to output
+			$"--audio-quality 0 ", // 0 is best
+			$"--download-archive {historyPath} ", // The history file containing all the processed songs
+			$"--ignore-errors ", // If a song fails, continue
+			$"--no-abort-on-error ", // See above
+			$"--legacy-server-connect ", // Supports connecting to legacy youtube servers
+			//^ Per YTDLPs README "Explicitly allow HTTPS connection to servers that do not support RFC 5746 secure renegotiation"
+			$"--socket-timeout 30 ", // If the socket is quiet for more than 30 seconds, give up
+			$"{playlists[index]}" // The url of the current playlist
+			)
 
 	}
 }
