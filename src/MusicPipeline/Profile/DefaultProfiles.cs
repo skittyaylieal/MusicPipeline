@@ -22,7 +22,7 @@ public static class DefaultProfiles
 		FirefoxExe = @"C:\Program Files\Mozilla Firefox\firefox.exe",
 		CheckURL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		RootDir = @"C:\MusicTools\MusicPipeline",
-		OutputTemplate = $"{BackupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s"
+		OutputTemplate = $"{BackupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s",
 		SleepInterval = 4,
 		MaxSleepInterval = 12, 
 		SleepRequests = 3,
@@ -70,7 +70,7 @@ public static class DefaultProfiles
 		FirefoxExe = @"C:\Program Files\Mozilla Firefox\firefox.exe",
 		CheckURL = @"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		RootDir = @"C:\MusicTools\MusicPipeline",
-		OutputTemplate = $"{BackupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s"
+		OutputTemplate = $"{BackupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s",
 		SleepInterval = 4,
 		MaxSleepInterval = 12, 
 		SleepRequests = 3,
@@ -122,7 +122,7 @@ public static class DefaultProfiles
 		FirefoxExe = "ERROR",
 		CheckURL = "ERROR",
 		RootDir = "ERROR",
-		OutputTemplate = "ERROR"
+		OutputTemplate = "ERROR",
 		SleepInterval = 2147483647,
 		MaxSleepInterval = 2147483647, 
 		SleepRequests = 2147483647,
