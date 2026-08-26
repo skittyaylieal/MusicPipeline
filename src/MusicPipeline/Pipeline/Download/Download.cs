@@ -119,7 +119,7 @@ class Downloader
 
 		await LogEngine.Out(logFile, $"Processing Playlist URL: {playlists[index]}", "Downloader", colourCode);
 
-		downloadArguments = "".join(
+		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring
 			//^ TODO: test without
 			$"--verbose ", // Provides full output, necessary for working out which songs broke
@@ -164,6 +164,7 @@ class Downloader
 			$"--socket-timeout 30 ", // If the socket is quiet for more than 30 seconds, give up
 			$"{playlists[index]}" // The url of the current playlist
 			);
+
 
 	}
 }
