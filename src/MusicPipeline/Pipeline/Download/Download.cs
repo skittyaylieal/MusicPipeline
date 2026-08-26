@@ -27,7 +27,7 @@ class Downloader
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
-	private List<Result?> res;
+	private List<Result?> res = null;
 
 	public async Task<List<Result>> Download(string profileFile)
 	{
@@ -193,11 +193,15 @@ class Downloader
 				}
 				
 				string? currentLine;
+				List<string> lines = [""];
 				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
 						await LogEngine.Out(logFile, currentLine, "DownloaderThread", colourCode);
+						lines.Add(currentLine);
 					}
 				}
+				string errorFile = $@"{configDir}\run_errors{index}.txt";
+				await File.AppendAllTextAsync(errorFile, String.Join("\n", lines));
 				
 
 				await YTDLPProcess.WaitForExitAsync();
