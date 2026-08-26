@@ -3,6 +3,7 @@ using System.Diagnostics;
 using MusicPipeline.Results;
 using MusicPipeline.Profiles;
 using MusicPipeline.Pipeline.Helpers.Execute;
+using MusicPipeline.SongIdentifiers;
 using MusicPipeline.Colours; 
 using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Pipeline;
@@ -26,9 +27,9 @@ class Downloader
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
-	private Result[]? res;
+	private List<Result?> res;
 
-	public async Task<Result> Download(string profileFile)
+	public async Task<List<Result>> Download(string profileFile)
 	{
 		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		logFile = activeProfile.DiagLogFile;
@@ -51,11 +52,12 @@ class Downloader
 
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
 
-		await LogEngine.Out(logFile, "=============================================", "Downloader");
-		await LogEngine.Out(logFile, "			YTDLP Song Downloader			", "Downloader");
-		await LogEngine.Out(logFile, "=============================================", "Downloader");
+		await LogEngine.Out(logFile, "==============================================", "Downloader");
+		await LogEngine.Out(logFile, "          YTDLP Song Downloader Step          ", "Downloader");
+		await LogEngine.Out(logFile, "==============================================", "Downloader");
 
 		if (!Directory.Exists(backupDir)) {
+			await LogEngine.Out(logFile, $"Main backup directory {backupDir} doesn't exist. Creating.", "Downloader");
 			Directory.CreateDirectory(backupDir);
 		}
 
@@ -63,7 +65,7 @@ class Downloader
 
 		if (cleanSweep) {
 			historyPath = $@"{configDir}\pipeline_null_history_{Guid.NewGuid()}.txt";
-			// Remove at the end
+			await LogEngine.Out(logFile, "Clean sweep activated", "Downloader");
 		}
 
 		// URLs should be sanitised already
@@ -89,8 +91,14 @@ class Downloader
 
 
 		Parallel.For(0, maxDownloadThreads, async i => await DownloadThread(i));
-
-
+		List<Result>? results = null;
+		foreach (Result r in res) {
+			results.Add(r);
+			// Could also use addRange or something
+		}
+		DateTime end = DateTime.UtcNow;
+		TimeSpan elapsed = end - start;
+		return results.Insert(0, new Result("Downloader", true, elapsed, "", await GetAffectedSongInfo()));
 	}
 
 	private async Task DownloadThread(int index)
@@ -178,7 +186,7 @@ class Downloader
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - start;
-					res.Append(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
+					res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
 					return;
 				}
 				
@@ -193,7 +201,7 @@ class Downloader
 				await YTDLPProcess.WaitForExitAsync();
 				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;
-				res.Append(new Result("DownloaderThread", true, elapsed));
+				res.Add(new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index)));
 				return;
 			}
 		}
@@ -201,12 +209,23 @@ class Downloader
 		{
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
-			res.Append(new Result("DownloaderThread", false, elapsed, ex.Message));
+			res.Add(new Result("DownloaderThread", false, elapsed, ex.Message));
 		}
 		finally
 		{
 			if (cleanSweep) {File.Delete(historyPath);}
 		}
-
 	}
+
+	private async Task<List<SongIdentifier>> GetAffectedSongInfo()
+	{
+		await LogEngine.Out(logFile, "TODO: URGENT: MAKE GetAffectedSongInfo", "Downloader", DefaultColours.Error);
+		return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
+	}
+
+	private async Task<string> GetErrorsInThread(int threadIndex)
+	{
+		await LogEngine.Out(logFile, "TODO: URGENT: MAKE GetErrorsInThread", "Downloader", DefaultColours.Error);
+		return "TODO";
+	} 
 }
