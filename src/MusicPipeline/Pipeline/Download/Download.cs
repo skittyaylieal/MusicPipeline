@@ -28,7 +28,7 @@ class Downloader
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
-	private List<Result?> res = null;
+	private List<Result> res = new;
 
 	public async Task<List<Result>> Download(string profileFile)
 	{
