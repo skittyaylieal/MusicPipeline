@@ -105,7 +105,7 @@ class Downloader
 		Task? j = null;
 		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
 		await j;
-		List<Result>? results = new List<Results>();
+		List<Result>? results = new List<Result>();
 		foreach (Result r in res) {
 			if (res is null) {res = new List<Result>([r]);}
 			else {results.Add(r);}
