@@ -28,7 +28,7 @@ class Downloader
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
-	private List<Result> res = new List<Result>();
+	private List<Result?> res = null;
 
 	public async Task<List<Result>> Download(string profileFile)
 	{
@@ -211,7 +211,7 @@ class Downloader
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - start;
-					res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
+					if (res is null) {res = new List<Result>([new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null")]);}
 					return;
 				}
 				
@@ -230,7 +230,7 @@ class Downloader
 				await YTDLPProcess.WaitForExitAsync();
 				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;
-				res.Add(new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index)));
+				if (res is null) {res = new List<Result>([new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index))]);}
 				return;
 			}
 		}
@@ -238,7 +238,7 @@ class Downloader
 		{
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
-			res.Add(new Result("DownloaderThread", false, elapsed, ex.Message));
+			if (res is null) {res = new List<Result>([new Result("DownloaderThread", false, elapsed, ex.Message)]);}
 		}
 		finally
 		{
