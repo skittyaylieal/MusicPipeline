@@ -145,7 +145,7 @@ class Downloader
 		await LogEngine.Out(logFile, $"Processing Playlist URL: {playlists[index]}", "Downloader", colourCode);
 
 		// Just found out that it supports putting all this in a file so :eyes:
-		downloadArguments = $"--config-locations {YTDLPConfigFileLocation}   {playlists[index]}";
+		downloadArguments = $"--config-locations {YTDLPConfigFile}   {playlists[index]}";
 		/*
 		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring
