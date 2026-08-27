@@ -21,6 +21,7 @@ class Downloader
 	private string cacheDir = "Null";
 	private string outputTemplate = "Null";
 	private string downloadArguments = "Null";
+	private string YTDLPConfigFile = "Null";
 	private int sleepInterval = 0;
 	private int maxSleepInterval = 0;
 	private int sleepRequests = 0;
@@ -41,6 +42,7 @@ class Downloader
 		configDir = $@"{activeProfile.RootDir}\Config";
 		cacheDir = $@"{configDir}\.cache";
 		outputTemplate = activeProfile.OutputTemplate;
+		YTDLPConfigFile = activeProfile.YTDLPConfigFile;
 		sleepInterval = activeProfile.SleepInterval;
 		maxSleepInterval = activeProfile.MaxSleepInterval;
 		sleepRequests = activeProfile.SleepRequests;
@@ -142,6 +144,9 @@ class Downloader
 
 		await LogEngine.Out(logFile, $"Processing Playlist URL: {playlists[index]}", "Downloader", colourCode);
 
+		// Just found out that it supports putting all this in a file so :eyes:
+		downloadArguments = $"--config-locations {YTDLPConfigFileLocation}   {playlists[index]}"
+		/*
 		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring
 			//^ TODO: test without
@@ -171,6 +176,11 @@ class Downloader
 			$"-o {outputTemplate} ", // Use the provided output template to define the path of the output file
 			//^ This a variable that can be changed in the profile
 			//^^ TODO: Make some way for the profile to define these whole arguments
+			$"--write-subs ", // Write subtitle files (For lyrics embedded in subtitles or like luke pickman's videos where he puts the current instrument name in the subtitles)
+			$"--write-auto-subs ", // In case the auto subtitles are good
+			//^ Could be better than nothing once the lyric step comes through
+			$"--sub-format ass/srt/vtt/best", // Pretty good formats
+			$"--sub-langs all", // All 
 			$"--cache-dir {cacheDir} ", // Cache things like downloaders and page stuff
 			$"--geo-bypass ", // It tries to bypass georestrictions
 			$"--js-runtime deno ", // Use the deno Javascript runtime to handle challenges
@@ -187,6 +197,7 @@ class Downloader
 			$"--socket-timeout 30 ", // If the socket is quiet for more than 30 seconds, give up
 			$"{playlists[index]}" // The url of the current playlist
 		);
+		*/
 
 
 		try
