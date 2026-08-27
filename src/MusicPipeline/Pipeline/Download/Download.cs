@@ -50,6 +50,8 @@ class Downloader
 		cleanSweep = activeProfile.CleanSweepDownload; // Note: Make sure that the profile value of CleanSweepDownload is correct before running
 		// TODO add the ytdlp flags to profile file
 
+		res = new List<Result>();
+
 		DateTime start = DateTime.UtcNow;
 
 		if (Directory.Exists(configDir)) {
