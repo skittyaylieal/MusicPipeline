@@ -4,10 +4,12 @@ namespace MusicPipeline.Tools.LogEngine;
 
 public class LogEngine
 {
+	// TODO: Profile file but also fix that bug where the file's locked
 	// Logs to the file
 	// Takes ASCII codes
 	// Takes the message
 	// Takes the profile file? or just the log file
+	// Ok maybe we take the profile file after all lol
 	private const char esc = '\u001B';
 	private const string reset = $"\u001B[0m";
 
