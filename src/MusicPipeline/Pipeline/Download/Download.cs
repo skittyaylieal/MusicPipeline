@@ -105,9 +105,10 @@ class Downloader
 		Task? j = null;
 		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
 		await j;
-		List<Result>? results = null;
+		List<Result>? results = new List<Results>;
 		foreach (Result r in res) {
-			results.Add(r);
+			if (res is null) {res = new List<Result>([r]);}
+			else {results.Add(r);}
 			// Could also use addRange or something
 		}
 		DateTime end = DateTime.UtcNow;
@@ -212,6 +213,7 @@ class Downloader
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - start;
 					if (res is null) {res = new List<Result>([new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null")]);}
+					else {res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));}
 					return;
 				}
 				
@@ -231,6 +233,7 @@ class Downloader
 				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;
 				if (res is null) {res = new List<Result>([new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index))]);}
+				else {res.Add(new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index)));}
 				return;
 			}
 		}
@@ -239,6 +242,7 @@ class Downloader
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
 			if (res is null) {res = new List<Result>([new Result("DownloaderThread", false, elapsed, ex.Message)]);}
+			else {res.Add(new Result("DownloaderThread", false, elapsed, ex.Message));}
 		}
 		finally
 		{
