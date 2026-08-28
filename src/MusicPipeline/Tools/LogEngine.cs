@@ -27,7 +27,7 @@ public class LogEngine
 			// I don't know what to do here
 			// Directory.GetParent(workingDirectory).Parent.Parent.FullName
 			string? likelyProfileFile = null;
-			string possibleProjectDirectory = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.Parent.Parent.FullName;
+			string? possibleProjectDirectory = Directory.GetParent(Directory.GetCurrentDirectory())?.Parent?.Parent?.Parent?.Parent?.FullName;
 			IEnumerable<string> allSubFiles = Directory.EnumerateFiles(possibleProjectDirectory);
 			foreach (string subFile in allSubFiles) {
 				if (subFile.Contains("profiles.json")) {likelyProfileFile = subFile;}

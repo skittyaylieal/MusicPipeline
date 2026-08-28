@@ -11,7 +11,8 @@ public class ProfileFile
 	//public static readonly Profile DefaultProfile = DefaultProfiles.DefaultProfile;
 	//if the values below do match your DefaultProfiles.DefaultProfile, I think the line above that you commented out makes sense.
 	// Sublime text complains that DefaultProfiles doesn't exist in this context, that's probably why i did it
-	/*public static readonly Profile DefaultProfile = new Profile
+	/*
+	public static readonly Profile DefaultProfile = new Profile
 	{
 		Name = "Default",
 		BackupDir = @"C:\Users\filip\Music\YT_Music_Backup",
@@ -57,7 +58,8 @@ public class ProfileFile
 		],
 		LastCleanRunEpoch = 1785532108,
 		LastNormalRunEpoch = 1785673837
-	};*/
+	};
+	*/
 	public static readonly Profile NullProfile = new Profile();
 	public string ActiveProfile {get; set;}
 	public List<Profile> Profiles {get; set;}
