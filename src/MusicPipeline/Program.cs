@@ -10,7 +10,7 @@
 
 using MusicPipeline.Pipeline.Helpers.Parser;
 var par = new Parser();
-par.ParseYTDLPConfigFile(@"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json");
+await par.ParseYTDLPConfigFile(@"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json");
 
 // Working!
 // Yay!
