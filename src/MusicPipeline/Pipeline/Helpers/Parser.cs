@@ -17,7 +17,7 @@ public class Parser
 		byte[] confFileBytes = File.ReadAllBytes(YTDLPOriginalConfigFilePath);
 		string? confFileContents = confFileBytes.ToString();
 		if (confFileContents is null) {
-			await LogEngine.Out(logFile, $"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid");
+			await LogEngine.Out(logFile, $"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid", "Parser", DefaultColours.Error);
 			return;
 		}
 		List<string> confFileLines = new List<string>(confFileContents.Split("\n"));
@@ -33,6 +33,8 @@ public class Parser
 			if (!match.Success) {
 				continue;
 			}
+			string variable = match.ToString();
+			await LogEngine.Out(logFile, $"variable = {variable}", "Parser", DefaultColours.Debug);
 			// Use Reflection somehow idfk
 		}
 		// Make a temp file
