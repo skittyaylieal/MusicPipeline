@@ -9,7 +9,8 @@
 //await orc.Start();
 
 using MusicPipeline.Pipeline.Helpers.Parser;
-Parser.ParseYTDLPConfigFile(@"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json");
+var par = new Parser();
+par.ParseYTDLPConfigFile(@"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json");
 
 // Working!
 // Yay!
