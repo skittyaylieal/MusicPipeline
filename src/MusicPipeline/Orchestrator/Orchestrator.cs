@@ -30,6 +30,7 @@ public class Orchestrator
 		l?.user = "Orchestrator";
 		await l.WipeAsync();
 		await l.Out("Test", DefaultColours.Error, true);
+		await l.Out("Other Test", DefaultColours.Warning);
 		/*await l.Out("Test Number 2");
 		await l.Out(JsonSerializer.Serialize(activeProfile), 54);
 		activeProfile.ScannerSleepIntervalSec = 30;
