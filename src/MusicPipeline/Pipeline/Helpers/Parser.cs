@@ -11,7 +11,7 @@ public class Parser
 	{
 		// TODO: Make this function
 		Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
-		LogEngine l = activeProfile.LogEngine;
+		LogEngine? l = activeProfile.LogEngine;
 		l.user = "Parser";
 		string YTDLPOriginalConfigFilePath = activeProfile.YTDLPConfigFileOriginal;
 		// Parse in the conf
