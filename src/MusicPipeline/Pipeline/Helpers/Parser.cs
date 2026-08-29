@@ -49,7 +49,7 @@ public class Parser
 		string parentDir = Path.GetDirectoryName(YTDLPOriginalConfigFilePath);
 		string tempFilePath = $@"{parentDir}\yt-dlp{Guid.NewGuid()}.conf";
 		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
-		activeProfile.YTDLPConfigFile = tempFilePath;
+		activeProfile.YTDLPConfigFile = new string(tempFilePath);
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
 		// Make a temp file
 		// Change the profileFile to include an override
