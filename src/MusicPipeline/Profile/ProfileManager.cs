@@ -182,7 +182,7 @@ public class ProfileManager
 		var Options = new JsonSerializerOptions { WriteIndented = true };
 		string JsonToWrite = JsonSerializer.Serialize(ProfileFile, Options);
 		File.WriteAllText(profileFile, JsonToWrite);
-		if (!(LogEngine is null)) {
+		if (!(profile.LogEngine is null)) {
 			LogEngine l = profile.LogEngine;
 			l.user = "ProfileManager";
 			await l.Out($"Wrote new profile {profile.Name} to {profileFile} successfully.", DefaultColours.Success, true);
