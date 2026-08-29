@@ -34,11 +34,11 @@ public class Parser
 				continue;
 			}
 			string variable = match.ToString();
-			//await l.Out($"variable = {variable}", DefaultColours.Debug);
+			await l.Out($"variable = {variable}", DefaultColours.Debug);
 			// Uses Reflection somehow idfk
 			// TODO: Write a better explanation
 			string? replace = typeof(Profile)?.GetProperty(variable)?.GetValue(context)?.ToString();
-			//await l.Out($"replace = {replace}", DefaultColours.Debug);
+			await l.Out($"replace = {replace}", DefaultColours.Debug);
 		}
 		// Make a temp file
 		// Change the profileFile to include an override
