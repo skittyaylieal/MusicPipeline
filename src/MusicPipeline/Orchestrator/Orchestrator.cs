@@ -31,10 +31,10 @@ public class Orchestrator
 		Console.WriteLine("Test3");
 		Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		Console.WriteLine("Test4");
-		LogEngine l = activeProfile.LogEngine;
+		LogEngine? l = activeProfile.LogEngine;
 		Console.WriteLine("Test5");
-		l.user = "Orchestrator";
-		Console.WriteLine("Test6");
+		l?.user = "Orchestrator";
+		if (!(l is null)){Console.WriteLine("Test6");}
 		await l.WipeAsync();
 		Console.WriteLine("Test7");
 		await l.Out("Test", DefaultColours.Error);
