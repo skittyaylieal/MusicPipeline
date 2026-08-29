@@ -126,10 +126,10 @@ public class ProfileManager
 	{
 		try {
 			File.ReadAllBytes(profileFile);
-			await logger.Out($"Read profile file {profileFile} successfully!", DefaultColours.Success);
+			await logger.Out($"Read profile file {profileFile} successfully!", DefaultColours.Success, true);
 		}
 		catch (FileNotFoundException) {
-			await logger.Out("The profile file doesn't exist, creating a new DefaultProfile", DefaultColours.Error);
+			await logger.Out("The profile file doesn't exist, creating a new DefaultProfile", DefaultColours.Error, true);
 			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 		}
 		string jsonString = File.ReadAllText(profileFile);
@@ -141,7 +141,7 @@ public class ProfileManager
 			return activeProfile;
 #pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, I think my code is safe enough to warrant it
 		} else {
-			await logger.Out($"No profiles were found in the file {profileFile}. A default profile has been initialised.", DefaultColours.Error);
+			await logger.Out($"No profiles were found in the file {profileFile}. A default profile has been initialised.", DefaultColours.Error, true);
 			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 			return DefaultProfiles.DefaultProfile;
 		}
@@ -170,7 +170,7 @@ public class ProfileManager
 		ProfileFile Existing = await GetProfileFile(profileFile);
 		if (Existing.ActiveProfile == "ERROR")
 		{
-			await logger.Out($"Failed to get ProfileFile from {profileFile}, creating new file", DefaultColours.Error);
+			await logger.Out($"Failed to get ProfileFile from {profileFile}, creating new file", DefaultColours.Error, true);
 		}
 		if (Existing.ProfileAlreadyExists(profile) || Existing.ActiveProfile=="ERROR") {
 			Existing.Profiles = new List<Profile>() {profile};
@@ -182,15 +182,16 @@ public class ProfileManager
 		var Options = new JsonSerializerOptions { WriteIndented = true };
 		string JsonToWrite = JsonSerializer.Serialize(ProfileFile, Options);
 		File.WriteAllText(profileFile, JsonToWrite);
-
-		await profile.LogEngine.Out($"Wrote new profile {profile.Name} to {profileFile} successfully.", DefaultColours.Success);
+		LogEngine l = profile.LogEngine;
+		l.user = "ProfileManager";
+		await l.Out($"Wrote new profile {profile.Name} to {profileFile} successfully.", DefaultColours.Success, true);
 		
 	}
 
 	public static async Task SwitchProfile(string profileFile)
 	{
 		// TODO
-		await logger.Out("Oopsies, this function doesn't exist yet!", DefaultColours.Warning);
+		await logger.Out("Oopsies, this function doesn't exist yet!", DefaultColours.Warning, true);
 		throw new NotImplementedException();
 	}
 
@@ -203,7 +204,7 @@ public class ProfileManager
 				ProfileFile Result =  JsonSerializer.Deserialize<ProfileFile>(jsonString);
 				return Result;
 			} else {
-				await logger.Out($"ProfileFile {profileFile} doesn't exist.", DefaultColours.Error);
+				await logger.Out($"ProfileFile {profileFile} doesn't exist.", DefaultColours.Error, true);
 				return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
 				//can't do anything after it has already returned, line below is unreachable.
 				// Yes I thought i swapped them a while ago

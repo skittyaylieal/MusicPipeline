@@ -21,25 +21,25 @@ public class LogEngine
 		await Engine(message, user, style, logFile);
 	}*/
 
-	public async Task Out(string message, string userParam = "System", int? style = null) 
+	public async Task Out(string message, string userParam, int? style = null, bool colourFullString = false) 
 	{
 		// New system
-		await Engine(message, userParam, style);
+		await Engine(message, userParam, style, colourFullString);
 	}
 
-	public async Task Out(string message, int? style)
+	public async Task Out(string message, int? style, bool colourFullString = false)
 	{
-		if (user is null) {await Engine("To use Out() without a user please set a user in the class", "System", DefaultColours.Error);}
-		else {await Engine(message, user, style);}
+		if (user is null) {await Engine("To use Out() without a user please set a user in the class", "System", DefaultColours.Error, true);}
+		else {await Engine(message, user, style, colourFullString);}
 	}
 
-	public async Task Out(string message)
+	public async Task Out(string message, bool colourFullString = false)
 	{
-		if (user is null) {await Engine("To use Out() without a user please set a user in the class", "System", DefaultColours.Error);}
-		else {await Engine(message, user, null);}
+		if (user is null) {await Engine("To use Out() without a user please set a user in the class", "System", DefaultColours.Error, true);}
+		else {await Engine(message, user, null, colourFullString);}
 	}
 
-	private async Task Engine(string message, string user, int? style, string? logFileParam = null)
+	private async Task Engine(string message, string user, int? style, bool colourFullString = false, string? logFileParam = null)
 	{
 		/*ArgumentException.ThrowIfNullOrEmpty(LogFile);
 		ArgumentException.ThrowIfNullOrEmpty(Message);
@@ -52,7 +52,7 @@ public class LogEngine
 		switch (style) {
 			case 0:
 				style = 36;
-				await Engine("0 is black, do not use it", "System", DefaultColours.Error);
+				await Engine("0 is black, do not use it", "System", DefaultColours.Error, true);
 				break;
 			case null:
 				// Should've been omitted
@@ -63,7 +63,7 @@ public class LogEngine
 				else {
 					// Wrong Username given
 					style = 36;
-					await Engine("Given username was invalid or not in the default colours", "System", DefaultColours.Warning);
+					await Engine("Given username was invalid or not in the default colours", "System", DefaultColours.Warning, true);
 				}
 				break;
 		}
@@ -74,7 +74,7 @@ public class LogEngine
 		//what is colPrefix, the 38 and the 5?
 		//these would be called "magic numbers" if it's not clear from the code what they are.
 		// I've been meaning to put more explanatory comments for a bit
-		string colPrefix = $"{esc}[38;5;{style.ToString()}m{timeStamp} [{user}] {reset}";
+		string colPrefix = $"{esc}[38;5;{style.ToString()}m{timeStamp} [{user}] {(colourFullString ? "" : reset)}";
 		// colPrefix
 		// The escape marks that this is ANSI escaped colouring, not raw text
 		// The [38;5; marks that the following value is an ANSI256 colour code.

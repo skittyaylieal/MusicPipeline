@@ -32,15 +32,15 @@ class Cookies
 		await l.Out("==============================================");
 
 		if (!File.Exists(cookieFile)){
-			await l.Out("[ERROR] Cookie File could not be found. Please export one.", DefaultColours.Error);
+			await l.Out("[ERROR] Cookie File could not be found. Please export one.", DefaultColours.Error, true);
 			return CookieDefaults.FileError(false, start);
 		}
 		if (!File.Exists(YTDLPPath)){
-			await l.Out("[ERROR] YTDLP Executable could not be found.", DefaultColours.Error);
+			await l.Out("[ERROR] YTDLP Executable could not be found.", DefaultColours.Error, true);
 			return CookieDefaults.FileError(true, start);
 		}
 
-		await l.Out("[+] Cookie and YTDLP files located sucsessfully!", DefaultColours.Success);
+		await l.Out("[+] Cookie and YTDLP files located sucsessfully!", DefaultColours.Success, true);
 		await l.Out("[*] Testing cookies on YouTube.");
 		try
 		{

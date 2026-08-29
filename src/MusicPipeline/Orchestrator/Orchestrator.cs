@@ -29,7 +29,7 @@ public class Orchestrator
 		LogEngine? l = activeProfile.LogEngine;
 		l?.user = "Orchestrator";
 		await l.WipeAsync();
-		await l.Out("Test", DefaultColours.Error);
+		await l.Out("Test", DefaultColours.Error, true);
 		await l.Out("Test Number 2");
 		await l.Out(JsonSerializer.Serialize(activeProfile), 54);
 		/*activeProfile.ScannerSleepIntervalSec = 30;

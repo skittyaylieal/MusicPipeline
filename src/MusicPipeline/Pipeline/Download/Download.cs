@@ -255,7 +255,7 @@ class Downloader
 
 	private async Task<List<SongIdentifier>> GetAffectedSongInfo()
 	{
-		await l.Out("TODO: URGENT: MAKE GetAffectedSongInfo", DefaultColours.Error);
+		await l.Out("TODO: URGENT: MAKE GetAffectedSongInfo", DefaultColours.Error, true);
         //return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
         List<FileInfo> paths = [new("Null")];
         List<double> sizesCompressed = new([0.0]);
@@ -281,7 +281,7 @@ class Downloader
 
 	private async Task<string> GetErrorsInThread(int threadIndex)
 	{
-		await l.Out("TODO: URGENT: MAKE GetErrorsInThread", DefaultColours.Error);
+		await l.Out("TODO: URGENT: MAKE GetErrorsInThread", DefaultColours.Error, true);
 		return "TODO";
 	} 
 }

@@ -17,7 +17,7 @@ public class Parser
 		// Parse in the conf
 		string? confFileContents = await File.ReadAllTextAsync(YTDLPOriginalConfigFilePath);
 		if (confFileContents is null) {
-			await l.Out($"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid", DefaultColours.Error);
+			await l.Out($"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid", DefaultColours.Error, true);
 			return;
 		}
 		List<string> confFileLines = new List<string>(confFileContents.Split("\n"));
