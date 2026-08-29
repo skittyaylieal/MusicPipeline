@@ -74,12 +74,12 @@ public class Scanner
         //var files = masterFiles ?? mobileFiles;
         //maxDownloadThreads = maxDownloadThreads < playlists.Count() ? playlists.Count() : maxDownloadThreads;
         IEnumerable<string>? files = masterFiles?.Count() < Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) ? compressedFiles[await ListTools.MaxCountAnyList(compressedFiles, true)] : masterFiles;
-        await (files?.Count() > masterFiles?.Count() ? l.Out($"Compressed Directory {await ListTools.MaxCountAnyList(compressedFiles, true)} has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} more songs than Master", DefaultColours.Warning) : l.Out($"The largest compressed directory, {await ListTools.MaxCountAnyList(compressedFiles, true)}, has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} fewer songs that Master. Declare this directory a subset to dismiss.", DefaultColours.Warning));
+        await (files?.Count() > masterFiles?.Count() ? l.Out($"Compressed Directory {await ListTools.MaxCountAnyList(compressedFiles, true)} has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} more songs than Master", DefaultColours.Warning, true) : l.Out($"The largest compressed directory, {await ListTools.MaxCountAnyList(compressedFiles, true)}, has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} fewer songs that Master. Declare this directory a subset to dismiss.", DefaultColours.Warning, true));
         //var files;
         if (files is null)
         {
             // TODO, once theres multiple compressed folders then text should read "None of {List of folder names} exist or are empty. Exiting"
-            await l.Out("Neither Backup nor Mobile Directory exist or are empty. Exiting", DefaultColours.Error);
+            await l.Out("Neither Backup nor Mobile Directory exist or are empty. Exiting", DefaultColours.Error, true);
             return;
         }
 
