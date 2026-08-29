@@ -30,15 +30,15 @@ public class Orchestrator
 		LogEngine l = activeProfile.LogEngine;
 		l.user = "Orchestrator";
 		await l.WipeAsync();
-		/*await l.Out("Test", DefaultColours.Error);
+		await l.Out("Test", DefaultColours.Error);
 		await l.Out("Test Number 2");
 		await l.Out(JsonSerializer.Serialize(activeProfile), 54);
-		activeProfile.ScannerSleepIntervalSec = 30;
+		/*activeProfile.ScannerSleepIntervalSec = 30;
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
 		Profiles.Profile newActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		await l.Out(newActiveProfile.ScannerSleepIntervalSec.ToString(), 36);
 		await ProfileManager.SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
-
+		
  		// First use of Results
 		Result Step1Result = await Cookies.CookieCheck(profileFile);
 		Handler.HandleResult(Step1Result, profileFile);
