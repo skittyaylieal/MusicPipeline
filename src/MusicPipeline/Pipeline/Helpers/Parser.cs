@@ -11,6 +11,8 @@ public class Parser
 	{
 		// TODO: Make this function
 		Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		// TODO: Make this use the active profile
+		// No idea why it wont work
 		LogEngine? l = new LogEngine(activeProfile.DiagLogFile);
 		l.user = "Parser";
 		string YTDLPOriginalConfigFilePath = activeProfile.YTDLPConfigFileOriginal;
@@ -33,7 +35,7 @@ public class Parser
 			if (!match.Success) {
 				continue;
 			}
-			string variable = match.ToString();
+			string variable = match.Groups[1].Value;
 			await l.Out($"variable = {variable}", DefaultColours.Debug);
 			// Uses Reflection somehow idfk
 			// TODO: Write a better explanation
