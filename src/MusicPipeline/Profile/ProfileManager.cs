@@ -130,7 +130,7 @@ public class ProfileManager
 		}
 		catch (FileNotFoundException) {
 			await logger.Out("The profile file doesn't exist, creating a new DefaultProfile", DefaultColours.Error);
-			await SaveProfile(profileFile);
+			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 		}
 		string jsonString = File.ReadAllText(profileFile);
 		await logger.Out(jsonString, DefaultColours.Debug);
@@ -142,7 +142,7 @@ public class ProfileManager
 #pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, I think my code is safe enough to warrant it
 		} else {
 			await logger.Out($"No profiles were found in the file {profileFile}. A default profile has been initialised.", DefaultColours.Error);
-			await SaveProfile(profileFile);
+			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 			return DefaultProfiles.DefaultProfile;
 		}
 
