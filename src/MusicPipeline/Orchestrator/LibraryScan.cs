@@ -6,12 +6,15 @@ using MusicPipeline.Tools.Hasher;
 using MusicPipeline.Tools.ListTools;
 namespace MusicPipeline.Orchestrator;
 
+// TODO: Fix getmasterfiles
+
 public class Scanner
 {
+    private LogEngine l;
 	public async void ScanLibrary(string ProfileFile)
     {
         Profile activeProfile = await ProfileManager.LoadActiveProfile(ProfileFile);
-        LogEngine l = activeProfile.LogEngine;
+        l = activeProfile.LogEngine;
         l.user = "LibraryScanner";
         string backupDir = activeProfile.BackupDir;
         List<string> compressedDirs = activeProfile.CompressedDirs;
@@ -50,7 +53,7 @@ public class Scanner
         //  for unused variables, either use them or lose them :)
         //ok so I'll name it GetMasterFiles()
 
-        IEnumerable<string>? masterFiles = await GetMasterFiles(logFile, backupDir, songFileSearchPattern, lyricFileSearchPattern);
+        IEnumerable<string>? masterFiles = await GetMasterFiles(backupDir, songFileSearchPattern, lyricFileSearchPattern);
 
         //so this refactor benefits us in many ways
         //1) ScanLibrary() is shorter and more expressive.
@@ -65,7 +68,7 @@ public class Scanner
         //5) IDK, I'm just trying to come up with a bunch of junk :) do you like having me as a tutor? I'm enjoying myself!
         //6) I'm sure there are lots of other reasons too!
 
-        Dictionary<string,IEnumerable<string>?>? compressedFiles = await GetCompressedFiles(logFile, compressedDirs, songFileSearchPattern);
+        Dictionary<string,IEnumerable<string>?>? compressedFiles = await GetCompressedFiles(compressedDirs, songFileSearchPattern);
 
         //what are you trying to do with this line below?
         //var files = masterFiles ?? mobileFiles;
@@ -95,7 +98,7 @@ public class Scanner
 
     }
 
-    private static async Task<IEnumerable<string>?> GetMasterFiles(string logFile, string backupDir, string songFileSearchPattern, string lyricFileSearchPattern)
+    private async Task<IEnumerable<string>?> GetMasterFiles(string backupDir, string songFileSearchPattern, string lyricFileSearchPattern)
     {
         //maybe tomorrow we'll break this method into smaller pieces because it's doing too many disparate things.
         // FYI, doesn't need to know colour code as the LogEngine works out the correct colour from the Username
@@ -119,7 +122,7 @@ public class Scanner
     }
 
 
-    private static async Task<Dictionary<string,IEnumerable<string>?>?> GetCompressedFiles(string logFile, List<string> compressedDirs, string songFileSearchPattern)
+    private async Task<Dictionary<string,IEnumerable<string>?>?> GetCompressedFiles(List<string> compressedDirs, string songFileSearchPattern)
     {
         Dictionary<string,IEnumerable<string>?>? compressedFiles = null;
         IEnumerable<string>? directoryFiles = null;

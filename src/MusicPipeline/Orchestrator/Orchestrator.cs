@@ -32,8 +32,8 @@ public class Orchestrator
 		await l.Out(JsonSerializer.Serialize(activeProfile), 54);
 		activeProfile.ScannerSleepIntervalSec = 30;
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
-		Profiles.Profile NewActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
-		await l.Out(NewActiveProfile.ScannerSleepIntervalSec.ToString(), 36);
+		Profiles.Profile newActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		await l.Out(newActiveProfile.ScannerSleepIntervalSec.ToString(), 36);
 		await ProfileManager.SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 
  		// First use of Results

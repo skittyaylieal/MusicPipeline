@@ -37,6 +37,8 @@ public class Parser
 			string variable = match.ToString();
 			await l.Out($"variable = {variable}", DefaultColours.Debug);
 			// Use Reflection somehow idfk
+			string? replace = typeof(Profile)?.GetField(variable)?.ToString();
+			await l.Out($"replace = {replace}", DefaultColours.Debug);
 		}
 		// Make a temp file
 		// Change the profileFile to include an override
