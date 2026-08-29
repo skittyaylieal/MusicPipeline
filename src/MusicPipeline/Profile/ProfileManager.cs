@@ -182,10 +182,13 @@ public class ProfileManager
 		var Options = new JsonSerializerOptions { WriteIndented = true };
 		string JsonToWrite = JsonSerializer.Serialize(ProfileFile, Options);
 		File.WriteAllText(profileFile, JsonToWrite);
-		LogEngine l = profile.LogEngine;
-		l.user = "ProfileManager";
-		await l.Out($"Wrote new profile {profile.Name} to {profileFile} successfully.", DefaultColours.Success, true);
-		
+		if (!(LogEngine is null) {
+			LogEngine l = profile.LogEngine;
+			l.user = "ProfileManager";
+			await l.Out($"Wrote new profile {profile.Name} to {profileFile} successfully.", DefaultColours.Success, true);
+		} else {
+			await logger.Out($"Wrote new profile {profile.Name} to {profileFile} successfully.", DefaultColours.Success, true);
+		}
 	}
 
 	public static async Task SwitchProfile(string profileFile)
