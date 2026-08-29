@@ -38,7 +38,7 @@ public class Parser
 			// Uses Reflection somehow idfk
 			// TODO: Write a better explanation
 			string? replace = typeof(Profile)?.GetProperty(variable)?.GetValue(context)?.ToString();
-			await l.Out($"replace = {replace}", DefaultColours.Debug);
+			await l.Out($"typeof(Profile) = {typeof(Profile)}, Property = {typeof(Profile)?.GetProperty(variable)}, Value = {typeof(Profile)?.GetProperty(variable)?.GetValue(context)}, To String = {typeof(Profile)?.GetProperty(variable)?.GetValue(context).ToString()}. replace = {replace}", DefaultColours.Debug);
 		}
 		// Make a temp file
 		// Change the profileFile to include an override
