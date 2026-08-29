@@ -80,7 +80,7 @@ public class LogEngine
 		// The [38;5; marks that the following value is an ANSI256 colour code.
 		// The reset resets the text colour back to white for the actual message
 		// I have considered adding an option to make the whole message that colour
-		string processedMessage = $"{colPrefix} {message}";
+		string processedMessage = $"{colPrefix} {message} {reset}";
 		string dateYear = current.Date.ToString("dd/MM/yyyy");
 		string processedMessageDate = $"\u000A{esc}[38;5;{DefaultColours.Date.ToString()}m{dateYear} {reset} {processedMessage}";
 
