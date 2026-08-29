@@ -47,9 +47,9 @@ public class LogEngine
 		if (!File.Exists(LogFile)) {
 			throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
 		}*/
-
-		if (logFile == "Null" & logFileParam != null) {logFile = logFileParam;}
-		else {return;}
+		Console.WriteLine("Log Test-1");
+		if (logFile == "Null" & logFileParam != null) {logFile = logFileParam;Console.WriteLine("Log Test-0.5");}
+		else {Console.WriteLine("Log Test0");return;}
 		Console.WriteLine("Log Test");
 
 		switch (style) {
