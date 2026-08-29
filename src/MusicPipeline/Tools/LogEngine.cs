@@ -83,7 +83,7 @@ public class LogEngine
 		// The reset resets the text colour back to white for the actual message
 		// I have considered adding an option to make the whole message that colour
 		string processedMessage = $"{colPrefix} {message}";
-		string dateYear = current.Date.ToString("dd/mm/yyyy");
+		string dateYear = current.Date.ToString("dd/MM/yyyy");
 		string processedMessageDate = $"\u000A{esc}[38;5;{DefaultColours.Date.ToString()}m{dateYear} {reset} {processedMessage}";
 
 		await File.AppendAllTextAsync(logFile, processedMessageDate);
@@ -97,7 +97,7 @@ public class LogEngine
 		DateTime current = DateTime.Now;
 		string timeStamp = $"[{current.ToString("HH:mm:ss")}]";
 		string colPrefix = $"{esc}[38;5;{typeof(DefaultColours).GetField(user).GetValue(null).ToString()}m{timeStamp}";
-		string dateYear = current.Date.ToString("dd/mm/yyyy");
+		string dateYear = current.Date.ToString("dd/MM/yyyy");
 		string tempMessage = $"{colPrefix} File Cleared by {user}{reset}";
 		string processedMessage = $"{esc}[38;5;{DefaultColours.Date.ToString()}m{dateYear} {reset} {tempMessage}";
 		await File.WriteAllTextAsync(logFile, processedMessage);
