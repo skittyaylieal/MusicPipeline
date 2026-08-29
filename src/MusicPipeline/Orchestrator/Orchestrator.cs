@@ -20,12 +20,14 @@ public class Orchestrator
 	public async Task Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json")
 	{		
 
-		/* First use of Profiles*/ Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
-		string logFile = activeProfile.DiagLogFile;
+		/* First use of Profiles*/ Profile oldActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		string logFile = oldActiveProfile.DiagLogFile;
 		Console.WriteLine("Test");
-		LogEngine l = new LogEngine(activeProfile.DiagLogFile);
-		activeProfile.LogEngine = l;
-		await ProfileManager.SaveProfile(profileFile, activeProfile);
+		LogEngine logger = new LogEngine(oldActiveProfile.DiagLogFile);
+		oldActiveProfile.LogEngine = logger;
+		await ProfileManager.SaveProfile(profileFile, oldActiveProfile);
+		Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		LogEngine l = activeProfile.LogEngine;
 		l.user = "Orchestrator";
 		await l.WipeAsync();
 		/*await l.Out("Test", DefaultColours.Error);
