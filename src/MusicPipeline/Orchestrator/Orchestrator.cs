@@ -25,8 +25,8 @@ public class Orchestrator
 		Console.WriteLine("Test");
 		LogEngine l = new LogEngine(activeProfile.DiagLogFile);
 		activeProfile.LogEngine = l;
-		l.user = "Orchestrator";
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
+		l.user = "Orchestrator";
 		await l.WipeAsync();
 		/*await l.Out("Test", DefaultColours.Error);
 		await l.Out("Test Number 2");
