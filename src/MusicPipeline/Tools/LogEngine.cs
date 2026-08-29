@@ -47,10 +47,7 @@ public class LogEngine
 		if (!File.Exists(LogFile)) {
 			throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
 		}*/
-		Console.WriteLine($"Log Test-1 {message}");
-		if (logFile == "Null" & logFileParam != null) {logFile = logFileParam;Console.WriteLine("Log Test-0.5");}
-		else {Console.WriteLine("Log Test0");}
-		Console.WriteLine("Log Test");
+		if (logFile == "Null" & logFileParam != null) {logFile = logFileParam;}
 
 		switch (style) {
 			case 0:
@@ -71,31 +68,23 @@ public class LogEngine
 				break;
 		}
 
-		Console.WriteLine("Log Test1");
 		//var l = new LogEngine(); //looks like this variable is not used.
 		DateTime current = DateTime.Now;
-		Console.WriteLine("Log Test2");
 		string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-		Console.WriteLine("Log Test3");
 		//what is colPrefix, the 38 and the 5?
 		//these would be called "magic numbers" if it's not clear from the code what they are.
 		// I've been meaning to put more explanatory comments for a bit
 		string colPrefix = $"{esc}[38;5;{style.ToString()}m{timeStamp} [{user}] {reset}";
-		Console.WriteLine("Log Test4");
 		// colPrefix
 		// The escape marks that this is ANSI escaped colouring, not raw text
 		// The [38;5; marks that the following value is an ANSI256 colour code.
 		// The reset resets the text colour back to white for the actual message
 		// I have considered adding an option to make the whole message that colour
 		string processedMessage = $"{colPrefix} {message}";
-		Console.WriteLine("Log Test5");
 		string dateYear = current.Date.ToString("dd/MM/yyyy");
-		Console.WriteLine("Log Test6");
 		string processedMessageDate = $"\u000A{esc}[38;5;{DefaultColours.Date.ToString()}m{dateYear} {reset} {processedMessage}";
-		Console.WriteLine("Log Test7");
 
 		await File.AppendAllTextAsync(logFile, processedMessageDate);
-		Console.WriteLine("Log Test");
 		Console.WriteLine(processedMessage);
 	}
 
