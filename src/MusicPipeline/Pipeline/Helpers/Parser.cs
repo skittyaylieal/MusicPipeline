@@ -30,6 +30,7 @@ public class Parser
 			}
 		}
 		// Somehow handle the {} variables
+		List<string> parsedLines = new();
 		foreach (string line in confFileLinesFiltered) {
 			Match match = Regex.Match(line, @"\{(\w+)\}");
 			if (!match.Success) {
@@ -40,8 +41,16 @@ public class Parser
 			// Uses Reflection somehow idfk
 			// TODO: Write a better explanation
 			string? replace = typeof(Profile).GetProperty(variable).GetValue(context).ToString();
-			await l.Out($"typeof(Profile) = {typeof(Profile)}, Property = {typeof(Profile)?.GetProperty(variable)}, Value = {typeof(Profile)?.GetProperty(variable)?.GetValue(context)}, To String = {typeof(Profile)?.GetProperty(variable)?.GetValue(context).ToString()}. replace = {replace}", DefaultColours.Debug);
+			//await l.Out($"typeof(Profile) = {typeof(Profile)}, Property = {typeof(Profile)?.GetProperty(variable)}, Value = {typeof(Profile)?.GetProperty(variable)?.GetValue(context)}, To String = {typeof(Profile)?.GetProperty(variable)?.GetValue(context).ToString()}. replace = {replace}", DefaultColours.Debug);
+			string updatedLine = Regex.Replace(line, @"\{(\w+)\}", replace);
+			parsedLines.Add(updatedLine);
 		}
+
+		string parentDir = Path.GetDirectoryName(YTDLPOriginalConfigFilePath);
+		string tempFilePath = $@"{parentDir}\yt-dlp{Guid.NewGuid()}.conf";
+		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		activeProfile.YTDLPConfigFile = tempFilePath;
+		await ProfileManager.SaveProfile(profileFile, activeProfile);
 		// Make a temp file
 		// Change the profileFile to include an override
 		// At the end of Download then remove the override
