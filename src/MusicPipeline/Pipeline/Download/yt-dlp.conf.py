@@ -8,13 +8,13 @@
 --newline 
 # Outputs progress bar as new lines, otherwise it would just edit the previous line which doesn't play nice with logging
 
---sleep-interval {sleepInterval} 
+--sleep-interval {SleepInterval} 
 # Minimum bound for how long to sleep between videos
 
---max-sleep-interval {maxSleepInterval} 
+--max-sleep-interval {MaxSleepInterval} 
 # Sleep length randomly chosen between --sleep-interval and this, to emulate a human and hopefully not get flagged
 
---sleep-requests {sleepRequests} 
+--sleep-requests {SleepRequests} 
 # How long to sleep between every api request, so as to not get throttled or rate limited
 
 --embed-thumbnail 
@@ -49,13 +49,13 @@
 #^ This is used because a history file is also provided, and if that history file does not contain the video,
 #^^ Then we must have removed that for a reason like the video being downloaded incorrectly, so you want to overwrite with the correct video
 
---cookies {cookiePath} 
+--cookies {CookiePath} 
 # The cookie file
 
--P {backupDir} 
+-P {BackupDir} 
 # Download intermediary files to the backup directory
 
--o {outputTemplate} 
+-o {OutputTemplate} 
 # Use the provided output template to define the path of the output file
 #^ This a variable that can be changed in the profile
 #^^ TODO: Make some way for the profile to define these whole arguments
@@ -73,7 +73,7 @@
 --sub-langs all
 # All 
 
---cache-dir {cacheDir} 
+--cache-dir {CacheDir} 
 # Cache things like downloaders and page stuff
 
 --geo-bypass 
@@ -97,7 +97,7 @@
 --audio-quality 0 
 # 0 is best
 
---download-archive {historyPath} 
+--download-archive {HistoryPath} 
 # The history file containing all the processed songs
 
 #--ignore-errors 
