@@ -2,6 +2,7 @@ using System.Text.Json; // System comes first
 using MusicPipeline.Profiles; // These are in whatever order they're first used
 using MusicPipeline.Results;
 using MusicPipeline.Pipeline;
+using MusicPipeline.Pipeline.Helpers.Parser;
 using MusicPipeline.StepHandler;
 using MusicPipeline.Colours; // Colours always before Logging
 using MusicPipeline.Tools.LogEngine; // Tools last
@@ -27,7 +28,7 @@ public class Orchestrator
 		l.user = "Orchestrator";
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
 		await l.WipeAsync();
-		await l.Out("Test", DefaultColours.Error);
+		/*await l.Out("Test", DefaultColours.Error);
 		await l.Out("Test Number 2");
 		await l.Out(JsonSerializer.Serialize(activeProfile), 54);
 		activeProfile.ScannerSleepIntervalSec = 30;
@@ -43,7 +44,9 @@ public class Orchestrator
 		List<Result> Step2Results = await d.Download(profileFile);
 		foreach (Result r in Step2Results) {
 			Handler.HandleResult(r, profileFile);
-		}
+		}*/
+		var par = new Parser();
+		await par.ParseYTDLPConfigFile(activeProfile.YTDLPConfigFileOriginal);
 	}
 
 
