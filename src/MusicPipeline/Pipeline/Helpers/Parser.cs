@@ -11,13 +11,14 @@ public class Parser
 	{
 		// TODO: Make this function
 		Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
-		string logFile = activeProfile.DiagLogFile;
+		LogEngine l = activeProfile.LogEngine;
+		l.user = "Parser";
 		string YTDLPOriginalConfigFilePath = activeProfile.YTDLPConfigFileOriginal;
 		// Parse in the conf
 		byte[] confFileBytes = File.ReadAllBytes(YTDLPOriginalConfigFilePath);
 		string? confFileContents = confFileBytes.ToString();
 		if (confFileContents is null) {
-			await LogEngine.Out(logFile, $"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid", "Parser", DefaultColours.Error);
+			await l.Out($"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid", DefaultColours.Error);
 			return;
 		}
 		List<string> confFileLines = new List<string>(confFileContents.Split("\n"));
@@ -34,7 +35,7 @@ public class Parser
 				continue;
 			}
 			string variable = match.ToString();
-			await LogEngine.Out(logFile, $"variable = {variable}", "Parser", DefaultColours.Debug);
+			await l.Out($"variable = {variable}", DefaultColours.Debug);
 			// Use Reflection somehow idfk
 		}
 		// Make a temp file

@@ -23,8 +23,8 @@ public class SongIdentifier
 	public bool Lore {get; set;} = false;
 	public DateTime LoreDate {get; set;} = new DateTime();
 
-    [SetsRequiredMembers]
-    public SongIdentifier(string title, string artist,
+	[SetsRequiredMembers]
+	public SongIdentifier(string title, string artist,
 	string album, List<FileInfo> paths, UInt64? id, string type, double sizeMB,
 	List<double> sizesCompressed, bool instrumental, bool lyrics,
 	bool syncedLyrics, FileInfo? lyricsPath, bool lore, DateTime loreDate = new DateTime())

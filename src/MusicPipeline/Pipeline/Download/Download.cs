@@ -11,7 +11,7 @@ namespace MusicPipeline.Pipeline;
 class Downloader
 {
 	private Profile? activeProfile = null;
-	private string logFile = "Null";
+	private LogEngine? l = null;
 	private string backupDir = "Null";
 	private string YTDLPPath = "Null";
 	private string cookiePath = "Null";
@@ -28,13 +28,15 @@ class Downloader
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
-	private List<Result?> res = null;
+	private List<Result?>? res = null;
 
 	public async Task<List<Result>> Download(string profileFile)
 	{
 		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
-		logFile = activeProfile.DiagLogFile;
+
 		backupDir = activeProfile.BackupDir;
+		l = activeProfile.LogEngine;
+		l.user = "Downloader";
 		YTDLPPath = activeProfile.YTDLPExe;
 		cookiePath = activeProfile.CookieFile;
 		historyPath = activeProfile.HistoryFile;
@@ -50,14 +52,14 @@ class Downloader
 		cleanSweep = activeProfile.CleanSweepDownload; // Note: Make sure that the profile value of CleanSweepDownload is correct before running
 		// TODO add the ytdlp flags to profile file
 
-		res = new List<Result>();
+		res = new List<Result?>();
 
 		DateTime start = DateTime.UtcNow;
 
 		if (Directory.Exists(configDir)) {
 			IEnumerable<string> allSubFiles = Directory.EnumerateFiles(configDir, "run_errors_playlist*.txt", SearchOption.AllDirectories);
 			foreach (string file in allSubFiles) {
-				LogEngine.Out(logFile, $"File found {file}", "Downloader", DefaultColours.Debug);
+				await l.Out($"File found {file}", DefaultColours.Debug);
 				// Temporary debug to check that it's finding the right files
 				// It is
 				File.Delete(file);
@@ -66,19 +68,19 @@ class Downloader
 
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
 
-		await LogEngine.Out(logFile, "==============================================", "Downloader");
-		await LogEngine.Out(logFile, "          YTDLP Song Downloader Step          ", "Downloader");
-		await LogEngine.Out(logFile, "==============================================", "Downloader");
+		await l.Out("==============================================");
+		await l.Out("          YTDLP Song Downloader Step          ");
+		await l.Out("==============================================");
 
 		if (!Directory.Exists(backupDir)) {
-			await LogEngine.Out(logFile, $"Main backup directory {backupDir} doesn't exist. Creating.", "Downloader");
+			await l.Out($"Main backup directory {backupDir} doesn't exist. Creating.");
 			Directory.CreateDirectory(backupDir);
 		}
 
 
 		if (cleanSweep) {
 			historyPath = $@"{configDir}\pipeline_null_history_{Guid.NewGuid()}.txt";
-			await LogEngine.Out(logFile, "Clean sweep activated", "Downloader");
+			await l.Out("Clean sweep activated");
 		}
 
 		// URLs should be sanitised already
@@ -106,8 +108,8 @@ class Downloader
 		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
 		await j;
 		List<Result>? results = new List<Result>();
-		foreach (Result r in res) {
-			if (res is null) {res = new List<Result>([r]);}
+		foreach (Result? r in res) {
+			if (res is null) {res = new List<Result?>([r]);}
 			else {results.Add(r);}
 			// Could also use addRange or something
 		}
@@ -119,7 +121,8 @@ class Downloader
 
 	private async Task DownloadThread(int index)
 	{
-		await LogEngine.Out(logFile, $"Index = {index} Playlists = {playlists}, sleepInterval = {sleepInterval}", "DownloadThread", DefaultColours.Debug);
+		l.user = "DownloaderThread";
+		await l.Out($"Index = {index} Playlists = {playlists}, sleepInterval = {sleepInterval}", DefaultColours.Debug);
 		int? colourCode = null;
 		// I know this isn't technically the same order as the original but the testing only has one playlist and I prefer the peach colour. Sue me.
 		switch (index + 1) {
@@ -147,7 +150,7 @@ class Downloader
 		string errorLogPath = $@"{configDir}playlist${index}_run_errors.txt";
 		if (File.Exists(errorLogPath)) {File.Delete(errorLogPath);}
 
-		await LogEngine.Out(logFile, $"Processing Playlist URL: {playlists[index]}", "Downloader", colourCode);
+		await l.Out($"Processing Playlist URL: {playlists[index]}", colourCode);
 
 		// Just found out that it supports putting all this in a file so :eyes:
 		downloadArguments = $"--config-locations {YTDLPConfigFile}   {playlists[index]}";
@@ -212,7 +215,7 @@ class Downloader
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - start;
-					if (res is null) {res = new List<Result>([new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null")]);}
+					if (res is null) {res = new List<Result?>([new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null")]);}
 					else {res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));}
 					return;
 				}
@@ -221,7 +224,7 @@ class Downloader
 				List<string> lines = [""];
 				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
-						await LogEngine.Out(logFile, currentLine, "DownloaderThread", colourCode);
+						await l.Out(currentLine, colourCode);
 						lines.Add(currentLine);
 					}
 				}
@@ -232,7 +235,7 @@ class Downloader
 				await YTDLPProcess.WaitForExitAsync();
 				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;
-				if (res is null) {res = new List<Result>([new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index))]);}
+				if (res is null) {res = new List<Result?>([new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index))]);}
 				else {res.Add(new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index)));}
 				return;
 			}
@@ -241,7 +244,7 @@ class Downloader
 		{
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
-			if (res is null) {res = new List<Result>([new Result("DownloaderThread", false, elapsed, ex.Message)]);}
+			if (res is null) {res = new List<Result?>([new Result("DownloaderThread", false, elapsed, ex.Message)]);}
 			else {res.Add(new Result("DownloaderThread", false, elapsed, ex.Message));}
 		}
 		finally
@@ -252,7 +255,7 @@ class Downloader
 
 	private async Task<List<SongIdentifier>> GetAffectedSongInfo()
 	{
-		await LogEngine.Out(logFile, "TODO: URGENT: MAKE GetAffectedSongInfo", "Downloader", DefaultColours.Error);
+		await l.Out("TODO: URGENT: MAKE GetAffectedSongInfo", DefaultColours.Error);
         //return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
         List<FileInfo> paths = [new("Null")];
         List<double> sizesCompressed = new([0.0]);
@@ -278,7 +281,7 @@ class Downloader
 
 	private async Task<string> GetErrorsInThread(int threadIndex)
 	{
-		await LogEngine.Out(logFile, "TODO: URGENT: MAKE GetErrorsInThread", "Downloader", DefaultColours.Error);
+		await l.Out("TODO: URGENT: MAKE GetErrorsInThread", DefaultColours.Error);
 		return "TODO";
 	} 
 }

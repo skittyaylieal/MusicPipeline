@@ -19,17 +19,21 @@ public class Orchestrator
 	public async Task Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json")
 	{		
 
-		/* First use of Profiles*/ Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		/* First use of Profiles*/ Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		string logFile = activeProfile.DiagLogFile;
 		Console.WriteLine("Test");
-		await LogEngine.WipeAsync(logFile, "Orchestrator");
-		await LogEngine.Out(logFile, "Test", "Orchestrator", 203);
-		await LogEngine.Out(logFile, "Test Number 2", "Orchestrator");
-		await LogEngine.Out(logFile, JsonSerializer.Serialize(activeProfile), "Orchestrator", 54);
+		LogEngine l = new LogEngine(activeProfile.DiagLogFile);
+		activeProfile.LogEngine = l;
+		l.user = "Orchestrator";
+		await ProfileManager.SaveProfile(profileFile, activeProfile);
+		await l.WipeAsync();
+		await l.Out("Test", DefaultColours.Error);
+		await l.Out("Test Number 2");
+		await l.Out(JsonSerializer.Serialize(activeProfile), 54);
 		activeProfile.ScannerSleepIntervalSec = 30;
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
 		Profiles.Profile NewActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
-		await LogEngine.Out(logFile, NewActiveProfile.ScannerSleepIntervalSec.ToString(), "Orchestrator", 36);
+		await l.Out(NewActiveProfile.ScannerSleepIntervalSec.ToString(), 36);
 		await ProfileManager.SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 
  		// First use of Results

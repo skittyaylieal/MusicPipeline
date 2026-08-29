@@ -12,11 +12,13 @@ and let you inherit from any profile
 LOGGING:
 
 The main log function, LogEngine.Out(), is in Tools/LogEngine.cs
-
-	await LogEngine.Out(LogFile, "Message", "Test");
+	
+	you'll need to get the LogEngine from activeProfile.LogEngine
+	await l.Out("Message");
 	outputs
 	{current time} [Test] Message
 	everything before message is coloured cream, ansi colour 230
+	as thats the system colour
 	Colours:
 	Supports all colours the website does, all ANSI
 	Colour Guide:

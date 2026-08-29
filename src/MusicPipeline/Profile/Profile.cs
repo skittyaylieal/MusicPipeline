@@ -1,3 +1,4 @@
+using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Profiles;
 
 //TODO: make the profile initialise to defaults
@@ -56,4 +57,5 @@ public class Profile
 	public string[] Playlists {get; set;} = ["Null"];
 	public int LastCleanRunEpoch {get; set;} = 0;
 	public int LastNormalRunEpoch {get; set;} = 0;
+	public LogEngine? LogEngine {get; set;} = null;
 }

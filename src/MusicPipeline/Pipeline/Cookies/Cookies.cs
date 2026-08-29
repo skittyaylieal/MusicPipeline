@@ -14,33 +14,34 @@ class Cookies
 	{
 		//in C# local variables should start with lower case, camel case.
 		Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(ProfileFile);
-		string logFile = activeProfile.DiagLogFile;
-		await LogEngine.Out(logFile, "Profile Done", "Cookies", DefaultColours.Debug);
+		LogEngine? l = activeProfile.LogEngine;
+		l.user = "Cookies";
+		await l.Out("Profile Done", DefaultColours.Debug);
 		string cookieFile = activeProfile.CookieFile;
 		string YTDLPPath = activeProfile.YTDLPExe;
 		string testURL = activeProfile.CheckURL;
 
-		await LogEngine.Out(logFile, "Variables Done", "Cookies", DefaultColours.Debug);
+		await l.Out("Variables Done", DefaultColours.Debug);
 
 		DateTime start = DateTime.UtcNow;
 
-		await LogEngine.Out(logFile, "Started timer", "Cookies", DefaultColours.Debug);
+		await l.Out("Started timer", DefaultColours.Debug);
 
-		await LogEngine.Out(logFile, "==============================================", "Cookies");
-		await LogEngine.Out(logFile, "                Cookie Checker                ", "Cookies");
-		await LogEngine.Out(logFile, "==============================================", "Cookies");
+		await l.Out("==============================================");
+		await l.Out("                Cookie Checker                ");
+		await l.Out("==============================================");
 
 		if (!File.Exists(cookieFile)){
-			await LogEngine.Out(logFile, "[ERROR] Cookie File could not be found. Please export one.", "Cookies", DefaultColours.Error);
+			await l.Out("[ERROR] Cookie File could not be found. Please export one.", DefaultColours.Error);
 			return CookieDefaults.FileError(false, start);
 		}
 		if (!File.Exists(YTDLPPath)){
-			await LogEngine.Out(logFile, "[ERROR] YTDLP Executable could not be found.", "Cookies", DefaultColours.Error);
+			await l.Out("[ERROR] YTDLP Executable could not be found.", DefaultColours.Error);
 			return CookieDefaults.FileError(true, start);
 		}
 
-		await LogEngine.Out(logFile, "[+] Cookie and YTDLP files located sucsessfully!", "Cookies", DefaultColours.Success);
-		await LogEngine.Out(logFile, "[*] Testing cookies on YouTube.", "Cookies");
+		await l.Out("[+] Cookie and YTDLP files located sucsessfully!", DefaultColours.Success);
+		await l.Out("[*] Testing cookies on YouTube.");
 		try
 		{
 			using (Process YTDLPProcess = await Helper.Execute(YTDLPPath, $"--cookies \"{cookieFile}\" --simulate --quiet {testURL}"))
@@ -56,7 +57,7 @@ class Cookies
 				string? currentLine;
 				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
-						await LogEngine.Out(logFile, currentLine, "Cookies");
+						await l.Out(currentLine);
 					}
 				}
 				*/

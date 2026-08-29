@@ -118,30 +118,30 @@ public class ProfileFile
 }
 
 
-public static class ProfileManager
+public class ProfileManager
 {
 
-	public static readonly string LogFile = @"C:\MusicTools\MusicPipeline\Sandbox\csLogFile.log";
+	private static readonly LogEngine logger = new LogEngine(@"C:\MusicTools\MusicPipeline\Sandbox\Config\csLogFile.log", "ProfileManager");
 	public async static Task<Profile> LoadActiveProfile(string profileFile)
 	{
 		try {
 			File.ReadAllBytes(profileFile);
-			await LogEngine.Out(LogFile, $"Read profile file {profileFile} successfully!", "ProfileManager", DefaultColours.Success);
+			await logger.Out($"Read profile file {profileFile} successfully!", DefaultColours.Success);
 		}
 		catch (FileNotFoundException) {
-			await LogEngine.Out(LogFile, "The profile file doesn't exist, creating a new DefaultProfile", "ProfileManager", DefaultColours.Error);
+			await logger.Out("The profile file doesn't exist, creating a new DefaultProfile", DefaultColours.Error);
 			await SaveProfile(profileFile);
 		}
 		string jsonString = File.ReadAllText(profileFile);
-		await LogEngine.Out(LogFile, jsonString, "Debug", 145);
+		await logger.Out(jsonString, DefaultColours.Debug);
 		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
 			Profile activeProfile = file.GetActiveProfile();
 			return activeProfile;
-#pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, i hope my code is safe enough to warrant it
+#pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, I think my code is safe enough to warrant it
 		} else {
-			await LogEngine.Out(LogFile , $"No profiles were found in the file {profileFile}. A default profile has been initialised.", "Profile Manager", DefaultColours.Error);
+			await logger.Out($"No profiles were found in the file {profileFile}. A default profile has been initialised.", DefaultColours.Error);
 			await SaveProfile(profileFile);
 			return DefaultProfiles.DefaultProfile;
 		}
@@ -170,7 +170,7 @@ public static class ProfileManager
 		ProfileFile Existing = await GetProfileFile(profileFile);
 		if (Existing.ActiveProfile == "ERROR")
 		{
-			await LogEngine.Out(LogFile, $"Failed to get ProfileFile from {profileFile}, creating new file", "ProfileManager", DefaultColours.Error);
+			await logger.Out($"Failed to get ProfileFile from {profileFile}, creating new file", DefaultColours.Error);
 		}
 		if (Existing.ProfileAlreadyExists(profile) || Existing.ActiveProfile=="ERROR") {
 			Existing.Profiles = new List<Profile>() {profile};
@@ -183,33 +183,33 @@ public static class ProfileManager
 		string JsonToWrite = JsonSerializer.Serialize(ProfileFile, Options);
 		File.WriteAllText(profileFile, JsonToWrite);
 
-		await LogEngine.Out(LogFile, $"Wrote new profile {profile.Name} to {profileFile} successfully.", "ProfileManager", DefaultColours.Success);
+		await profile.LogEngine.Out($"Wrote new profile {profile.Name} to {profileFile} successfully.", DefaultColours.Success);
 		
 	}
 
 	public static async Task SwitchProfile(string profileFile)
 	{
 		// TODO
-		await LogEngine.Out(LogFile, "Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning);
+		await logger.Out("Oopsies, this function doesn't exist yet!", DefaultColours.Warning);
 		throw new NotImplementedException();
 	}
 
 	private static async Task<ProfileFile> GetProfileFile(string profileFile)
 	{
 #pragma warning disable CS8600, CS8603, CS8602 // Again, if the file exists it's so likely to be valid these warnings just clutter the output
-		if(Directory.Exists(Directory.GetParent(profileFile).Name)) {
+		if(Directory.Exists(Directory.GetParent(profileFile).ToString())) {
 			if (File.Exists(profileFile)) {
 				string jsonString = File.ReadAllText(profileFile);
 				ProfileFile Result =  JsonSerializer.Deserialize<ProfileFile>(jsonString);
 				return Result;
 			} else {
-				await LogEngine.Out(LogFile, $"ProfileFile {profileFile} doesn't exist.", "ProfileManager", DefaultColours.Error);
+				await logger.Out($"ProfileFile {profileFile} doesn't exist.", DefaultColours.Error);
 				return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
 				//can't do anything after it has already returned, line below is unreachable.
 				// Yes I thought i swapped them a while ago
 			}
 		} else {
-			await LogEngine.Out(LogFile, $"Parent directory to profile file path {profileFile} doesn't exist. Creating", "ProfileManager");
+			await logger.Out($"Parent directory to profile file path {profileFile} doesn't exist. Creating");
 			Directory.CreateDirectory(Directory.GetParent(profileFile).Name);
 			return await GetProfileFile(profileFile);
 		}

@@ -11,7 +11,8 @@ public class Scanner
 	public async void ScanLibrary(string ProfileFile)
     {
         Profile activeProfile = await ProfileManager.LoadActiveProfile(ProfileFile);
-        string logFile = activeProfile.DiagLogFile;
+        LogEngine l = activeProfile.LogEngine;
+        l.user = "LibraryScanner";
         string backupDir = activeProfile.BackupDir;
         List<string> compressedDirs = activeProfile.CompressedDirs;
         //List<DirectoryInfo>? compressedDirs = null; // Support for multiple compressed directories will be added at somepoint™
@@ -70,12 +71,12 @@ public class Scanner
         //var files = masterFiles ?? mobileFiles;
         //maxDownloadThreads = maxDownloadThreads < playlists.Count() ? playlists.Count() : maxDownloadThreads;
         IEnumerable<string>? files = masterFiles?.Count() < Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) ? compressedFiles[await ListTools.MaxCountAnyList(compressedFiles, true)] : masterFiles;
-        await (files?.Count() > masterFiles?.Count() ? LogEngine.Out(logFile, $"Compressed Directory {await ListTools.MaxCountAnyList(compressedFiles, true)} has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} more songs than Master", "LibraryScanner", DefaultColours.Warning) : LogEngine.Out(logFile, $"The largest compressed directory, {await ListTools.MaxCountAnyList(compressedFiles, true)}, has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} fewer songs that Master. Declare this directory a subset to dismiss.", "LibraryScanner", DefaultColours.Warning));
+        await (files?.Count() > masterFiles?.Count() ? l.Out($"Compressed Directory {await ListTools.MaxCountAnyList(compressedFiles, true)} has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} more songs than Master", DefaultColours.Warning) : l.Out($"The largest compressed directory, {await ListTools.MaxCountAnyList(compressedFiles, true)}, has {Int32.Parse(await ListTools.MaxCountAnyList(compressedFiles)) - masterFiles?.Count()} fewer songs that Master. Declare this directory a subset to dismiss.", DefaultColours.Warning));
         //var files;
         if (files is null)
         {
             // TODO, once theres multiple compressed folders then text should read "None of {List of folder names} exist or are empty. Exiting"
-            await LogEngine.Out(logFile, "Neither Backup nor Mobile Directory exist or are empty. Exiting", "LibraryScanner", DefaultColours.Error);
+            await l.Out("Neither Backup nor Mobile Directory exist or are empty. Exiting", DefaultColours.Error);
             return;
         }
 
@@ -103,9 +104,9 @@ public class Scanner
         if (Directory.Exists(backupDir))
         {
             masterFiles = Directory.EnumerateFiles(backupDir, songFileSearchPattern, SearchOption.AllDirectories);
-            await LogEngine.Out(logFile, $"Found {masterFiles.Count()} song files in backup directory ({backupDir})", "LibraryScanner");
+            await l.Out($"Found {masterFiles.Count()} song files in backup directory ({backupDir})");
             var lrcFiles = Directory.EnumerateFiles(backupDir, lyricFileSearchPattern, SearchOption.AllDirectories);
-            await LogEngine.Out(logFile, $"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})", "LibraryScanner");
+            await l.Out($"Found {lrcFiles.Count()} lyric files in backup directory ({backupDir})");
             double masterSize = 0.00;
             foreach (var f in masterFiles) { masterSize += f.Length; }
         }
@@ -126,7 +127,7 @@ public class Scanner
             if (Directory.Exists(mobileDir))
             {
                 directoryFiles = Directory.EnumerateFiles(mobileDir, songFileSearchPattern, SearchOption.AllDirectories);
-                await LogEngine.Out(logFile, $"Found {directoryFiles.Count()} song files in compressed directory ({mobileDir})", "LibraryScanner");
+                await l.Out($"Found {directoryFiles.Count()} song files in compressed directory ({mobileDir})");
                 double mobileSize = 0.00;
                 foreach (var f in directoryFiles) { mobileSize += f.Length; }
                 compressedFiles.Add(mobileDir,  directoryFiles);

@@ -12,12 +12,13 @@ public static class Handler
 		// "Profile is a namespace but being used a type"
 		// NOTHING USES IT AS A NAMESPACE
 		Profiles.Profile ActiveProfile = await ProfileManager.LoadActiveProfile(ProfileFile);
-		string LogFile = ActiveProfile.DiagLogFile;
+		LogEngine l = ActiveProfile.LogEngine;
+		l.user = "StepHandler";
 		string Success = "";
 		// Cookie Verification finished successfully/with errors in (elapsed time)
 		if (result.Outcome) {Success = "successfully";} else {Success = "with errors";}
 		string ElapsedTime = result.Elapsed.ToString(@"dd\:hh\:mm\:ss\.ffff");
-		await LogEngine.Out(LogFile, $"{result.Step} finished {Success} in {ElapsedTime}", "StepHandler");
+		await l.Out($"{result.Step} finished {Success} in {ElapsedTime}");
 		// TODO: Metrics database etc
 		// As in, make it handle the songs and things that were affected by the step and do what's necessary
 	}
