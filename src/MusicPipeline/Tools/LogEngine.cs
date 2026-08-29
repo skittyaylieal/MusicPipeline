@@ -13,7 +13,7 @@ public class LogEngine
 	// Ok maybe we take the profile file after all lol
 	private const char esc = '\u001B';
 	private const string reset = $"\u001B[0m";
-	public required string logFile {get; set;}
+	public required string logFile {get; set;} = "Null";
 	public string? user {get; set;}
 
 	/*public async Task Out(string logFile, string message, string user = "System", int? style = null)
@@ -39,7 +39,7 @@ public class LogEngine
 		else {await Engine(message, user, null);}
 	}
 
-	private async Task Engine(string message, string user, int? style, string? logFile = null)
+	private async Task Engine(string message, string user, int? style, string? logFileParam = null)
 	{
 		/*ArgumentException.ThrowIfNullOrEmpty(LogFile);
 		ArgumentException.ThrowIfNullOrEmpty(Message);
@@ -48,6 +48,9 @@ public class LogEngine
 			throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
 		}*/
 
+		if (logFile == "Null" & logFileParam != null) {logFile = logFileParam;}
+		else {return;}
+		
 		switch (style) {
 			case 0:
 				style = 36;
