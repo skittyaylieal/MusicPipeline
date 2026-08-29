@@ -49,7 +49,7 @@ public class LogEngine
 		}*/
 		Console.WriteLine($"Log Test-1 {message}");
 		if (logFile == "Null" & logFileParam != null) {logFile = logFileParam;Console.WriteLine("Log Test-0.5");}
-		else {Console.WriteLine("Log Test0");return;}
+		else {Console.WriteLine("Log Test0");}
 		Console.WriteLine("Log Test");
 
 		switch (style) {
