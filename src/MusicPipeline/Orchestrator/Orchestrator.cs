@@ -47,7 +47,7 @@ public class Orchestrator
 			Handler.HandleResult(r, profileFile);
 		}*/
 		var par = new Parser();
-		await par.ParseYTDLPConfigFile(activeProfile.YTDLPConfigFileOriginal);
+		await par.ParseYTDLPConfigFile(activeProfile.YTDLPConfigFileOriginal, activeProfile);
 	}
 
 

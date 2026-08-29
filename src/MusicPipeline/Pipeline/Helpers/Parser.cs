@@ -7,7 +7,7 @@ namespace MusicPipeline.Pipeline.Helpers.Parser;
 
 public class Parser
 {
-	public async Task ParseYTDLPConfigFile(string profileFile)
+	public async Task ParseYTDLPConfigFile(string profileFile, Profile context)
 	{
 		// TODO: Make this function
 		Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
@@ -34,11 +34,11 @@ public class Parser
 				continue;
 			}
 			string variable = match.ToString();
-			await l.Out($"variable = {variable}", DefaultColours.Debug);
+			//await l.Out($"variable = {variable}", DefaultColours.Debug);
 			// Uses Reflection somehow idfk
 			// TODO: Write a better explanation
-			string? replace = typeof(Profile)?.GetProperty(variable)?.GetValue(activeProfile)?.ToString();
-			await l.Out($"replace = {replace}", DefaultColours.Debug);
+			string? replace = typeof(Profile)?.GetProperty(variable)?.GetValue(context)?.ToString();
+			//await l.Out($"replace = {replace}", DefaultColours.Debug);
 		}
 		// Make a temp file
 		// Change the profileFile to include an override
