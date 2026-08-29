@@ -15,8 +15,7 @@ public class Parser
 		l.user = "Parser";
 		string YTDLPOriginalConfigFilePath = activeProfile.YTDLPConfigFileOriginal;
 		// Parse in the conf
-		byte[] confFileBytes = File.ReadAllBytes(YTDLPOriginalConfigFilePath);
-		string? confFileContents = confFileBytes.ToString();
+		string? confFileContents = await File.ReadAllTextAsync(YTDLPOriginalConfigFilePath);
 		if (confFileContents is null) {
 			await l.Out($"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid", DefaultColours.Error);
 			return;
@@ -30,14 +29,15 @@ public class Parser
 		}
 		// Somehow handle the {} variables
 		foreach (string line in confFileLinesFiltered) {
-			Match match = Regex.Match(line, "({.*})");
+			Match match = Regex.Match(line, @"\{(\w+)\}");
 			if (!match.Success) {
 				continue;
 			}
 			string variable = match.ToString();
 			await l.Out($"variable = {variable}", DefaultColours.Debug);
-			// Use Reflection somehow idfk
-			string? replace = typeof(Profile)?.GetField(variable)?.GetValue(null).ToString();
+			// Uses Reflection somehow idfk
+			// TODO: Write a better explanation
+			string? replace = typeof(Profile)?.GetProperty(variable)?.GetValue(activeProfile)?.ToString();
 			await l.Out($"replace = {replace}", DefaultColours.Debug);
 		}
 		// Make a temp file
