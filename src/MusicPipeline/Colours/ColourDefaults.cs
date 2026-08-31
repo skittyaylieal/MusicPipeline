@@ -12,5 +12,6 @@ public class DefaultColours
 	public const int LibraryScanner = 177;
 	public const int StepHandler = 77;
 	public const int Downloader = 121;
+	public const int SafetyChecker = 24;
 	public const int Date = 251; // Should be different from all other colours as it's used for logging the current date to the file
 }

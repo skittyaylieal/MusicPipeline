@@ -31,9 +31,9 @@ public class SafetyCheck
 				foreach (PropertyInfo p in fieldFields) {
 					fieldFieldsValues.Append(new (new(p.Name, p.GetValue(profile)), new(p.Name, p.GetValue(fields[i]))));
 					if (p.GetValue(profile) == p.GetValue(fields[i])) {
-						res.Append(true);
+						res.Append(new (p.Name, true));
 					}
-					else {res.Add(false);}
+					else {res.Append(new (p.Name, false));}
 				}
 			}
 			int count = 0;
