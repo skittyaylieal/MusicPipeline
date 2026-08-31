@@ -30,6 +30,7 @@ public class SafetyCheck
 				
 				foreach (PropertyInfo p in fieldFields) {
 					string temp1 = p.Name;
+					await profile.LogEngine.Out(p.ToString() ?? "p was null lol", "SafetyChecker");
 					Object? temp2 = p.GetValue(profile);
 					Object? temp3 = p.GetValue(fields[i]);
 					KeyValuePair<string, Object?> temp4 = new(temp1, temp2);
