@@ -31,7 +31,7 @@ public class Orchestrator
 		await l.WipeAsync();
 		await l.Out("Test", DefaultColours.Error, true);
 		await l.Out("Other Test", DefaultColours.Warning);
-		/*await l.Out("Test Number 2");
+		await l.Out("Test Number 2");
 		await l.Out(JsonSerializer.Serialize(activeProfile), 54);
 		activeProfile.ScannerSleepIntervalSec = 30;
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
@@ -46,9 +46,8 @@ public class Orchestrator
 		List<Result> Step2Results = await d.Download(profileFile);
 		foreach (Result r in Step2Results) {
 			Handler.HandleResult(r, profileFile);
-		}*/
-		var par = new Parser();
-		await par.ParseYTDLPConfigFile(activeProfile.YTDLPConfigFileOriginal, activeProfile);
+		}
+		
 	}
 
 
