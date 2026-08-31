@@ -14,7 +14,6 @@ class Cookies
 	{
 		//in C# local variables should start with lower case, camel case.
 		Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfile(ProfileFile);
-		Console.WriteLine(activeProfile);
 		LogEngine? l = activeProfile.LogEngine;
 		l.user = "Cookies";
 		await l.Out("Profile Done", DefaultColours.Debug);
