@@ -29,10 +29,13 @@ public class SafetyCheck
 				// Method by method
 				
 				foreach (PropertyInfo p in fieldFields) {
-					KeyValuePair<string, Object?> temp1 = new(p.Name, p.GetValue(profile));
-					KeyValuePair<string, Object?> temp2 = new(p.Name, p.GetValue(fields[i]));
-					KeyValuePair<KeyValuePair<string, Object?>, KeyValuePair<string, Object?>> temp3 = new (temp1, temp2);
-					fieldFieldsValues.Append(temp3);
+					string temp1 = p.Name;
+					Object? temp2 = p.GetValue(profile);
+					Object? temp3 = p.GetValue(fields[i]);
+					KeyValuePair<string, Object?> temp4 = new(temp1, temp2);
+					KeyValuePair<string, Object?> temp5 = new(temp1, temp3);
+					KeyValuePair<KeyValuePair<string, Object?>, KeyValuePair<string, Object?>> temp6 = new (temp4, temp5);
+					fieldFieldsValues.Append(temp6);
 					if (p.GetValue(profile) == p.GetValue(fields[i])) {
 						res.Append(new (p.Name, true));
 					}
