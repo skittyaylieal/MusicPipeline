@@ -160,14 +160,14 @@ public class ProfileManager
 		// Done
 	}
 
-	public static async Task SaveProfile(string profileFile, Profile? profile = null)
+	public static async Task SaveProfile(string profileFile, Profile? profile = null, bool overrideParam = false)
 	{
 		// TODO: fix
 		//next step of todo, name what is broken :)
 		// i think i fixed it already actually lol
 		if (profile == null) {
 			profile = DefaultProfiles.DefaultProfile;
-		}
+		} else if (await SafetyCheck.CheckProfileToBeSaved(profile) & !overrideParam) {await logger.Out("A new profile that matchs a default profile exactly is being added. Please check that this is intentional, and if so pass override", DefaultColours.Error, true); return;}
 		ProfileFile Existing = await GetProfileFile(profileFile);
 		if (Existing.ActiveProfile == "ERROR")
 		{

@@ -54,7 +54,7 @@ public class SafetyCheck
 		// "Ok what do you want?"
 		// Well it needs to output whether its the same as any
 		// Then log whats the same
-
+		return false;
 		
 	}
 }
