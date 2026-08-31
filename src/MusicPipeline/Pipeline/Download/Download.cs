@@ -3,6 +3,7 @@ using System.Diagnostics;
 using MusicPipeline.Results;
 using MusicPipeline.Profiles;
 using MusicPipeline.Pipeline.Helpers.Execute;
+using MusicPipeline.Pipeline.Helpers.Parser;
 using MusicPipeline.SongIdentifiers;
 using MusicPipeline.Colours; 
 using MusicPipeline.Tools.LogEngine;
@@ -105,6 +106,7 @@ class Downloader
 		*/
 
 		Task? j = null;
+		await Parser.ParseYTDLPConfigFile(activeProfile);
 		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
 		await j;
 		List<Result>? results = new List<Result>();
@@ -113,6 +115,9 @@ class Downloader
 			else {results.Add(r);}
 			// Could also use addRange or something
 		}
+		Profile currentActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		currentActiveProfile.YTDLPConfigFile = "Null";
+		await ProfileManager.SaveProfile(profileFile, currentActiveProfile);
 		DateTime end = DateTime.UtcNow;
 		TimeSpan elapsed = end - start;
 		results.Insert(0, new Result("Downloader", true, elapsed, "", await GetAffectedSongInfo()));

@@ -7,15 +7,15 @@ namespace MusicPipeline.Pipeline.Helpers.Parser;
 
 public class Parser
 {
-	public async Task ParseYTDLPConfigFile(string profileFile, Profile context)
+	public static async Task ParseYTDLPConfigFile(Profile context)
 	{
 		// TODO: Make this function
-		Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		// TODO: Make this use the active profile
 		// No idea why it wont work
-		LogEngine? l = new LogEngine(activeProfile.DiagLogFile);
+		//LogEngine? l = new LogEngine(context.DiagLogFile);
+		LogEngine? l = context.LogEngine;
 		l.user = "Parser";
-		string YTDLPOriginalConfigFilePath = activeProfile.YTDLPConfigFileOriginal;
+		string YTDLPOriginalConfigFilePath = context.YTDLPConfigFileOriginal;
 		// Parse in the conf
 		string? confFileContents = await File.ReadAllTextAsync(YTDLPOriginalConfigFilePath);
 		if (confFileContents is null) {
@@ -48,9 +48,10 @@ public class Parser
 
 		string parentDir = Path.GetDirectoryName(YTDLPOriginalConfigFilePath);
 		string tempFilePath = $@"{parentDir}\yt-dlp{Guid.NewGuid()}.conf";
-		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		await File.WriteAllTextAsync(tempFilePath, String.Concat(parsedLines));
+		Profile activeProfile = await ProfileManager.LoadActiveProfile(context.ProfileFile);
 		activeProfile.YTDLPConfigFile = tempFilePath;
-		await ProfileManager.SaveProfile(profileFile, activeProfile);
+		await ProfileManager.SaveProfile(context.ProfileFile, activeProfile);
 		// Make a temp file
 		// Change the profileFile to include an override
 		// At the end of Download then remove the override

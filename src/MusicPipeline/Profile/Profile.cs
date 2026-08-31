@@ -22,6 +22,7 @@ public class Profile
 	public string TimingFile {get; set;} = "Null";
 	public string CookieFile {get; set;} = "Null";
 	public string HistoryFile {get; set;} = "Null";
+	public string ProfileFile {get; set;} = "Null";
 	public string YTDLPExe {get; set;} = "Null";
 	public string FFmpegExe {get; set;} = "Null";
 	public string FirefoxExe {get; set;} = "Null";
