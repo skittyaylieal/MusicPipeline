@@ -38,7 +38,6 @@ public class Orchestrator
 		await ProfileManager.SaveProfile(profileFile, activeProfile);
 		Profiles.Profile newActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		await l.Out(newActiveProfile.ScannerSleepIntervalSec.ToString(), 36);
-		await ProfileManager.SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 		
  		// First use of Results
 		Result Step1Result = await Cookies.CookieCheck(profileFile);
