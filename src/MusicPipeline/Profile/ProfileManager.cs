@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Collections.Generic;
+using MusicPipeline.Tools.SafetyCheck;
 using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Colours;
 namespace MusicPipeline.Profiles;

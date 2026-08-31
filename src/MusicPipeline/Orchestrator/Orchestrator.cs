@@ -25,6 +25,7 @@ public class Orchestrator
 		LogEngine logger = new LogEngine(oldActiveProfile.DiagLogFile);
 		await logger.Out("Why won't you just work!!!", "Orchestrator", DefaultColours.Error, true);
 		oldActiveProfile.LogEngine = logger;
+		oldActiveProfile.Name = "Current Working Profile";
 		await ProfileManager.SaveProfile(profileFile, oldActiveProfile);
 		Profile activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		LogEngine? l = activeProfile.LogEngine;

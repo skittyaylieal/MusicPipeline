@@ -60,7 +60,7 @@ public static class DefaultProfiles
 	//This is the actual one, not to be used until pushing to production
 	public static readonly Profile WorkingDefaultProfile = new Profile
 	{
-		Name = "Default",
+		Name = "Working Default",
 		BackupDir = @"C:\Users\filip\Music\YT_Music_Backup",
 		CompressedDirs = [@"C:\Users\filip\Music\YT_Music_Mobile"],
 		BrokenSongsFile = @"C:\MusicTools\MusicPipeline\Config\broken_songs.json",
