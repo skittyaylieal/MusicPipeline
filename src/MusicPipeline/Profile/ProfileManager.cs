@@ -133,7 +133,7 @@ public class ProfileManager
 			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 		}
 		string jsonString = File.ReadAllText(profileFile);
-		//await logger.Out(jsonString, DefaultColours.Debug);
+		await logger.Out(jsonString, DefaultColours.Debug);
 		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
