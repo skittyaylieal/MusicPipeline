@@ -55,6 +55,7 @@ class Downloader
 		res = new List<Result?>();
 
 		DateTime start = DateTime.UtcNow;
+		await l.Out($"start = {start}", DefaultColours.Debug);
 
 		if (Directory.Exists(configDir)) {
 			IEnumerable<string> allSubFiles = Directory.EnumerateFiles(configDir, "run_errors_playlist*.txt", SearchOption.AllDirectories);
