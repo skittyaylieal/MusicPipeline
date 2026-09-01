@@ -118,6 +118,7 @@ class Downloader
 			// Could also use addRange or something
 		}
 		Profile currentActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		File.Delete(currentActiveProfile.YTDLPConfigFile);
 		currentActiveProfile.YTDLPConfigFile = "Null";
 		await ProfileManager.SaveProfile(profileFile, currentActiveProfile);
 		DateTime end = DateTime.UtcNow;
