@@ -45,7 +45,6 @@ class Downloader
 		configDir = $@"{activeProfile.RootDir}\Config";
 		cacheDir = $@"{configDir}\.cache";
 		outputTemplate = activeProfile.OutputTemplate;
-		YTDLPConfigFile = activeProfile.YTDLPConfigFile;
 		sleepInterval = activeProfile.SleepInterval;
 		maxSleepInterval = activeProfile.MaxSleepInterval;
 		sleepRequests = activeProfile.SleepRequests;
@@ -107,6 +106,8 @@ class Downloader
 
 		Task? j = null;
 		await Parser.ParseYTDLPConfigFile(activeProfile);
+		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		YTDLPConfigFile = activeProfile.YTDLPConfigFile;
 		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
 		await j;
 		l.user = "Downloader";
