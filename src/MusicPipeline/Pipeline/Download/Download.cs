@@ -109,6 +109,7 @@ class Downloader
 		await Parser.ParseYTDLPConfigFile(activeProfile);
 		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
 		await j;
+		l.user = "Downloader";
 		List<Result>? results = new List<Result>();
 		foreach (Result? r in res) {
 			if (res is null) {res = new List<Result?>([r]);}
@@ -158,6 +159,7 @@ class Downloader
 		await l.Out($"Processing Playlist URL: {playlists[index]}", colourCode);
 
 		// Just found out that it supports putting all this in a file so :eyes:
+		await l.Out($"--config-locations {YTDLPConfigFile}   {playlists[index]}", colourCode);
 		downloadArguments = $"--config-locations {YTDLPConfigFile}   {playlists[index]}";
 		/*
 		downloadArguments = string.Concat(
@@ -260,6 +262,7 @@ class Downloader
 
 	private async Task<List<SongIdentifier>> GetAffectedSongInfo()
 	{
+		l.user = "Downloader";
 		await l.Out("TODO: URGENT: MAKE GetAffectedSongInfo", DefaultColours.Error, true);
         //return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
         List<FileInfo> paths = [new("Null")];
@@ -286,6 +289,7 @@ class Downloader
 
 	private async Task<string> GetErrorsInThread(int threadIndex)
 	{
+		l.user = "Downloader";
 		await l.Out("TODO: URGENT: MAKE GetErrorsInThread", DefaultColours.Error, true);
 		return "TODO";
 	} 
