@@ -89,7 +89,7 @@ public class LogEngine
 			StreamWriter sw = new StreamWriter(logFile);
 			try {
 				sw.WriteLine(processedMessage);
-				await File.AppendAllTextAsync(logFile, processedMessageDate);
+				//await File.AppendAllTextAsync(logFile, processedMessageDate);
 			}
 			catch (System.IO.IOException) {
 				//Console.WriteLine($"{timeStamp} Oops, IO Exception!");
