@@ -124,6 +124,7 @@ class Downloader
 		await ProfileManager.SaveProfile(profileFile, currentActiveProfile);
 		DateTime end = DateTime.UtcNow;
 		TimeSpan elapsed = end - start;
+		await l.Out($"elapsed = {elapsed}, end = {end}", DefaultColours.Debug);
 		results.Insert(0, new Result("Downloader", true, elapsed, "", await GetAffectedSongInfo()));
 		return results;
 	}
