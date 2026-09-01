@@ -39,7 +39,7 @@ public class SafetyCheck
 						temp3 you're trying to get the Name property from an instance of FieldInfo. The FieldInfo class doesn't have a property named Name.
 						What were you wanting temp3 to be? temp2 is already doing something nice.
 					*/
-                    Object? temp3 = p.GetValue(fields[i].Attributes);
+                    Object? temp3 = p.GetValue(fields[i].GetValue(typeof(DefaultProfiles)));
 					KeyValuePair<string, Object?> temp4 = new(temp1, temp2);
 					KeyValuePair<string, Object?> temp5 = new(temp1, temp3);
 					KeyValuePair<KeyValuePair<string, Object?>, KeyValuePair<string, Object?>> temp6 = new (temp4, temp5);
