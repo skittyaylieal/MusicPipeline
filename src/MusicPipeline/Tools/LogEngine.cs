@@ -84,15 +84,18 @@ public class LogEngine
 		string dateYear = current.Date.ToString("dd/MM/yyyy");
 		string processedMessageDate = $"\u000A{esc}[38;5;{DefaultColours.Date.ToString()}m{dateYear} {reset} {processedMessage}";
 
-		TryAppend:
+		
+		for (int i = 0; i < 5; i++) {
 			try {
 				await File.AppendAllTextAsync(logFile, processedMessageDate);
 			}
 			catch (System.IO.IOException) {
-				Console.WriteLine($"{timeStamp} Oops, IO Exception!");
-				Console.WriteLine($"{esc}[38;5;203m{timeStamp} [System] TODO: Fix this a better way {reset}");
-				goto TryAppend;
+				//Console.WriteLine($"{timeStamp} Oops, IO Exception!");
+				//Console.WriteLine($"{esc}[38;5;203m{timeStamp} [System] TODO: Fix this a better way {reset}");
+				Thread.Sleep(50);
+				continue;
 			}
+		}
 		Console.WriteLine(processedMessage);
 	}
 
