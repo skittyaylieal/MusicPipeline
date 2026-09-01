@@ -85,19 +85,47 @@ public class LogEngine
 		string processedMessageDate = $"\u000A{esc}[38;5;{DefaultColours.Date.ToString()}m{dateYear} {reset} {processedMessage}";
 
 		
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 10; i++) {
+			StreamWriter sw = new StreamWriter(logFile);
 			try {
+				sw.WriteLine(processedMessage);
 				await File.AppendAllTextAsync(logFile, processedMessageDate);
 			}
 			catch (System.IO.IOException) {
 				//Console.WriteLine($"{timeStamp} Oops, IO Exception!");
 				//Console.WriteLine($"{esc}[38;5;203m{timeStamp} [System] TODO: Fix this a better way {reset}");
 				await Engine("File lock", "System", DefaultColours.Error, true);
-				Thread.Sleep(50);
-				continue;
 			}
+			finally {
+				sw.Close();
+			}
+			Thread.Sleep(5);
 		}
 		Console.WriteLine(processedMessage);
+
+		/*
+			
+		try
+		{
+			//Pass the filepath and filename to the StreamWriter Constructor
+			StreamWriter sw = new StreamWriter("C:\\Test.txt");
+			//Write a line of text
+			sw.WriteLine("Hello World!!");
+			//Write a second line of text
+			sw.WriteLine("From the StreamWriter class");
+			//Close the file
+			sw.Close();
+		}
+		catch(Exception e)
+		{
+			Console.WriteLine("Exception: " + e.Message);
+		}
+		finally
+		{
+			Console.WriteLine("Executing finally block.");
+		}
+
+		*/
 	}
 
 	// I think theres some kind of summary thing I'm supposed to use for this but idk how that works
@@ -113,7 +141,7 @@ public class LogEngine
 		await File.WriteAllTextAsync(logFile, processedMessage);
 	}
 
-    [SetsRequiredMembers]
+	[SetsRequiredMembers]
 	public LogEngine(string LogFile, string? User = null)
 	{
 		logFile = LogFile;
