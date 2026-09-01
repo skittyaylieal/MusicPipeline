@@ -160,7 +160,6 @@ class Downloader
 		await l.Out($"Processing Playlist URL: {playlists[index]}", colourCode);
 
 		// Just found out that it supports putting all this in a file so :eyes:
-		await l.Out($"--config-locations {YTDLPConfigFile}   {playlists[index]}", colourCode);
 		downloadArguments = $"--config-locations {YTDLPConfigFile}   {playlists[index]}";
 		/*
 		downloadArguments = string.Concat(
