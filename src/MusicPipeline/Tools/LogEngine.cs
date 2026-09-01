@@ -92,6 +92,7 @@ public class LogEngine
 			catch (System.IO.IOException) {
 				//Console.WriteLine($"{timeStamp} Oops, IO Exception!");
 				//Console.WriteLine($"{esc}[38;5;203m{timeStamp} [System] TODO: Fix this a better way {reset}");
+				await Engine("File lock", "System", DefaultColours.Error, true);
 				Thread.Sleep(50);
 				continue;
 			}
