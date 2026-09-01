@@ -90,6 +90,7 @@ public class LogEngine
 			try {
 				sw.WriteLine(processedMessage);
 				//await File.AppendAllTextAsync(logFile, processedMessageDate);
+				break;
 			}
 			catch (System.IO.IOException) {
 				//Console.WriteLine($"{timeStamp} Oops, IO Exception!");
