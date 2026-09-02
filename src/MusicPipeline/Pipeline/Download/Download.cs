@@ -236,7 +236,7 @@ class Downloader
 				List<string> lines = new();
 				while (!((await YTDLPProcess.StandardOutput.ReadLineAsync() ?? await YTDLPProcess.StandardError.ReadLineAsync()) == null)) {
 					string? currentOutput = await YTDLPProcess.StandardOutput.ReadLineAsync();
-					string? currentError = await YTDLPProcess.StandardOutput.ReadLineAsync();
+					string? currentError = await YTDLPProcess.StandardError.ReadLineAsync();
 					if (currentOutput != null || currentError != null) {
 						if (lastOutputLine != currentOutput) {await l.Out(currentOutput, colourCode); lines.Add(currentOutput);}
 						int? errorCode = colourCode;
