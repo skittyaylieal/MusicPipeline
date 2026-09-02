@@ -238,7 +238,7 @@ class Downloader
 					string? currentOutput = YTDLPProcess.StandardOutput.ReadLine();
 					string? currentError = YTDLPProcess.StandardError.ReadLine();
 					await l.Out($"Output = {currentOutput}, Error = {currentError}", DefaultColours.Debug);
-					if (currentOutput != null && currentError != null) {
+					if (currentOutput != null || currentError != null) {
 						if (lastOutputLine != currentOutput) {await l.Out(currentOutput, colourCode); lines.Add(currentOutput);}
 						//await l.Out(currentOutput, colourCode);
 						int? errorCode = colourCode;
