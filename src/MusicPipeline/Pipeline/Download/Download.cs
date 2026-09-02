@@ -231,12 +231,19 @@ class Downloader
 					return;
 				}
 
-				string? currentLine;
-				List<string> lines = [""];
-				while (!((currentLine = String.Join("\n", [await YTDLPProcess.StandardOutput.ReadLineAsync(), await YTDLPProcess.StandardError.ReadLineAsync()])) == null)) {
-					if (currentLine != null) {
-						await l.Out(currentLine, colourCode);
-						lines.Add(currentLine);
+				string lastOutputLine = "";
+				string lastErrorLine = "";
+				List<string> lines = new();
+				while (!((await YTDLPProcess.StandardOutput.ReadLineAsync() ?? await YTDLPProcess.StandardError.ReadLineAsync()) == null)) {
+					string? currentOutput = await YTDLPProcess.StandardOutput.ReadLineAsync();
+					string? currentError = await YTDLPProcess.StandardOutput.ReadLineAsync();
+					if (currentOutput != null && currentError != null) {
+						if (lastOutputLine != currentOutput) {await l.Out(currentOutput, colourCode); lines.Add(currentOutput);}
+						int? errorCode = colourCode;
+						if (currentError.Contains("WARNING: ")) {errorCode = DefaultColours.Warning;}
+						else if (currentError.Contains("ERROR: ")) {errorCode = DefaultColours.Error;}
+						if (lastErrorLine != currentError) {await l.Out(currentError, errorCode); lines.Add(currentError);}
+						lastOutputLine = currentOutput; lastErrorLine = currentError;
 					}
 				}
 				string errorFile = $@"{configDir}\run_errors_playlist{index+1}.txt";
