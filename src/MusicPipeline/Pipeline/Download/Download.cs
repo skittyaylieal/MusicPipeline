@@ -234,7 +234,7 @@ class Downloader
 				string lastOutputLine = "";
 				string lastErrorLine = "";
 				List<string> lines = new();
-				while (!((await YTDLPProcess.StandardOutput.ReadLineAsync() ?? await YTDLPProcess.StandardError.ReadLineAsync()) == null)) {
+				while (!((YTDLPProcess.StandardOutput.ReadLine() ?? YTDLPProcess.StandardError.ReadLine()) == null)) {
 					string? currentOutput = YTDLPProcess.StandardOutput.ReadLine();
 					string? currentError = YTDLPProcess.StandardError.ReadLine();
 					//await l.Out($"Output = {currentOutput}, Error = {currentError}", DefaultColours.Debug);
