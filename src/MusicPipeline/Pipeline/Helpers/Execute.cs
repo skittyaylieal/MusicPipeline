@@ -12,7 +12,7 @@ public class Helper
 		startInfo.FileName = path;
 		startInfo.WindowStyle = ProcessWindowStyle.Hidden;
 		startInfo.RedirectStandardOutput = true;
-		startInfo.Arguments = $"{arguments} $2>1";
+		startInfo.Arguments = $"{arguments} 2>&1";
 
 		return Process.Start(startInfo);
 	}
