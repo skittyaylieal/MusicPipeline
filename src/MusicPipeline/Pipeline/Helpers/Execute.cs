@@ -3,7 +3,7 @@ namespace MusicPipeline.Pipeline.Helpers.Execute;
 
 public class Helper
 {
-	public static async Task<Process> Execute(string path, string arguments)
+	public static async Task<Process?> Execute(string path, string arguments)
 	{
 		
 		ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -12,7 +12,7 @@ public class Helper
 		startInfo.FileName = path;
 		startInfo.WindowStyle = ProcessWindowStyle.Hidden;
 		startInfo.RedirectStandardOutput = true;
-		startInfo.Arguments = arguments;
+		startInfo.Arguments = $"{arguments} $2>1";
 
 		return Process.Start(startInfo);
 	}
