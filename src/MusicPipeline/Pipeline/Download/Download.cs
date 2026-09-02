@@ -230,10 +230,10 @@ class Downloader
 					else {res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));}
 					return;
 				}
-				
+
 				string? currentLine;
 				List<string> lines = [""];
-				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync()) ?? await YTDLPProcess.StandardError.ReadLineAsync()) == null)) {
+				while (!((currentLine = String.Concat((await YTDLPProcess.StandardOutput.ReadLineAsync()), await YTDLPProcess.StandardError.ReadLineAsync())) == null)) {
 					if (currentLine != null) {
 						await l.Out(currentLine, colourCode);
 						lines.Add(currentLine);
