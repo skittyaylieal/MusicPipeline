@@ -25,7 +25,7 @@ public static class DefaultProfiles
 		RootDir = @"C:\MusicTools\MusicPipeline\Sandbox",
 		ScriptRootDir = @"C:\MusicTools\MusicPipeline",
 		OutputTemplate = "{backupDir}/%(artist|uploader).250s/%(album|playlist).250s/%(title).250s.%(ext)s",
-		YTDLPConfigFileOriginal = @"C:\MusicTools\MusicPipeline\Sandbox\Config\yt-dlp.conf",
+		YTDLPConfigFileOriginal = @"C:\MusicTools\MusicPipeline\Sandbox\Config\yt-dlp.conf.original",
 		YTDLPConfigFile = "Null",
 		SleepInterval = 4,
 		MaxSleepInterval = 12, 

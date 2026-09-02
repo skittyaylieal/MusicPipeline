@@ -40,7 +40,7 @@ class Cookies
 			return CookieDefaults.FileError(true, start);
 		}
 
-		await l.Out("[+] Cookie and YTDLP files located sucsessfully!", DefaultColours.Success, true);
+		await l.Out("[+] Cookie and YTDLP files located successfully!", DefaultColours.Success, true);
 		await l.Out("[*] Testing cookies on YouTube.");
 		try
 		{
