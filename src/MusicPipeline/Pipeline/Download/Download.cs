@@ -233,7 +233,7 @@ class Downloader
 				
 				string? currentLine;
 				List<string> lines = [""];
-				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
+				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync()) ?? await YTDLPProcess.StandardError.ReadLineAsync()) == null)) {
 					if (currentLine != null) {
 						await l.Out(currentLine, colourCode);
 						lines.Add(currentLine);
