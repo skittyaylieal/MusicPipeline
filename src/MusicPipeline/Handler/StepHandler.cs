@@ -5,7 +5,7 @@ namespace MusicPipeline.StepHandler;
 
 public static class Handler
 {
-	public static async void HandleResult(Result result, string ProfileFile)
+	public static async Task HandleResult(Result result, string ProfileFile)
 	{
 		//I don't know if Sublime points it out, but the leading "Profiles" on the line below is not required because you have a using statement for it up above.
 		// It complains endlessly when i miss it out
