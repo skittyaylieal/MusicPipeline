@@ -234,18 +234,15 @@ class Downloader
 				string lastOutputLine = "";
 				string lastErrorLine = "";
 				List<string> lines = new();
-				while (!((YTDLPProcess.StandardOutput.ReadLine() ?? YTDLPProcess.StandardError.ReadLine()) == null)) {
-					string? currentOutput = YTDLPProcess.StandardOutput.ReadLine();
-					string? currentError = YTDLPProcess.StandardError.ReadLine();
-					await l.Out($"Output = {currentOutput}, Error = {currentError}", DefaultColours.Debug);
+				while (!((await YTDLPProcess.StandardOutput.ReadLineAsync() ?? await YTDLPProcess.StandardError.ReadLineAsync()) == null)) {
+					string? currentOutput = await YTDLPProcess.StandardOutput.ReadLineAsync();
+					string? currentError = await YTDLPProcess.StandardOutput.ReadLineAsync();
 					if (currentOutput != null || currentError != null) {
 						if (lastOutputLine != currentOutput) {await l.Out(currentOutput, colourCode); lines.Add(currentOutput);}
-						//await l.Out(currentOutput, colourCode);
 						int? errorCode = colourCode;
 						if (currentError.Contains("WARNING: ")) {errorCode = DefaultColours.Warning;}
 						else if (currentError.Contains("ERROR: ")) {errorCode = DefaultColours.Error;}
 						if (lastErrorLine != currentError) {await l.Out(currentError, errorCode); lines.Add(currentError);}
-						//await l.Out(currentError, errorCode);
 						lastOutputLine = currentOutput; lastErrorLine = currentError;
 					}
 				}
