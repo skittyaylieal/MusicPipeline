@@ -243,8 +243,8 @@ class Downloader
 						if (currentError.Contains("WARNING: ")) {errorCode = DefaultColours.Warning;}
 						else if (currentError.Contains("ERROR: ")) {errorCode = DefaultColours.Error;}
 						if (lastErrorLine != currentError) {await l.Out(currentError, errorCode); lines.Add(currentError);}
-						lastOutputLine = currentOutput; lastErrorLine = currentError;
 					}
+					lastOutputLine = currentOutput; lastErrorLine = currentError;
 				}
 				string errorFile = $@"{configDir}\run_errors_playlist{index+1}.txt";
 				await File.AppendAllTextAsync(errorFile, String.Join("\n", lines));
