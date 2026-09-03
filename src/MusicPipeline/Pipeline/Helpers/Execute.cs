@@ -36,13 +36,13 @@ public class Helper
 				await l.Out(currOut, colourCode);
 				lines.Add(currOut);
 			}
-			if (currErr != lastErr) {
+			//if (currErr != lastErr) {
 				int? errCode = colourCode;
 				if (currErr.Contains("WARNING: ")) {errCode = DefaultColours.Warning;}
 				else if (currErr.Contains("ERROR: ")) {errCode = DefaultColours.Error;}
 				await l.Out(currErr, errCode);
 				lines.Add(currErr);
-			}
+			//}
 		}
 		return lines;
 		// Hopefully this works!
