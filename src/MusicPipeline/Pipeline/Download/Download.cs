@@ -105,12 +105,10 @@ class Downloader
 		But I'm not 100% sure how the ternary operator works
 		*/
 
-		Task? j = null;
 		await Parser.ParseYTDLPConfigFile(activeProfile);
 		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		YTDLPConfigFile = activeProfile.YTDLPConfigFile;
-		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
-		await j;
+		Parallel.For(0, maxDownloadThreads, async i => await DownloadThread(i));
 		l.user = "Downloader";
 		List<Result>? results = new List<Result>();
 		foreach (Result? r in res) {
@@ -217,10 +215,10 @@ class Downloader
 		);
 		*/
 
-
+		string YTDLPArgs = $"/c \"{YTDLPPath} {downloadArguments} 2>&1\"";
 		try
 		{
-			using (Process YTDLPProcess = await Helper.Execute(YTDLPPath, downloadArguments))
+			using (Process? YTDLPProcess = await Helper.Execute("cmd.exe", YTDLPArgs))
 			{
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;
@@ -259,10 +257,24 @@ class Downloader
 				}
 				*/
 
-				
+				/*
 				// That won't work, trying again
 				List<string> lines = await Helper.ProcessOutput(YTDLPProcess, l, colourCode);
-				
+				*/
+
+				// This is all ridiculous
+
+				string? currentLine;
+				List<string> lines = [""];
+				while (!((currentLine = (await YTDLPProcess.StandardOutput.ReadLineAsync())) == null)) {
+					if (currentLine != null) {
+						int? errorCode = colourCode;
+						if (currentLine.Contains("WARNING: ")) {errorCode = DefaultColours.Warning;}
+						else if (currentLine.Contains("ERROR: ")) {errorCode = DefaultColours.Error;}
+						await l.Out(currentLine, errorCode);
+						lines.Add(currentLine);
+					}
+				}
 				// Now to make that function!
 				string errorFile = $@"{configDir}\run_errors_playlist{index+1}.txt";
 				await File.AppendAllTextAsync(errorFile, String.Join("\n", lines));
