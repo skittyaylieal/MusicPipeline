@@ -14,8 +14,7 @@ public class Helper
 		startInfo.FileName = path;
 		startInfo.WindowStyle = ProcessWindowStyle.Hidden;
 		startInfo.RedirectStandardOutput = true;
-		startInfo.RedirectStandardError = true;
-		startInfo.Arguments = $"{arguments} $2>&1";
+		startInfo.Arguments = $"{arguments}";
 
 		return Process.Start(startInfo);
 	}
