@@ -105,10 +105,12 @@ class Downloader
 		But I'm not 100% sure how the ternary operator works
 		*/
 
+		Task? j = null;
 		await Parser.ParseYTDLPConfigFile(activeProfile);
 		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		YTDLPConfigFile = activeProfile.YTDLPConfigFile;
-		Parallel.For(0, maxDownloadThreads, async i => await DownloadThread(i));
+		Parallel.For(0, maxDownloadThreads, async i => j = DownloadThread(i));
+		await j;
 		l.user = "Downloader";
 		List<Result>? results = new List<Result>();
 		foreach (Result? r in res) {
