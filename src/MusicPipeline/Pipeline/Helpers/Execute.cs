@@ -29,7 +29,7 @@ public class Helper
 		string lastErr = "";
 		string? currOut = "";
 		string? currErr = "";
-		while (((currOut = await stdOut.ReadLineAsync()) != lastOut) || ((currErr = await stdErr.ReadLineAsync()) != lastErr)) {
+		while (((currOut = await stdOut.ReadLineAsync()) != lastOut) ) {/*|| ((currErr = await stdErr.ReadLineAsync()) != lastErr)) {*/
 			// So this runs whenever either the error line or output lines are different
 			// Now to determine which
 			if (currOut != lastOut) {
