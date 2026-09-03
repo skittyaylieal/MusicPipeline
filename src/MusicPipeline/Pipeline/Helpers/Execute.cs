@@ -54,6 +54,4 @@ public class Helper
 		// But stdOut only updates when a new line is output
 		// More research on StreamReaders is required
 	}
-
-	private 
 }
