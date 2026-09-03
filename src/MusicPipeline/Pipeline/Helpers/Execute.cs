@@ -15,7 +15,7 @@ public class Helper
 		startInfo.WindowStyle = ProcessWindowStyle.Hidden;
 		startInfo.RedirectStandardOutput = true;
 		startInfo.RedirectStandardError = true;
-		startInfo.Arguments = $"{arguments} 2>&1";
+		startInfo.Arguments = $"{arguments} $2>&1";
 
 		return Process.Start(startInfo);
 	}
