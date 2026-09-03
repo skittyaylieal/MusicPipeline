@@ -44,7 +44,7 @@ public class Helper
 				else if (currErr.Contains("ERROR: ")) {errCode = DefaultColours.Error;}
 				await l.Out(currErr, errCode);
 				lines.Add(currErr);
-			}
+			} else {continue;}
 		}
 		return lines;
 		// Hopefully this works!
