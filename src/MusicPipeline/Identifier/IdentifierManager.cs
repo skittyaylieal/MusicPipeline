@@ -1,6 +1,6 @@
 using MusicPipeline.Metrics;
 using MusicPipeline.Alerts;
-namespace MusicPipeline.SongIdentifiers;
+namespace MusicPipeline.Songs;
 
 public class IdentifierFile 
 {

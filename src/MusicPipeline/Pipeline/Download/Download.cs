@@ -4,7 +4,7 @@ using MusicPipeline.Results;
 using MusicPipeline.Profiles;
 using MusicPipeline.Pipeline.Helpers.Execute;
 using MusicPipeline.Pipeline.Helpers.Parser;
-using MusicPipeline.SongIdentifiers;
+using MusicPipeline.Songs;
 using MusicPipeline.Colours; 
 using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Pipeline;
@@ -231,7 +231,7 @@ class Downloader
 					return;
 				}
 
-				string lastOutputLine = "";
+				/*string lastOutputLine = "";
 				string lastErrorLine = "";
 				List<string> lines = new();
 				while (!((await YTDLPProcess.StandardOutput.ReadLineAsync() ?? await YTDLPProcess.StandardError.ReadLineAsync()) == null)) {
@@ -246,6 +246,24 @@ class Downloader
 					}
 					lastOutputLine = currentOutput; lastErrorLine = currentError;
 				}
+				*/
+
+				// Ok redoing this
+
+				/*
+				KeyValuePair<string, int> currentLine = new; // The line and the colour
+				List<string> lines = new();
+				while (!((currentLine = await Helper.ProcessOutput(YTDLPProcess, colourCode)) is null)) {
+					l.Out(currentLine.Key, currentLine.Value);
+					lines.Add(currentLine);
+				}
+				*/
+
+				
+				// That won't work, trying again
+				List<string> lines = await Helper.ProcessOutput(YTDLPProcess, l, colourCode);
+				
+				// Now to make that function!
 				string errorFile = $@"{configDir}\run_errors_playlist{index+1}.txt";
 				await File.AppendAllTextAsync(errorFile, String.Join("\n", lines));
 				

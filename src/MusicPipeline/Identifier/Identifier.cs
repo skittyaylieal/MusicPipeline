@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using MusicPipeline.Tools.Hasher;
-namespace MusicPipeline.SongIdentifiers;
+namespace MusicPipeline.Songs;
 
 public class SongIdentifier
 {

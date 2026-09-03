@@ -54,7 +54,8 @@ public static class DefaultProfiles
 		"https://music.youtube.com/playlist?list=PLqcuYaDDgyad1-o1HTVnTiZKoluY5enwk"
 		],
 		LastCleanRunEpoch = 1785532108,
-		LastNormalRunEpoch = 1785673837
+		LastNormalRunEpoch = 1785673837,
+		LogEngine = new(@"C:\MusicTools\MusicPipeline\Sandbox\Config\csLogFile.log")
 	};
 
 	//This is the actual one, not to be used until pushing to production
@@ -109,7 +110,8 @@ public static class DefaultProfiles
 		"https://www.youtube.com/playlist?list=PLqcuYaDDgyach02bt_8R8G7AzE9zSAOkS"
 		],
 		LastCleanRunEpoch = 1785532108,
-		LastNormalRunEpoch = 1785673837
+		LastNormalRunEpoch = 1785673837,
+		LogEngine = new(@"C:\MusicTools\MusicPipeline\Config\web_console_stream.log")
 	};
 
 	// Swap default with null
@@ -165,6 +167,7 @@ public static class DefaultProfiles
 		"ERROR"
 		],
 		LastCleanRunEpoch = 2147483647,
-		LastNormalRunEpoch = 2147483647
+		LastNormalRunEpoch = 2147483647,
+		LogEngine = new("ERROR", "ERROR")
 	};
 }
