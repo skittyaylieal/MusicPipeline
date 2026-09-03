@@ -276,7 +276,6 @@ class Downloader
 						lines.Add(currentLine);
 					}
 				}
-				// Now to make that function!
 				string errorFile = $@"{configDir}\run_errors_playlist{index+1}.txt";
 				await File.AppendAllTextAsync(errorFile, String.Join("\n", lines));
 				
