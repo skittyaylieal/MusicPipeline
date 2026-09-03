@@ -19,33 +19,22 @@ public class Helper
 
 		return Process.Start(startInfo);
 	}
+	private static StreamReader? stdOut = null;
+	private static StreamReader? stdErr = null;
+	private static List<string> lines = new();
 
 	public static async Task<List<string>> ProcessOutput(Process process, LogEngine l, int? colourCode)
 	{
-		StreamReader stdOut = process.StandardOutput;
-		StreamReader stdErr = process.StandardError;
-		List<string> lines = new();
+		stdOut = process.StandardOutput;
+		stdErr = process.StandardError;
 		string lastOut = "";
 		string lastErr = "";
 		string? currOut = "";
 		string? currErr = "";
-		while (true) {
-			// So this runs whenever either the error line or output lines are different
-			// Now to determine which
-			currOut = await stdOut.ReadLineAsync();
-			currErr = await stdErr.ReadLineAsync();
-			if (currOut != lastOut) {
-				await l.Out(currOut, colourCode);
-				lines.Add(currOut);
-			}
-			if (currErr != lastErr) {
-				int? errCode = colourCode;
-				if (currErr.Contains("WARNING: ")) {errCode = DefaultColours.Warning;}
-				else if (currErr.Contains("ERROR: ")) {errCode = DefaultColours.Error;}
-				await l.Out(currErr, errCode);
-				lines.Add(currErr);
-			} else {continue;}
-		}
+
+
+		Parallel.For(0, 1, async i => await ProcesserThread(i == 0 ? false : true, l, colourCode));
+
 		return lines;
 		// Hopefully this works!
 
@@ -55,6 +44,33 @@ public class Helper
 		// So if the error has changed we have to output that
 		// But stdOut only updates when a new line is output
 		// More research on StreamReaders is required
+	}
+
+	private static async Task ProcesserThread(bool output, LogEngine l, int? colourCode)
+	{
+		string lastOut = "";
+		string lastErr = "";
+		string? currOut = "";
+		string? currErr = "";
+		while (true) {
+			// So this runs whenever either the error line or output lines are different
+			// Now to determine which
+			if (output) {currOut = await stdOut.ReadLineAsync();} else {currErr = await stdErr.ReadLineAsync();}
+			if (output) {
+				if (currOut != lastOut) {
+					await l.Out(currOut, colourCode);
+					lines.Add(currOut);
+				}
+			} else {
+				if (currErr != lastErr) {
+					int? errCode = colourCode;
+					if (currErr.Contains("WARNING: ")) {errCode = DefaultColours.Warning;}
+					else if (currErr.Contains("ERROR: ")) {errCode = DefaultColours.Error;}
+					await l.Out(currErr, errCode);
+					lines.Add(currErr);
+				}
+			}
+		}
 	}
 
 }
