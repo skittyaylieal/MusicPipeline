@@ -30,8 +30,10 @@ public class Helper
 		string? currOut = "";
 		string? currErr = "";
 		while (true) {
-			// So this runs whenever
+			// So this runs whenever either the error line or output lines are different
 			// Now to determine which
+			currOut = await stdOut.ReadLineAsync();
+			currErr = await stdErr.ReadLineAsync();
 			if (currOut != lastOut) {
 				await l.Out(currOut, colourCode);
 				lines.Add(currOut);
@@ -54,4 +56,5 @@ public class Helper
 		// But stdOut only updates when a new line is output
 		// More research on StreamReaders is required
 	}
+
 }
