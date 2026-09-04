@@ -29,7 +29,6 @@ public class Profile
 	public string CheckURL {get; set;} = "Null";
 	public string RootDir {get; set;} = "Null";
 	public string ScriptRootDir {get; set;} = "Null";
-	public string OutputTemplate {get; set;} = "Null";
 	public string YTDLPConfigFileOriginal {get; set;} = "Null";
 	public string YTDLPConfigFile {get; set;} = "Null";
 	public int SleepInterval {get; set;} = 0;
