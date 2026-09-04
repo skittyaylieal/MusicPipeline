@@ -19,8 +19,8 @@ public class Orchestrator
 	// 
 	public async Task Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json")
 	{		
-		Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
-		/* First use of Profiles Profile oldActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);*/
+		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
+		/* First use of Profiles*/ Profile oldActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		string logFile = oldActiveProfile.DiagLogFile;
 		LogEngine logger = new LogEngine(oldActiveProfile.DiagLogFile);
 		//await logger.Out("Why won't you just work!!!", "Orchestrator", DefaultColours.Error, true);
