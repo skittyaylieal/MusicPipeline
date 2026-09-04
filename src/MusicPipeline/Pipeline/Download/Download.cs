@@ -20,7 +20,6 @@ class Downloader
 	private string[] playlists = ["Null"];
 	private string configDir = "Null";
 	private string cacheDir = "Null";
-	private string outputTemplate = "Null";
 	private string downloadArguments = "Null";
 	private string YTDLPConfigFile = "Null";
 	private int sleepInterval = 0;
@@ -44,7 +43,6 @@ class Downloader
 		playlists = activeProfile.Playlists;
 		configDir = $@"{activeProfile.RootDir}\Config";
 		cacheDir = $@"{configDir}\.cache";
-		outputTemplate = activeProfile.OutputTemplate;
 		sleepInterval = activeProfile.SleepInterval;
 		maxSleepInterval = activeProfile.MaxSleepInterval;
 		sleepRequests = activeProfile.SleepRequests;
