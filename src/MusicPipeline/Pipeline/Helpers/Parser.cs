@@ -4,6 +4,9 @@ using MusicPipeline.Colours;
 using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Pipeline.Helpers.Parser;
 
+// TODO: Fix the bug where the output file is only like 
+// -o "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup/%(artist|uploader).250s/%(album|play--download-archive "C:\MusicTools\MusicPipeline\Sandbox\Config\downloaded_history.txt"
+// And nothing else
 
 public class Parser
 {
@@ -24,16 +27,21 @@ public class Parser
 		}
 		List<string> confFileLines = new List<string>(confFileContents.Split("\n"));
 		List<string> confFileLinesFiltered = new();
+		List<string> parsedLines = new();
 		foreach (string line in confFileLines) {
 			if (!Regex.IsMatch(line, @"^\s#")) {
 				confFileLinesFiltered.Add(line);
+			} else {
+				parsedLines.Add(line);
 			}
 		}
 		// Somehow handle the {} variables
-		List<string> parsedLines = new();
+		
 		foreach (string line in confFileLinesFiltered) {
 			Match match = Regex.Match(line, @"\{(\w+)\}");
 			if (!match.Success) {
+				await l.Out($"Line {line} was not found to have anything needing replacing");
+				parsedLines.Add(line);
 				continue;
 			}
 			string variable = match.Groups[1].Value;
@@ -48,7 +56,7 @@ public class Parser
 
 		string parentDir = Path.GetDirectoryName(YTDLPOriginalConfigFilePath);
 		string tempFilePath = $@"{parentDir}\yt-dlp{Guid.NewGuid()}.conf";
-		await File.WriteAllTextAsync(tempFilePath, String.Concat(parsedLines));
+		await File.WriteAllTextAsync(tempFilePath, String.Join("\n", parsedLines));
 		Profile activeProfile = await ProfileManager.LoadActiveProfile(context.ProfileFile);
 		activeProfile.YTDLPConfigFile = tempFilePath;
 		await ProfileManager.SaveProfile(context.ProfileFile, activeProfile);
