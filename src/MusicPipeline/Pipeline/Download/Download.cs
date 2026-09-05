@@ -121,7 +121,7 @@ class Downloader
 		await ProfileManager.SaveProfile(profileFile, currentActiveProfile);
 		DateTime end = DateTime.UtcNow;
 		TimeSpan elapsed = end - start;
-		await l.Out($"elapsed = {elapsed}, end = {end}", DefaultColours.Debug);
+		await l.Out($"elapsed = {elapsed}, end = {end}, start = {start}", DefaultColours.Debug);
 		results.Insert(0, new Result("Downloader", true, elapsed, "", await GetAffectedSongInfo()));
 		return results;
 	}
@@ -140,7 +140,7 @@ class Downloader
 				colourCode = 201;  // Magenta
 				break; 
 			case 3:
-				colourCode = 33; //yellow
+				colourCode = 33; // Yellow
 				break; 
 			case 4:
 				colourCode = 135; // Purple
@@ -222,7 +222,7 @@ class Downloader
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - start;
-					await l.Out($"elapsed = {elapsedError}, end = {endError}", DefaultColours.Debug);
+					await l.Out($"elapsed = {elapsedError}, end = {endError}, start = {start}", DefaultColours.Debug);
 					if (res is null) {res = new List<Result?>([new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null")]);}
 					else {res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));}
 					return;
@@ -283,7 +283,7 @@ class Downloader
 				await YTDLPProcess.WaitForExitAsync();
 				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - start;
-				await l.Out($"elapsed = {elapsed}, end = {end}", DefaultColours.Debug);
+				await l.Out($"elapsed = {elapsed}, end = {end}, start = {start}", DefaultColours.Debug);
 				if (res is null) {res = new List<Result?>([new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index))]);}
 				else {res.Add(new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index)));}
 				return;
@@ -293,7 +293,7 @@ class Downloader
 		{
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - start;
-			await l.Out($"elapsed = {elapsed}, end = {end}", DefaultColours.Debug);
+			await l.Out($"elapsed = {elapsed}, end = {end}, start = {start}", DefaultColours.Debug);
 			if (res is null) {res = new List<Result?>([new Result("DownloaderThread", false, elapsed, ex.Message)]);}
 			else {res.Add(new Result("DownloaderThread", false, elapsed, ex.Message));}
 		}
