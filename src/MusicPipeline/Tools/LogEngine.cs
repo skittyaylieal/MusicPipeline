@@ -120,4 +120,11 @@ public class LogEngine
 		logFile = LogFile;
 		user = User;
 	}
+
+	[SetsRequiredMembers]
+	public LogEngine(LogEngine original)
+	{
+		logFile = original.logFile;
+		user = original.user;
+	}
 }
