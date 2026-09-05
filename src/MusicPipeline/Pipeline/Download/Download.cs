@@ -128,7 +128,7 @@ class Downloader
 
 	private async Task DownloadThread(int index)
 	{
-		LogEngine? log = new(l);
+		LogEngine? log = new(l.logFile);
 		log.user = $"DownloaderThread-{index+1}";
 		DateTime threadStart = DateTime.Now;
 		await log.Out($"Index = {index} Playlists = {playlists}, sleepInterval = {sleepInterval}", DefaultColours.Debug);
