@@ -40,10 +40,10 @@ public class Parser
 		foreach (string line in confFileLinesFiltered) {
 			Match match = Regex.Match(line, @"\{(\w+)\}");
 			if (!match.Success) {
-				await l.Out($"Line {line} was not found to have anything needing replacing");
+				await l.Out($"Line {line} did not need any replacing");
 				parsedLines.Add(line);
 				continue;
-			}
+			} 
 			string variable = match.Groups[1].Value;
 			await l.Out($"variable = {variable}", DefaultColours.Debug);
 			// Uses Reflection somehow idfk
