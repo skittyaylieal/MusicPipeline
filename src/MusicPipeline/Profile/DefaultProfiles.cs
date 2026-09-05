@@ -26,7 +26,7 @@ public static class DefaultProfiles
 		ScriptRootDir = @"C:\MusicTools\MusicPipeline",
 		YTDLPConfigFileOriginal = @"C:\MusicTools\MusicPipeline\Sandbox\Config\yt-dlp.conf.original",
 		YTDLPConfigFile = "Null",
-		CustomYTDLPArguments = "--ppa\" \"EmbedThumbnail+ffmpeg_o:-vf\" \"crop=ih:ih",
+		CustomYTDLPArguments = "--ppa\" \"EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih",
 		SleepInterval = 4,
 		MaxSleepInterval = 12, 
 		SleepRequests = 3,
