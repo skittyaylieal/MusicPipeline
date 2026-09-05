@@ -272,6 +272,8 @@ class Downloader
 						else if (currentLine.Contains("ERROR: ")) {errorCode = DefaultColours.Error;}
 						await l.Out(currentLine, errorCode);
 						lines.Add(currentLine);
+						// May be worth manually appending the current line
+						// Will do that if I ever run into issues with the program crashing and only having the log output
 					}
 				}
 				string errorFile = $@"{configDir}\run_errors_playlist{index+1}.txt";
