@@ -130,7 +130,7 @@ class Downloader
 	{
 		LogEngine? log = new(l);
 		log.user = $"DownloaderThread-{index+1}";
-		start = DateTime.Now;
+		DateTime threadStart = DateTime.Now;
 		await log.Out($"Index = {index} Playlists = {playlists}, sleepInterval = {sleepInterval}", DefaultColours.Debug);
 		int? colourCode = null;
 		// I know this isn't technically the same order as the original but the testing only has one playlist and I prefer the peach colour. Sue me.
@@ -223,8 +223,8 @@ class Downloader
 			{
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;
-					TimeSpan elapsedError = endError - start;
-					await log.Out($"elapsed = {elapsedError}, end = {endError}, start = {start}", DefaultColours.Debug);
+					TimeSpan elapsedError = endError - threadStart;
+					await log.Out($"elapsed = {elapsedError}, end = {endError}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
 					if (res is null) {res = new List<Result?>([new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null")]);}
 					else {res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));}
 					return;
@@ -284,8 +284,8 @@ class Downloader
 
 				await YTDLPProcess.WaitForExitAsync();
 				DateTime end = DateTime.UtcNow;
-				TimeSpan elapsed = end - start;
-				await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}", DefaultColours.Debug);
+				TimeSpan elapsed = end - threadStart;
+				await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
 				if (res is null) {res = new List<Result?>([new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index))]);}
 				else {res.Add(new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index)));}
 				return;
@@ -294,8 +294,8 @@ class Downloader
 		catch (System.ComponentModel.Win32Exception ex)
 		{
 			DateTime end = DateTime.UtcNow;
-			TimeSpan elapsed = end - start;
-			await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}", DefaultColours.Debug);
+			TimeSpan elapsed = end - threadStart;
+			await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
 			if (res is null) {res = new List<Result?>([new Result("DownloaderThread", false, elapsed, ex.Message)]);}
 			else {res.Add(new Result("DownloaderThread", false, elapsed, ex.Message));}
 		}
