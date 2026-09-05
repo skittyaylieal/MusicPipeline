@@ -22,6 +22,7 @@ class Downloader
 	private string cacheDir = "Null";
 	private string downloadArguments = "Null";
 	private string YTDLPConfigFile = "Null";
+	private string customArguments = "Null";
 	private int sleepInterval = 0;
 	private int maxSleepInterval = 0;
 	private int sleepRequests = 0;
@@ -48,6 +49,7 @@ class Downloader
 		sleepRequests = activeProfile.SleepRequests;
 		maxDownloadThreads = activeProfile.MaxDownloadThreads;
 		cleanSweep = activeProfile.CleanSweepDownload; // Note: Make sure that the profile value of CleanSweepDownload is correct before running
+		customArguments = activeProfile.CustomYTDLPArguments;
 		// TODO add the ytdlp flags to profile file
 
 		res = new List<Result?>();
@@ -164,7 +166,7 @@ class Downloader
 		await log.Out($"Processing Playlist URL: {playlists[index]}", colourCode);
 
 		// Just found out that it supports putting all this in a file so :eyes:
-		downloadArguments = $"--config-locations {YTDLPConfigFile} --ppa \"EmbedThumbnail+ffmpeg_o:-vf crop=ih:ih\"  --download-archive \"{historyPath}\"  {playlists[index]}";
+		downloadArguments = $"--config-locations {YTDLPConfigFile}  {customArguments}  --download-archive \"{historyPath}\"  {playlists[index]}";
 		/*
 		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring

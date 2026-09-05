@@ -31,6 +31,7 @@ public class Profile
 	public string ScriptRootDir {get; set;} = "Null";
 	public string YTDLPConfigFileOriginal {get; set;} = "Null";
 	public string YTDLPConfigFile {get; set;} = "Null";
+	public string CustomYTDLPArguments {get; set;} = "Null";
 	public int SleepInterval {get; set;} = 0;
 	public int MaxSleepInterval {get; set;} = 0;
 	public int SleepRequests {get; set;} = 0;
