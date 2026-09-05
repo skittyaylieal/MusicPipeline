@@ -128,7 +128,7 @@ class Downloader
 
 	private async Task DownloadThread(int index)
 	{
-		l.user = "DownloaderThread";
+		l.user = $"DownloaderThread{index+1}";
 		await l.Out($"Index = {index} Playlists = {playlists}, sleepInterval = {sleepInterval}", DefaultColours.Debug);
 		int? colourCode = null;
 		// I know this isn't technically the same order as the original but the testing only has one playlist and I prefer the peach colour. Sue me.
