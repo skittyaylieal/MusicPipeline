@@ -79,6 +79,8 @@ class Downloader
 
 		if (cleanSweep) {
 			historyPath = $@"{configDir}\pipeline_null_history_{Guid.NewGuid()}.txt";
+			//activeProfile.HistoryFile = historyPath;
+			//await ProfileManager.SaveProfile(profileFile, activeProfile);
 			await l.Out("Clean sweep activated");
 		}
 
@@ -162,7 +164,7 @@ class Downloader
 		await log.Out($"Processing Playlist URL: {playlists[index]}", colourCode);
 
 		// Just found out that it supports putting all this in a file so :eyes:
-		downloadArguments = $"--config-locations {YTDLPConfigFile}   {playlists[index]}";
+		downloadArguments = $"--config-locations {YTDLPConfigFile} --download-archive \"{historyPath}\"  {playlists[index]}";
 		/*
 		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring
