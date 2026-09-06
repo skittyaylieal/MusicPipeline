@@ -72,17 +72,36 @@ class Downloader
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
 
 		//would this work with a single out? or is Out() this specifically one line at a time?
-		var stepHeader = 
+		/*var stepHeader = 
 @"==============================================
 		  YTDLP Song Downloader Step          
 ==============================================";
-		await l.Out(stepHeader);
+		await l.Out(stepHeader);*/
 		//try the above while commenting out the below to let me know if it works.
 		//that's a string literal. leading @ makes the string literal and everything in it will literally be included like newline characters.
+		// That does work but might have some issues, also asthetically it looks better as multiple lines
+		/*
+[12:00:11] [Cookies]  ==============================================
+[12:00:11] [Cookies]                  Cookie Checker
+[12:00:11] [Cookies]  ==============================================
 
-		//await l.Out("==============================================");
-		//await l.Out("          YTDLP Song Downloader Step          ");
-		//await l.Out("==============================================");
+[12:00:21] [Downloader]  ==============================================
+                  YTDLP Song Downloader Step
+==============================================
+[12:00:21] [Downloader]  Clean sweep activated
+		*/
+
+		// Vs
+
+		/*
+[12:00:21] [Downloader]  ==============================================
+[12:00:21] [Downloader]            YTDLP Song Downloader Step          
+[12:00:21] [Downloader]  ==============================================
+		*/
+
+		await l.Out("==============================================");
+		await l.Out("          YTDLP Song Downloader Step          ");
+		await l.Out("==============================================");
 
 		if (!Directory.Exists(backupDir)) {
 			await l.Out($"Main backup directory {backupDir} doesn't exist. Creating.");
