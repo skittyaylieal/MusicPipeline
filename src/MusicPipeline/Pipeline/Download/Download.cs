@@ -11,8 +11,8 @@ namespace MusicPipeline.Pipeline;
 
 class Downloader
 {
-    #region private fields
-    private Profile? activeProfile = null;
+	#region private fields
+	private Profile? activeProfile = null;
 	private LogEngine? l = null;
 	private string backupDir = "Null";
 	private string YTDLPPath = "Null";
@@ -31,9 +31,9 @@ class Downloader
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
 	private List<Result?>? res = null;
-    #endregion private fields
+	#endregion private fields
 
-    public async Task<List<Result>> Download(string profileFile)
+	public async Task<List<Result>> Download(string profileFile)
 	{
 		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 
@@ -74,7 +74,7 @@ class Downloader
 		//would this work with a single out? or is Out() this specifically one line at a time?
 		var stepHeader = 
 @"==============================================
-          YTDLP Song Downloader Step          
+		  YTDLP Song Downloader Step          
 ==============================================";
 		await l.Out(stepHeader);
 		//try the above while commenting out the below to let me know if it works.
@@ -113,7 +113,7 @@ class Downloader
 		if (morePlaylistsThanThreadsAllowed)
 			maxDownloadThreads = playlists.Length;
 
-        //maxDownloadThreads = maxDownloadThreads > playlists.Count() ? playlists.Count() : maxDownloadThreads;
+		//maxDownloadThreads = maxDownloadThreads > playlists.Count() ? playlists.Count() : maxDownloadThreads;
 
 		// I believe this effectively does
 		/*
@@ -337,27 +337,27 @@ class Downloader
 	{
 		l.user = "Downloader";
 		await l.Out("TODO: URGENT: MAKE GetAffectedSongInfo", DefaultColours.Error, true);
-        //return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
-        List<FileInfo> paths = [new("Null")];
-        List<double> sizesCompressed = new([0.0]);
-        FileInfo lyricsPath = new("Null");
-        DateTime loreDate = new();
-        SongIdentifier songIdentifier =
-            new(title: "Null",
-            artist: "Null",
-            album:"Null",
-            paths,
-            id: 0,
-            type: "Null",
-            sizeMB: 0.0,
-            sizesCompressed: sizesCompressed,
-            instrumental: false,
-            lyrics: false,
-            syncedLyrics: false,
-            lyricsPath,
-            lore: false,
-            loreDate);
-        return [songIdentifier];
+		//return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
+		List<FileInfo> paths = [new("Null")];
+		List<double> sizesCompressed = new([0.0]);
+		FileInfo lyricsPath = new("Null");
+		DateTime loreDate = new();
+		SongIdentifier songIdentifier =
+			new(title: "Null",
+			artist: "Null",
+			album:"Null",
+			paths,
+			id: 0,
+			type: "Null",
+			sizeMB: 0.0,
+			sizesCompressed: sizesCompressed,
+			instrumental: false,
+			lyrics: false,
+			syncedLyrics: false,
+			lyricsPath,
+			lore: false,
+			loreDate);
+		return [songIdentifier];
 	}
 
 	private async Task<string> GetErrorsInThread(int threadIndex)
