@@ -1,0 +1,741 @@
+
+[youtube:tab] Extracting URL: https://music.youtube.com/playlist?list=PLqcuYaDDgyad1-o1HTVnTiZKoluY5enwk
+Needed for checking it's the correct playlist
+
+
+WARNING: [youtube:tab] YouTube said: INFO - 3 unavailable videos are hidden
+If the number of unavailable videos is more or less than this, at least log it
+
+
+
+[download] Downloading playlist: Music Sync Test
+Keep track of the name of each playlist ig
+
+
+
+[youtube:tab] Playlist Music Sync Test: Downloading 13 items of 13
+If the first number is smaller than the second then at least log
+
+
+This is the example song. 
+        [download] Downloading item 1 of 13 | Record song number in playlist
+
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=Rk59L7yVjmo | Record its link
+
+        [MetadataParser] Parsed artist from '%(uploader)s': 'Ed Sheeran' | Record this artist
+
+        [info] Rk59L7yVjmo: Downloading 1 format(s): 251 | Maybe record this for extra info
+
+        [info] There are no subtitles for the requested languages | Record that no official subtitle track (I believe this means none at all, since we don't by default specify any languages)
+
+        [info] Downloading video thumbnail 46 ... | Again, maybe record for extra info
+
+        [info] Writing video thumbnail 46 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Ed Sheeran\Play\Heaven.webp | Record in extra info as temporary thumbnail file
+
+
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Ed Sheeran\Play\Heaven.m4a | Record that it overwrote it?
+
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Ed Sheeran\Play\Heaven.webm | Record temporary video file
+
+        All the download info is probably reduntant
+
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Ed Sheeran\Play\Heaven.m4a | Record this, this is the file
+
+        Now for the metadata. All this stuff is from the description of the video. So it can probably be ignored, as we will be automatically adding any metadata comments from the file
+
+        "purl=https://www.youtube.com/watch?v=Rk59L7yVjmo" -metadata | Permenant url. If stuff like this isn't recorded in the file, record it here
+
+        "artist=Ed Sheeran" -metadata | This was recorded earlier
+
+        "genre=Music" -metadata | Record this in extra as the recorded genre
+
+        "album=Play" | Should be able to get this from the path, if the path is playlist then check this. Save it in extra as Recorded Album
+
+        -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Ed Sheeran\Play\Heaven.temp.m4a" | I think this is superfluous but I'm not sure
+
+Follow this for the next 9 songs (Indented)
+        [download] Downloading item 2 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=ZQfmMB2JcxY
+        [youtube] ZQfmMB2JcxY: Downloading webpage
+        [youtube] ZQfmMB2JcxY: Downloading web embedded client config
+        [youtube] ZQfmMB2JcxY: Downloading web embedded player API JSON
+        [youtube] ZQfmMB2JcxY: Downloading tv downgraded player API JSON
+        [youtube] ZQfmMB2JcxY: Downloading web music client config
+        [youtube] ZQfmMB2JcxY: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'InstrumentManiac'
+        [info] ZQfmMB2JcxY: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 46 ...
+        [info] Writing video thumbnail 46 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).webm
+        [download]   0.0% of    3.34MiB at  996.75KiB/s ETA 00:03
+        [download]   0.1% of    3.34MiB at    1.46MiB/s ETA 00:02
+        [download]   0.2% of    3.34MiB at    3.41MiB/s ETA 00:00
+        [download]   0.4% of    3.34MiB at    4.87MiB/s ETA 00:00
+        [download]   0.9% of    3.34MiB at    4.48MiB/s ETA 00:00
+        [download]   1.8% of    3.34MiB at    4.31MiB/s ETA 00:00
+        [download]   3.7% of    3.34MiB at    4.16MiB/s ETA 00:00
+        [download]   7.5% of    3.34MiB at    5.60MiB/s ETA 00:00
+        [download]  14.9% of    3.34MiB at    7.92MiB/s ETA 00:00
+        [download]  29.9% of    3.34MiB at   11.23MiB/s ETA 00:00
+        [download]  59.9% of    3.34MiB at    9.76MiB/s ETA 00:00
+        [download] 100.0% of    3.34MiB at   13.76MiB/s ETA 00:00
+        [download] 100% of    3.34MiB in 00:00:00 at 9.41MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).m4a"
+
+        High Halls (from Hollow Knight: Silksong) � Luke Pickman � Mois�s Nieto
+
+        High Halls (from Hollow Knight: Silksong)
+
+         Luke Pickman
+
+        Released on: 2025-12-17
+
+        Artist Manager: Luke Pickman
+        Lyricist, Composer: Christopher Larkin
+
+        Auto-generated by YouTube." -metadata "synopsis=Provided to YouTube by IIP-DDS
+
+        High Halls (from Hollow Knight: Silksong) � Luke Pickman � Mois�s Nieto
+
+        High Halls (from Hollow Knight: Silksong)
+
+         Luke Pickman
+
+        Released on: 2025-12-17
+
+        Artist Manager: Luke Pickman
+        Lyricist, Composer: Christopher Larkin
+
+        Auto-generated by YouTube." -metadata "purl=https://www.youtube.com/watch?v=ZQfmMB2JcxY" -metadata "comment=https://www.youtube.com/watch?v=ZQfmMB2JcxY" -metadata "artist=InstrumentManiac" -metadata "genre=Music" -metadata "album=High Halls (from Hollow Knight: Silksong)" -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).temp.m4a"
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\InstrumentManiac\High Halls (from Hollow Knight Silksong)\High Halls (from Hollow Knight Silksong).m4a"
+        [download] Downloading item 3 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=WmYTrtu-25A
+        [youtube] WmYTrtu-25A: Downloading webpage
+        [youtube] WmYTrtu-25A: Downloading web embedded client config
+        [youtube] WmYTrtu-25A: Downloading web embedded player API JSON
+        [youtube] WmYTrtu-25A: Downloading tv downgraded player API JSON
+        [youtube] WmYTrtu-25A: Downloading web music client config
+        [youtube] WmYTrtu-25A: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'C418'
+        [info] WmYTrtu-25A: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 46 ...
+        [info] Writing video thumbnail 46 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.webm
+        [download]   0.0% of    4.02MiB at  985.97KiB/s ETA 00:04
+        [download]   0.1% of    4.02MiB at    2.89MiB/s ETA 00:01
+        [download]   0.2% of    4.02MiB at    3.39MiB/s ETA 00:01
+        [download]   0.4% of    4.02MiB at    7.27MiB/s ETA 00:00
+        [download]   0.8% of    4.02MiB at   10.04MiB/s ETA 00:00
+        [download]   1.5% of    4.02MiB at    4.57MiB/s ETA 00:00
+        [download]   3.1% of    4.02MiB at    4.29MiB/s ETA 00:00
+        [download]   6.2% of    4.02MiB at    4.19MiB/s ETA 00:00
+        [download]  12.4% of    4.02MiB at    6.47MiB/s ETA 00:00
+        [download]  24.9% of    4.02MiB at    9.84MiB/s ETA 00:00
+        [download]  49.8% of    4.02MiB at   14.86MiB/s ETA 00:00
+        [download]  99.6% of    4.02MiB at   16.65MiB/s ETA 00:00
+        [download] 100.0% of    4.02MiB at   16.65MiB/s ETA 00:00
+        [download] 100% of    4.02MiB in 00:00:00 at 10.95MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.m4a"
+
+        Shuniji � C418
+
+        Shuniji
+
+         2018 C418
+
+        Released on: 2018-11-07
+
+        Main  Artist: C418
+
+        Auto-generated by YouTube." -metadata "synopsis=Provided to YouTube by C418
+
+        Shuniji � C418
+
+        Shuniji
+
+         2018 C418
+
+        Released on: 2018-11-07
+
+        Main  Artist: C418
+
+        Auto-generated by YouTube." -metadata "purl=https://www.youtube.com/watch?v=WmYTrtu-25A" -metadata "comment=https://www.youtube.com/watch?v=WmYTrtu-25A" -metadata "artist=C418" -metadata "genre=Music" -metadata "album=Shuniji" -movflags +faststart file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.temp.m4a
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Shuniji\Shuniji.m4a"
+        [download] Downloading item 4 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=fuF_PYL4bG0
+        [youtube] fuF_PYL4bG0: Downloading webpage
+        [youtube] fuF_PYL4bG0: Downloading web embedded client config
+        [youtube] fuF_PYL4bG0: Downloading web embedded player API JSON
+        [youtube] fuF_PYL4bG0: Downloading tv downgraded player API JSON
+        [youtube] fuF_PYL4bG0: Downloading web music client config
+        [youtube] fuF_PYL4bG0: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'Lena Raine'
+        [info] fuF_PYL4bG0: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 46 ...
+        [info] Writing video thumbnail 46 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.webm
+        [download]   0.0% of    2.62MiB at  Unknown B/s ETA Unknown
+        [download]   0.1% of    2.62MiB at    1.46MiB/s ETA 00:01
+        [download]   0.3% of    2.62MiB at    3.42MiB/s ETA 00:00
+        [download]   0.6% of    2.62MiB at    4.88MiB/s ETA 00:00
+        [download]   1.2% of    2.62MiB at    7.56MiB/s ETA 00:00
+        [download]   2.3% of    2.62MiB at    3.97MiB/s ETA 00:00
+        [download]   4.7% of    2.62MiB at    4.24MiB/s ETA 00:00
+        [download]   9.5% of    2.62MiB at    4.89MiB/s ETA 00:00
+        [download]  19.0% of    2.62MiB at    5.80MiB/s ETA 00:00
+        [download]  38.1% of    2.62MiB at    8.30MiB/s ETA 00:00
+        [download]  76.3% of    2.62MiB at    8.95MiB/s ETA 00:00
+        [download] 100.0% of    2.62MiB at    9.47MiB/s ETA 00:00
+        [download] 100% of    2.62MiB in 00:00:00 at 7.24MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.m4a"
+
+        Exhale � Lena Raine
+
+        Celeste (Original Soundtrack)
+
+         Radical Dreamland
+
+        Released on: 2018-01-25
+
+        Lyricist, Composer: Lena Raine
+
+        Auto-generated by YouTube." -metadata "synopsis=Provided to YouTube by IIP-DDS
+
+        Exhale � Lena Raine
+
+        Celeste (Original Soundtrack)
+
+         Radical Dreamland
+
+        Released on: 2018-01-25
+
+        Lyricist, Composer: Lena Raine
+
+        Auto-generated by YouTube." -metadata "purl=https://www.youtube.com/watch?v=fuF_PYL4bG0" -metadata "comment=https://www.youtube.com/watch?v=fuF_PYL4bG0" -metadata "artist=Lena Raine" -metadata "genre=Music" -metadata "album=Celeste (Original Soundtrack)" -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.temp.m4a"
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Lena Raine\Celeste (Original Soundtrack)\Exhale.m4a"
+        [download] Downloading item 5 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=Wbxh1fNakos
+        [youtube] Wbxh1fNakos: Downloading webpage
+        [youtube] Wbxh1fNakos: Downloading web embedded client config
+        [youtube] Wbxh1fNakos: Downloading web embedded player API JSON
+        [youtube] Wbxh1fNakos: Downloading tv downgraded player API JSON
+        [youtube] Wbxh1fNakos: Downloading web music client config
+        [youtube] Wbxh1fNakos: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'AJR'
+        [info] Wbxh1fNakos: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 46 ...
+        [info] Writing video thumbnail 46 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.webm
+        [download]   0.0% of    3.39MiB at  989.46KiB/s ETA 00:03
+        [download]   0.1% of    3.39MiB at    2.90MiB/s ETA 00:01
+        [download]   0.2% of    3.39MiB at    3.19MiB/s ETA 00:01
+        [download]   0.4% of    3.39MiB at    6.84MiB/s ETA 00:00
+        [download]   0.9% of    3.39MiB at    9.60MiB/s ETA 00:00
+        [download]   1.8% of    3.39MiB at    2.14MiB/s ETA 00:01
+        [download]   3.7% of    3.39MiB at    2.65MiB/s ETA 00:01
+        [download]   7.3% of    3.39MiB at    1.54MiB/s ETA 00:02
+        [download]  14.7% of    3.39MiB at    2.36MiB/s ETA 00:01
+        [download]  29.4% of    3.39MiB at    3.54MiB/s ETA 00:00
+        [download]  58.9% of    3.39MiB at    4.70MiB/s ETA 00:00
+        [download] 100.0% of    3.39MiB at    5.84MiB/s ETA 00:00
+        [download] 100% of    3.39MiB in 00:00:00 at 5.12MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.m4a"
+
+        Burn the House Down � AJR
+
+        The Click (Deluxe Edition)
+
+         2018 AJR Productions under exclusive license to Black Butter Limited
+
+        Released on: 2018-09-21
+
+        Producer, Associated Performer, Recording Engineer: AJR
+        Mixing Engineer, Composer, Lyricist: Ryan Met
+        Composer, Lyricist: Jack Met
+        Composer, Lyricist: Adam Met
+        Mixing Engineer: Drew Allsbrook
+        Mastering Engineer: Chris Gehringer
+
+        Auto-generated by YouTube." -metadata "synopsis=Provided to YouTube by Black Butter
+
+        Burn the House Down � AJR
+
+        The Click (Deluxe Edition)
+
+         2018 AJR Productions under exclusive license to Black Butter Limited
+
+        Released on: 2018-09-21
+
+        Producer, Associated Performer, Recording Engineer: AJR
+        Mixing Engineer, Composer, Lyricist: Ryan Met
+        Composer, Lyricist: Jack Met
+        Composer, Lyricist: Adam Met
+        Mixing Engineer: Drew Allsbrook
+        Mastering Engineer: Chris Gehringer
+
+        Auto-generated by YouTube." -metadata "purl=https://www.youtube.com/watch?v=Wbxh1fNakos" -metadata "comment=https://www.youtube.com/watch?v=Wbxh1fNakos" -metadata "artist=AJR" -metadata "genre=Music" -metadata "album=The Click (Deluxe Edition)" -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.temp.m4a"
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\AJR\The Click (Deluxe Edition)\Burn the House Down.m4a"
+        [download] Downloading item 6 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=bek1y2uiQGA
+        [youtube] bek1y2uiQGA: Downloading webpage
+        [youtube] bek1y2uiQGA: Downloading web embedded client config
+        [youtube] bek1y2uiQGA: Downloading web embedded player API JSON
+        [youtube] bek1y2uiQGA: Downloading tv downgraded player API JSON
+        [youtube] bek1y2uiQGA: Downloading web music client config
+        [youtube] bek1y2uiQGA: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'Avicii'
+        [info] bek1y2uiQGA: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 44 ...
+        [info] Writing video thumbnail 44 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).webm
+        [download]   0.0% of    4.49MiB at  985.50KiB/s ETA 00:04
+        [download]   0.1% of    4.49MiB at    2.89MiB/s ETA 00:01
+        [download]   0.2% of    4.49MiB at    3.40MiB/s ETA 00:01
+        [download]   0.3% of    4.49MiB at    4.86MiB/s ETA 00:00
+        [download]   0.7% of    4.49MiB at    8.59MiB/s ETA 00:00
+        [download]   1.4% of    4.49MiB at    4.90MiB/s ETA 00:00
+        [download]   2.8% of    4.49MiB at    4.49MiB/s ETA 00:00
+        [download]   5.5% of    4.49MiB at    5.30MiB/s ETA 00:00
+        [download]  11.1% of    4.49MiB at    7.97MiB/s ETA 00:00
+        [download]  22.2% of    4.49MiB at   11.83MiB/s ETA 00:00
+        [download]  44.5% of    4.49MiB at   13.03MiB/s ETA 00:00
+        [download]  89.0% of    4.49MiB at   18.71MiB/s ETA 00:00
+        [download] 100.0% of    4.49MiB at   16.39MiB/s ETA 00:00
+        [download] 100% of    4.49MiB in 00:00:00 at 13.48MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).m4a"
+        Amazon: http://umusic.ly/efe0jy
+        Official video for Avicii vs Nicky Romero - I Could Be The One (Nicktim).
+
+        http://www.facebook.com/avicii
+        http://www.twitter.com/avicii
+
+        http://www.facebook.com/djnickyromero
+        http://www.twitter.com/nickyromero
+
+        #Avicii #ICouldBeTheOne #vevo #electronic #vevoofficial" -metadata "synopsis=Buy it on Itunes over here: http://umusic.ly/hep5mn
+        Amazon: http://umusic.ly/efe0jy
+        Official video for Avicii vs Nicky Romero - I Could Be The One (Nicktim).
+
+        http://www.facebook.com/avicii
+        http://www.twitter.com/avicii
+
+        http://www.facebook.com/djnickyromero
+        http://www.twitter.com/nickyromero
+
+        #Avicii #ICouldBeTheOne #vevo #electronic #vevoofficial" -metadata "purl=https://www.youtube.com/watch?v=bek1y2uiQGA" -metadata "comment=https://www.youtube.com/watch?v=bek1y2uiQGA" -metadata "artist=Avicii" -metadata "genre=Music" -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).temp.m4a"
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Avicii\playlist\Avicii vs Nicky Romero - I Could Be The One (Nicktim).m4a"
+        [download] Downloading item 7 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=IGE0RwhyOek
+        [youtube] IGE0RwhyOek: Downloading webpage
+        [youtube] IGE0RwhyOek: Downloading web embedded client config
+        [youtube] IGE0RwhyOek: Downloading web embedded player API JSON
+        [youtube] IGE0RwhyOek: Downloading tv downgraded player API JSON
+        [youtube] IGE0RwhyOek: Downloading web music client config
+        [youtube] IGE0RwhyOek: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'Qiuvox'
+        [info] IGE0RwhyOek: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 44 ...
+        [info] Writing video thumbnail 44 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.webm
+        [download]   0.1% of    1.56MiB at  724.40KiB/s ETA 00:02
+        [download]   0.2% of    1.56MiB at    1.23MiB/s ETA 00:01
+        [download]   0.4% of    1.56MiB at    2.86MiB/s ETA 00:00
+        [download]   0.9% of    1.56MiB at    4.32MiB/s ETA 00:00
+        [download]   1.9% of    1.56MiB at    5.06MiB/s ETA 00:00
+        [download]   4.0% of    1.56MiB at    4.32MiB/s ETA 00:00
+        [download]   8.0% of    1.56MiB at    4.16MiB/s ETA 00:00
+        [download]  16.0% of    1.56MiB at    4.15MiB/s ETA 00:00
+        [download]  32.1% of    1.56MiB at    6.40MiB/s ETA 00:00
+        [download]  64.2% of    1.56MiB at    9.16MiB/s ETA 00:00
+        [download] 100.0% of    1.56MiB at   12.32MiB/s ETA 00:00
+        [download] 100% of    1.56MiB in 00:00:00 at 3.57MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.m4a"
+
+        � 1 Hour Version https://youtu.be/on_eHJU6nuw
+        � Support The Original Creator https://christopherlarkin.bandcamp.com
+        � For Inquiries Please Contact info@qiuvox.com
+        � Full Album https://youtu.be/h9773gyW-xI
+        � Hollow Knight Silksong OST Full Playlist https://www.youtube.com/watch?v=yUfD7w5y3Ug&list=PLbNT78Q7M14yC4iIN4RaQqGa6q6zY6bqc
+
+        #silksong #silksongost #hollowknightsilksongost #hollowknightsilksong #hollowknightsilksonggameplay #princessknight #silksongmusic #ps5pro #pc #gameplay #xbox #xsx #xss #xboxseriesx #gaming #shorts #soundtrack #officialsoundtrack #ost #fullalbum #music" -metadata "synopsis=Cut Through - Hollow Knight Silksong Menu Login Screen OST Official Soundtrack Chapter Song Lyric Video Hollow Knight Silksong Trailer Music Hollow Knight Silksong DLC OST Hollow Knight Silksong OST Silksong Soundtrack Silksong DLC all endings Hollow Knight Silksong all soundtracks Hollow Knight Silksong DLC Hollow Knight Silksong PC Modded Hollow Knight Silksong all bosses all weapons music gameplay walkthrough part 1 full game walkthrough gameplay with Ultra Realistic Graphics PC edit gameplay walkthrough part 1 full game Let's Play Hollow Knight Silksong RTX 4090 RTX 5090 Intel i9 14900K PS5 Xbox Series X PC No Commentary 2160p 4K 60fps 4K 30fps Widescreen HD UHD Ultra Graphics Settings DLSS Super Quality Frame Generation Ray Tracing Ray Reconstruction Path Tracing Psycho Graphics Photorealistic Hyperrealistic Nvidia G-Sync V-Sync Multi Frame generation MFG Best Mods Best Shaders playthrough review guide of Cut Through - Hollow Knight Silksong on PlayStation 5 PC Xbox Series X PS4 Nintendo Switch and Nintendo Switch 2 Xbox Series s PS5 Pro PlayStation 5 Pro. Cut Through - Hollow Knight Silksong Remake Remastered Gameplay Walkthrough PS5 Xbox Series X PC No Commentary 2160p 60fps HD let's play playthrough review guide. Showcasing all cutscenes movie edition, all boss fights / boss fights, side missions, upgrades, outfits / costumes, all characters, best moments, final boss and true ending, secret ending.
+
+        � 1 Hour Version https://youtu.be/on_eHJU6nuw
+        � Support The Original Creator https://christopherlarkin.bandcamp.com
+        � For Inquiries Please Contact info@qiuvox.com
+        � Full Album https://youtu.be/h9773gyW-xI
+        � Hollow Knight Silksong OST Full Playlist https://www.youtube.com/watch?v=yUfD7w5y3Ug&list=PLbNT78Q7M14yC4iIN4RaQqGa6q6zY6bqc
+
+        #silksong #silksongost #hollowknightsilksongost #hollowknightsilksong #hollowknightsilksonggameplay #princessknight #silksongmusic #ps5pro #pc #gameplay #xbox #xsx #xss #xboxseriesx #gaming #shorts #soundtrack #officialsoundtrack #ost #fullalbum #music" -metadata "purl=https://www.youtube.com/watch?v=IGE0RwhyOek" -metadata "comment=https://www.youtube.com/watch?v=IGE0RwhyOek" -metadata "artist=Qiuvox" -metadata "genre=Music" -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.temp.m4a"
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Qiuvox\playlist\Cut Through  Hollow Knight Silksong OST Official Soundtrack Original Score.m4a"
+        [download] Downloading item 8 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=XsMpXczOIPs
+        [youtube] XsMpXczOIPs: Downloading webpage
+        [youtube] XsMpXczOIPs: Downloading web embedded client config
+        [youtube] XsMpXczOIPs: Downloading web embedded player API JSON
+        [youtube] XsMpXczOIPs: Downloading tv downgraded player API JSON
+        [youtube] XsMpXczOIPs: Downloading web music client config
+        [youtube] XsMpXczOIPs: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'Coldplay'
+        [info] XsMpXczOIPs: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 46 ...
+        [info] Writing video thumbnail 46 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.webm
+        [download]   0.0% of    4.29MiB at  Unknown B/s ETA Unknown
+        [download]   0.1% of    4.29MiB at    1.93MiB/s ETA 00:02
+        [download]   0.2% of    4.29MiB at    2.71MiB/s ETA 00:01
+        [download]   0.3% of    4.29MiB at    5.81MiB/s ETA 00:00
+        [download]   0.7% of    4.29MiB at    7.94MiB/s ETA 00:00
+        [download]   1.4% of    4.29MiB at    4.56MiB/s ETA 00:00
+        [download]   2.9% of    4.29MiB at    4.28MiB/s ETA 00:00
+        [download]   5.8% of    4.29MiB at    6.05MiB/s ETA 00:00
+        [download]  11.6% of    4.29MiB at    8.26MiB/s ETA 00:00
+        [download]  23.3% of    4.29MiB at    9.34MiB/s ETA 00:00
+        [download]  46.6% of    4.29MiB at   11.02MiB/s ETA 00:00
+        [download]  93.2% of    4.29MiB at   13.89MiB/s ETA 00:00
+        [download] 100.0% of    4.29MiB at   14.83MiB/s ETA 00:00
+        [download] 100% of    4.29MiB in 00:00:00 at 12.15MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.m4a"
+
+        Adventure of a Lifetime � Coldplay
+
+        A Head Full of Dreams
+
+         under exclusive licence to Parlophone Records Limited,  2015 Coldplay
+
+        Additional Engineer: Aleks Von Korff
+        Vocals: Apple Martin
+        Engineer: Bill Rahko
+        Engineer: Chris Allgood
+        Assistant Mastering Engineer: Chris Allgood
+        Arranger: Chris Martin
+        Keyboards: Chris Martin
+        Lead Vocals: Chris Martin
+        Engineer: Daniel Green
+        Engineer: Daniela Rivera
+        Mastering Engineer: Emily Lazar
+        Arranger: Guy Berryman
+        Bass Guitar: Guy Berryman
+        Keyboards: Guy Berryman
+        Engineer: Jaime Sickora
+        Arranger: Jonny Buckland
+        Electric Guitar: Jonny Buckland
+        Keyboards: Jonny Buckland
+        Mastering Engineer: Merlin Watts
+        Vocals: Merry Clayton
+        Arranger, Producer: Mikkel S. Eriksen
+        Keyboards, Programmer: Mikkel S. Eriksen
+        Engineer: Miles Walker
+        Vocals: Moses Martin
+        Engineer: Phil Tan
+        Producer: Rik Simpson
+        Engineer: Robin Baynton
+        Arranger, Producer: Tor Erik Hermansen
+        Keyboards, Programmer: Tor Erik Hermansen
+        Arranger: Will Champion
+        Drums, Percussion: Will Champion
+        Backing Vocals: Will Champion
+        Writer: Chris Martin
+        Writer: Guy Berryman
+        Writer: Jonny Buckland
+        Writer: Mikkel S. Eriksen
+        Writer: Tor Erik Hermansen
+        Writer: Will Champion
+
+        Auto-generated by YouTube." -metadata "synopsis=Provided to YouTube by Parlophone UK
+
+        Adventure of a Lifetime � Coldplay
+
+        A Head Full of Dreams
+
+         under exclusive licence to Parlophone Records Limited,  2015 Coldplay
+
+        Additional Engineer: Aleks Von Korff
+        Vocals: Apple Martin
+        Engineer: Bill Rahko
+        Engineer: Chris Allgood
+        Assistant Mastering Engineer: Chris Allgood
+        Arranger: Chris Martin
+        Keyboards: Chris Martin
+        Lead Vocals: Chris Martin
+        Engineer: Daniel Green
+        Engineer: Daniela Rivera
+        Mastering Engineer: Emily Lazar
+        Arranger: Guy Berryman
+        Bass Guitar: Guy Berryman
+        Keyboards: Guy Berryman
+        Engineer: Jaime Sickora
+        Arranger: Jonny Buckland
+        Electric Guitar: Jonny Buckland
+        Keyboards: Jonny Buckland
+        Mastering Engineer: Merlin Watts
+        Vocals: Merry Clayton
+        Arranger, Producer: Mikkel S. Eriksen
+        Keyboards, Programmer: Mikkel S. Eriksen
+        Engineer: Miles Walker
+        Vocals: Moses Martin
+        Engineer: Phil Tan
+        Producer: Rik Simpson
+        Engineer: Robin Baynton
+        Arranger, Producer: Tor Erik Hermansen
+        Keyboards, Programmer: Tor Erik Hermansen
+        Arranger: Will Champion
+        Drums, Percussion: Will Champion
+        Backing Vocals: Will Champion
+        Writer: Chris Martin
+        Writer: Guy Berryman
+        Writer: Jonny Buckland
+        Writer: Mikkel S. Eriksen
+        Writer: Tor Erik Hermansen
+        Writer: Will Champion
+
+        Auto-generated by YouTube." -metadata "purl=https://www.youtube.com/watch?v=XsMpXczOIPs" -metadata "comment=https://www.youtube.com/watch?v=XsMpXczOIPs" -metadata "artist=Coldplay" -metadata "genre=Music" -metadata "album=A Head Full of Dreams" -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.temp.m4a"
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\A Head Full of Dreams\Adventure of a Lifetime.m4a"
+        [download] Downloading item 9 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=SevgfyQtB10
+        [youtube] SevgfyQtB10: Downloading webpage
+        [youtube] SevgfyQtB10: Downloading web embedded client config
+        [youtube] SevgfyQtB10: Downloading web embedded player API JSON
+        [youtube] SevgfyQtB10: Downloading tv downgraded player API JSON
+        [youtube] SevgfyQtB10: Downloading web music client config
+        [youtube] SevgfyQtB10: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'Coldplay'
+        [info] SevgfyQtB10: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 46 ...
+        [info] Writing video thumbnail 46 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).webm
+        [download]   0.0% of    4.70MiB at  Unknown B/s ETA Unknown
+        [download]   0.1% of    4.70MiB at    1.97MiB/s ETA 00:02
+        [download]   0.1% of    4.70MiB at    4.60MiB/s ETA 00:01
+        [download]   0.3% of    4.70MiB at    5.86MiB/s ETA 00:00
+        [download]   0.6% of    4.70MiB at   12.12MiB/s ETA 00:00
+        [download]   1.3% of    4.70MiB at    6.15MiB/s ETA 00:00
+        [download]   2.6% of    4.70MiB at   10.77MiB/s ETA 00:00
+        [download]   5.3% of    4.70MiB at   19.41MiB/s ETA 00:00
+        [download]  10.6% of    4.70MiB at   26.15MiB/s ETA 00:00
+        [download]  21.3% of    4.70MiB at   20.13MiB/s ETA 00:00
+        [download]  42.5% of    4.70MiB at   22.29MiB/s ETA 00:00
+        [download]  85.1% of    4.70MiB at   22.03MiB/s ETA 00:00
+        [download] 100.0% of    4.70MiB at   24.28MiB/s ETA 00:00
+        [download] 100% of    4.70MiB in 00:00:00 at 21.83MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).m4a"
+
+        Adventure of a Lifetime (Live in Buenos Aires) � Coldplay
+
+        Live in Buenos Aires
+
+         under exclusive licence to Parlophone Records Limited,  2018 Coldplay
+
+        Backing Vocals: Andrew Taggart
+        Assistant Engineer: Anthony De Souza
+        Violin: Blanca Valeria Velasquez
+        Violin: Carolina Maffi
+        Mastering Engineer: Chris Allgood
+        Guitar: Chris Martin
+        Piano: Chris Martin
+        Lead Vocals: Chris Martin
+        Mixing Engineer: Daniel Green
+        Mastering Engineer: Emily Lazar
+        Bass Guitar: Guy Berryman
+        Backing Vocals: Guy Berryman
+        Piano: Jon Hopkins
+        Electric Guitar: Jonny Buckland
+        Backing Vocals: Jonny Buckland
+        Accordion: Mart�n Ferr�s
+        Mixing Engineer: Olga Fitzroy
+        Mixing Engineer: Rik Simpson
+        Producer: Rik Simpson
+        Drums: Will Champion
+        Percussion: Will Champion
+        Backing Vocals: Will Champion
+        Writer: Chris Martin
+        Writer: Guy Berryman
+        Writer: Jonny Buckland
+        Writer: Mikkel S. Eriksen
+        Writer: Tor Erik Hermansen
+        Writer: Will Champion
+
+        Auto-generated by YouTube." -metadata "synopsis=Provided to YouTube by Parlophone UK
+
+        Adventure of a Lifetime (Live in Buenos Aires) � Coldplay
+
+        Live in Buenos Aires
+
+         under exclusive licence to Parlophone Records Limited,  2018 Coldplay
+
+        Backing Vocals: Andrew Taggart
+        Assistant Engineer: Anthony De Souza
+        Violin: Blanca Valeria Velasquez
+        Violin: Carolina Maffi
+        Mastering Engineer: Chris Allgood
+        Guitar: Chris Martin
+        Piano: Chris Martin
+        Lead Vocals: Chris Martin
+        Mixing Engineer: Daniel Green
+        Mastering Engineer: Emily Lazar
+        Bass Guitar: Guy Berryman
+        Backing Vocals: Guy Berryman
+        Piano: Jon Hopkins
+        Electric Guitar: Jonny Buckland
+        Backing Vocals: Jonny Buckland
+        Accordion: Mart�n Ferr�s
+        Mixing Engineer: Olga Fitzroy
+        Mixing Engineer: Rik Simpson
+        Producer: Rik Simpson
+        Drums: Will Champion
+        Percussion: Will Champion
+        Backing Vocals: Will Champion
+        Writer: Chris Martin
+        Writer: Guy Berryman
+        Writer: Jonny Buckland
+        Writer: Mikkel S. Eriksen
+        Writer: Tor Erik Hermansen
+        Writer: Will Champion
+
+        Auto-generated by YouTube." -metadata "purl=https://www.youtube.com/watch?v=SevgfyQtB10" -metadata "comment=https://www.youtube.com/watch?v=SevgfyQtB10" -metadata "artist=Coldplay" -metadata "genre=Music" -metadata "album=Live in Buenos Aires" -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).temp.m4a"
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\Coldplay\Live in Buenos Aires\Adventure of a Lifetime (Live in Buenos Aires).m4a"
+        [download] Downloading item 10 of 13
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=maWHojZTnTg
+        [youtube] maWHojZTnTg: Downloading webpage
+        [youtube] maWHojZTnTg: Downloading web embedded client config
+        [youtube] maWHojZTnTg: Downloading web embedded player API JSON
+        [youtube] maWHojZTnTg: Downloading tv downgraded player API JSON
+        [youtube] maWHojZTnTg: Downloading web music client config
+        [youtube] maWHojZTnTg: Downloading web music player API JSON
+        [youtube] [jsc:deno] Solving JS challenges using deno
+        [MetadataParser] Parsed artist from '%(uploader)s': 'C418'
+        [info] maWHojZTnTg: Downloading 1 format(s): 251
+        [info] There are no subtitles for the requested languages
+        [info] Downloading video thumbnail 46 ...
+        [info] Writing video thumbnail 46 to: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.webp
+        [ThumbnailsConvertor] Converting thumbnail "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.webp" to jpg
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.webp (pass -k to keep)
+        Deleting existing file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.m4a
+        [download] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.webm
+        [download]   0.0% of    5.49MiB at  249.23KiB/s ETA 00:22
+        [download]   0.1% of    5.49MiB at  554.85KiB/s ETA 00:10
+        [download]   0.1% of    5.49MiB at    1.26MiB/s ETA 00:04
+        [download]   0.3% of    5.49MiB at    2.28MiB/s ETA 00:02
+        [download]   0.6% of    5.49MiB at    4.08MiB/s ETA 00:01
+        [download]   1.1% of    5.49MiB at    4.14MiB/s ETA 00:01
+        [download]   2.3% of    5.49MiB at    4.47MiB/s ETA 00:01
+        [download]   4.5% of    5.49MiB at    5.70MiB/s ETA 00:00
+        [download]   9.1% of    5.49MiB at    7.64MiB/s ETA 00:00
+        [download]  18.2% of    5.49MiB at   11.29MiB/s ETA 00:00
+        [download]  36.4% of    5.49MiB at   10.26MiB/s ETA 00:00
+        [download]  72.8% of    5.49MiB at   13.65MiB/s ETA 00:00
+        [download] 100.0% of    5.49MiB at   15.56MiB/s ETA 00:00
+        [download] 100% of    5.49MiB in 00:00:00 at 13.09MiB/s
+        [ExtractAudio] Destination: C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.m4a
+        Deleting original file C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.webm (pass -k to keep)
+        [Metadata] Adding metadata to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.m4a"
+
+        Aria Math � C418
+
+        Minecraft - Volume Beta
+
+         2013 C418
+
+        Composer: Daniel Rosenfeld
+
+        Auto-generated by YouTube." -metadata "synopsis=Provided to YouTube by C418
+
+        Aria Math � C418
+
+        Minecraft - Volume Beta
+
+         2013 C418
+
+        Composer: Daniel Rosenfeld
+
+        Auto-generated by YouTube." -metadata "purl=https://www.youtube.com/watch?v=maWHojZTnTg" -metadata "comment=https://www.youtube.com/watch?v=maWHojZTnTg" -metadata "artist=C418" -metadata "genre=Music" -metadata "album=Minecraft - Volume Beta" -movflags +faststart "file:C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.temp.m4a"
+        [EmbedThumbnail] mutagen: Adding thumbnail to "C:\MusicTools\MusicPipeline\Sandbox\Sandbox_Backup\C418\Minecraft - Volume Beta\Aria Math.m4a"
+
+Errors:
+
+
+GeoBlock:
+        [download] Downloading item 11 of 13 | Record number ofc
+
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=AcvXQWu1G28 | Record URL
+
+        ERROR: [youtube] AcvXQWu1G28: The uploader has not made this video available in your country | Record this error, from the colon onwards. Maybe pattern match for a set of known errors?
+
+        yt_dlp.utils.GeoRestrictedError: [youtube] AcvXQWu1G28: The uploader has not made this video available in your country | Could also record the value of the yt_dlp.utils. error
+
+Premium only:
+        [download] Downloading item 12 of 13 | Number
+
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=Mm5cKROFato | URL
+
+        
+        ERROR: [youtube] Mm5cKROFato: This video is only available to Music Premium members | Record error
+          
+        This doesn't have an official code, I presume that's common
+
+Unavailable:
+        [download] Downloading item 13 of 13 | Number
+
+        [youtube] Extracting URL: https://music.youtube.com/watch?v=F6s9e8zSqEg | URL
+
+        ERROR: [youtube] F6s9e8zSqEg: Video unavailable. This video is not available | Error
+        
+        No code
+
+[download] Finished downloading playlist: Music Sync Test
+Confim that the name is the same ig? thats it really

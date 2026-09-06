@@ -30,7 +30,7 @@ class Downloader
 	private int maxDownloadThreads = 0;
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
-	private List<Result?>? res = null;
+	private List<Result?> res = new();
 	#endregion private fields
 
 	public async Task<List<Result>> Download(string profileFile)
@@ -157,8 +157,7 @@ class Downloader
 		l.user = "Downloader";
 		List<Result>? results = new List<Result>();
 		foreach (Result? r in res) {
-			if (res is null) {res = new List<Result?>([r]);}
-			else {results.Add(r);}
+			results.Add(r);
 			// Could also use addRange or something
 		}
 		Profile currentActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
@@ -272,8 +271,7 @@ class Downloader
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - threadStart;
 					await log.Out($"elapsed = {elapsedError}, end = {endError}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
-					if (res is null) {res = new List<Result?>([new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null")]);}
-					else {res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));}
+					res.Add(new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
 					return;
 				}
 
@@ -333,8 +331,7 @@ class Downloader
 				DateTime end = DateTime.UtcNow;
 				TimeSpan elapsed = end - threadStart;
 				await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
-				if (res is null) {res = new List<Result?>([new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index))]);}
-				else {res.Add(new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index)));}
+				res.Add(new Result("DownloaderThread", true, elapsed, await GetErrorsInThread(index)));
 				return;
 			}
 		}
@@ -343,8 +340,7 @@ class Downloader
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - threadStart;
 			await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
-			if (res is null) {res = new List<Result?>([new Result("DownloaderThread", false, elapsed, ex.Message)]);}
-			else {res.Add(new Result("DownloaderThread", false, elapsed, ex.Message));}
+			res.Add(new Result("DownloaderThread", false, elapsed, ex.Message));
 		}
 		finally
 		{
