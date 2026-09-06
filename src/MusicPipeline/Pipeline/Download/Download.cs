@@ -176,7 +176,7 @@ class Downloader
 	{
 		LogEngine? log = new(l.logFile);
 		log.user = $"DownloaderThread-{index+1}";
-		DateTime threadStart = DateTime.Now;
+		DateTime threadStart = DateTime.UtcNow;
 		await log.Out($"Index = {index} Playlist = {playlists[index]}, customArgs = {customArguments}", DefaultColours.Debug);
 		int? colourCode = null;
 		// I know this isn't technically the same order as the original but the testing only has one playlist and I prefer the peach colour. Sue me.
