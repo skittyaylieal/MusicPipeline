@@ -11,7 +11,8 @@ namespace MusicPipeline.Pipeline;
 
 class Downloader
 {
-	private Profile? activeProfile = null;
+    #region private fields
+    private Profile? activeProfile = null;
 	private LogEngine? l = null;
 	private string backupDir = "Null";
 	private string YTDLPPath = "Null";
@@ -30,8 +31,9 @@ class Downloader
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
 	private List<Result?>? res = null;
+    #endregion private fields
 
-	public async Task<List<Result>> Download(string profileFile)
+    public async Task<List<Result>> Download(string profileFile)
 	{
 		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
 
@@ -69,9 +71,18 @@ class Downloader
 
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
 
-		await l.Out("==============================================");
-		await l.Out("          YTDLP Song Downloader Step          ");
-		await l.Out("==============================================");
+		//would this work with a single out? or is Out() this specifically one line at a time?
+		var stepHeader = 
+@"==============================================
+          YTDLP Song Downloader Step          
+==============================================";
+		await l.Out(stepHeader);
+		//try the above while commenting out the below to let me know if it works.
+		//that's a string literal. leading @ makes the string literal and everything in it will literally be included like newline characters.
+
+		//await l.Out("==============================================");
+		//await l.Out("          YTDLP Song Downloader Step          ");
+		//await l.Out("==============================================");
 
 		if (!Directory.Exists(backupDir)) {
 			await l.Out($"Main backup directory {backupDir} doesn't exist. Creating.");
@@ -95,7 +106,15 @@ class Downloader
 		// Tada!
 
 		// From JleruOHeP on https://stackoverflow.com/questions/23419396/can-you-assign-a-value-only-if-its-greater-less-than-the-current-value#comment35888947_23419396
-		maxDownloadThreads = maxDownloadThreads > playlists.Count() ? playlists.Count() : maxDownloadThreads;
+
+		//here i'll introduce a variable to help make things more clear
+		var morePlaylistsThanThreadsAllowed = maxDownloadThreads > playlists.Length;
+		//because your assignment following the colon would change nothing, a simple if is better.
+		if (morePlaylistsThanThreadsAllowed)
+			maxDownloadThreads = playlists.Length;
+
+        //maxDownloadThreads = maxDownloadThreads > playlists.Count() ? playlists.Count() : maxDownloadThreads;
+
 		// I believe this effectively does
 		/*
 		if (maxDownloadThreads < playlist.Count()) {
@@ -106,6 +125,10 @@ class Downloader
 
 		But I'm not 100% sure how the ternary operator works
 		*/
+		//you got it right but stated it in a weird way.
+		//ternary op works like this (condition) ? result if true : result if false
+		//you're doing an extra step of assinging the result of the ternary operator to a field.
+
 		Task? j = null;
 		await Parser.ParseYTDLPConfigFile(activeProfile);
 		activeProfile = await ProfileManager.LoadActiveProfile(profileFile);
