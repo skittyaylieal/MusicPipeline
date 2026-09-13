@@ -159,6 +159,7 @@ public class YTDLPHelpers
 		//foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) {
 		for (int i = 0; i < allFileLinesNumbered.Count; i++) {
 			string val = allFileLinesNumbered[i];
+			// Doing it like this rather than foreach, garuntees it to be in line order
 			if (Regex.IsMatch(val, _songDeclarePattern)) {
 				// If the current line is a song decleration
 				inSong = true;
