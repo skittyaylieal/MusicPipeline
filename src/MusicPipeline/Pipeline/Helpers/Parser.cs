@@ -40,7 +40,7 @@ public class Parser
 		foreach (string line in confFileLinesFiltered) {
 			Match match = Regex.Match(line, @"\{(\w+)\}");
 			if (!match.Success) {
-				await l.Out($"Line {line} did not need any replacing");
+				await l.Out($"Line {line} did not need any replacing", DefaultColours.Debug);
 				parsedLines.Add(line);
 				continue;
 			} 
