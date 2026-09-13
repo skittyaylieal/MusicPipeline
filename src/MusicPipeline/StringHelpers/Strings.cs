@@ -9,7 +9,7 @@ public class StringHelpers
 		Console.WriteLine($"lines is {lines}, count is {lines.Count()}, allText length is {allText.Length}");
 		Dictionary<int, string> res = new();
 		for (int i = 0; i < (lines.Count()); i++) {
-			res.Append(new KeyValuePair<int, string>(i, lines[i]));
+			res.Add(i, lines[i]);
 			Console.WriteLine($"New line, {res[i]}");
 		}
 		Console.WriteLine(res);
