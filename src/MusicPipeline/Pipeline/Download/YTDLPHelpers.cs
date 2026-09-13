@@ -165,6 +165,7 @@ public class YTDLPHelpers
 				inSong = true;
 				Console.WriteLine($"First match value = {Regex.Matches(val, _songDeclarePattern)[0].Value}, Regex Match count = {Regex.Matches(val, _songDeclarePattern).Count}");
 				songNum = int.Parse(Regex.Matches(val, _songDeclarePattern)[0].Value);
+				total = int.Parse(Regex.Matches(val, _songDeclarePattern)[1].Value);
 				songs.Add(songNum, [val]);
 				Console.WriteLine(songs);
 				Console.WriteLine(songNum);
