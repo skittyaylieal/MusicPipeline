@@ -163,7 +163,7 @@ public class YTDLPHelpers
 			if (Regex.IsMatch(val, _songDeclarePattern)) {
 				// If the current line is a song decleration
 				inSong = true;
-				Console.WriteLine("First match value = ", Regex.Matches(val, _songDeclarePattern)[0].Value);
+				Console.WriteLine($"First match value = {Regex.Matches(val, _songDeclarePattern)[0].Value}, Regex Match count = {Regex.Matches(val, _songDeclarePattern).Count}");
 				songNum = int.Parse(Regex.Matches(val, _songDeclarePattern)[0].Value);
 				songs.Add(songNum, [val]);
 				Console.WriteLine(songs);
