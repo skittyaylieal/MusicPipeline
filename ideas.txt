@@ -28,6 +28,10 @@ the profile also has all the other things like device specfic stuff (thread coun
 and eventually it'll have like the exact flags to use when downloading and all that
 
 
+I should make the result and timing stuff have much more finegrained taking of how long every function takes. That would be useful
+Like for every method call or for loop or if you get a metric of how long it took maybe
+
+
 
 TODO:
 Make the profile initialise to defaults

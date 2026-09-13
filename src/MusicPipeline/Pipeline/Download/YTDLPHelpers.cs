@@ -42,7 +42,7 @@ public class YTDLPHelpers
 		// Get all text in file
 		MatchCollection? matchCollection = null;
 		string allFileText = await File.ReadAllTextAsync(path);
-		Dictionary<int, string> allFileLinesNumbered = new(await StringHelpers.SplitLinesDict(allFileText));
+		Dictionary<int, string> allFileLinesNumbered = await StringHelpers.SplitLinesDict(allFileText);
 
 		Console.WriteLine(allFileText);
 		Console.WriteLine($"allFileLinesNumbered = {allFileLinesNumbered}");
