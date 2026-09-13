@@ -352,30 +352,19 @@ class Downloader
 		l.user = "Downloader";
 		await l.Out("TODO: URGENT: MAKE GetAffectedSongInfo", DefaultColours.Error, true);
 		//return new List<SongIdentifier>(new SongIdentifier("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", new List<FileInfo>([new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.m4a")]), null, "m4a", 8.63, new List<double>([6.32, 5.19]), false, true, true, new FileInfo($@"{backupDir}\Rick Astley\Whenever You Need Somebody\Never Gonna Give You Up.lrc"), false));
-		List<FileInfo> paths = [new("Null")];
-		List<double> sizesCompressed = new([0.0]);
-		FileInfo lyricsPath = new("Null");
-		DateTime loreDate = new();
-		SongIdentifier songIdentifier =
-			new(title: "Null",
-			artist: "Null",
-			album:"Null",
-			paths,
-			id: 0,
-			type: "Null",
-			sizeMB: 0.0,
-			sizesCompressed: sizesCompressed,
-			instrumental: false,
-			lyrics: false,
-			syncedLyrics: false,
-			lyricsPath,
-			lore: false,
-			loreDate
-		);
+
+		//moved the code for creating this default case of SongIdentifier into a constructor
+		var songIdentifier = new SongIdentifier();
+		//currently you're not doing anything with this variable besides returning it as the only member of a list.
+		//I'm sure you'll want to modify it in some way before returning it.
 
 		string path = $@"{configDir}\run_errors_playlist{index+1}.txt";
 		// Parse URL
-		string playlistURL = await YTDLPHelpers.GetUrlFromRunLogFile(path);
+		string playlistURL = await YTDLPHelpers.GetUrlFromRunLogFile(path);		
+		if (playlistURL != "")
+		{
+			//I don't know what you're going to use the url for, but wrote this if to help protected it.
+		}
 
 		// Get all the songs
 		var data = await YTDLPHelpers.GetAllSongsFromRunLogFile(path);

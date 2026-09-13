@@ -1,12 +1,16 @@
 using System.Text.RegularExpressions;
 using MusicPipeline.Songs;
-using MusicPipeline.Strings;
+//using MusicPipeline.Strings;
 namespace MusicPipeline.Pipeline.Helpers.Download;
 
+//renamed this file to match the class name.
 public class YTDLPHelpers
 {
-	public static string URLPattern = @"\[youtube:tab\] Extracting URL: (https://(?:music.y|www.y|y)outube.co(?:m|.uk)/playlist?list=.*)";
-	public static string SongDeclarePattern = @"\[download\] Downloading item (\d+) of (\d+)";
+	//these fields are only used in this class, and so shouldn't be made visible.
+	//they are never modified, and their values are known at compilation, so they should be const.
+	//nameing convention for private members is camelCase with a leading underscore.
+	private const string _uRLPattern = @"\[youtube:tab\] Extracting URL: (https://(?:music.y|www.y|y)outube.co(?:m|.uk)/playlist?list=.*)";
+	private const string _songDeclarePattern = @"\[download\] Downloading item (\d+) of (\d+)";
 	public static async Task<string> GetUrlFromRunLogFile(string path)
 	{
 		// Get all text in file
@@ -14,18 +18,23 @@ public class YTDLPHelpers
 		string allFileText = await File.ReadAllTextAsync(path);
 		List<string> allFileLines = new(allFileText.Split("\n"));
 		// Find the url
-		foreach (string line in allFileLines) {
-			if (Regex.IsMatch(line, URLPattern)) {
-				match = Regex.Match(line, URLPattern).Value;
+		foreach (string line in allFileLines) 
+		{
+			if (Regex.IsMatch(line, _uRLPattern)) 
+			{
+				match = Regex.Match(line, _uRLPattern).Value;
 			}
 		}
+		//the above foreach and if don't require curly braces.
+		//I'll leave them there if you want them, but C# convention says that opening curly brace should be on a new line in cases like this.
+		//I think javascript and java do it with the opening curly brace on the same line, but C# convention explicitly says to not do that.
+		//the compiler doesn't care, it's only for human eyes.
 		return match;
 	}
 
-	public static async Task<Dictionary<int, SongIdentifier>> GetSongsFromRunLogFile(string path)
-	{
-		return (await GetAllSongsFromRunLogFile(path)).songs;
-	}
+	//we can use expression body for this method because it's a single line (if you want)
+	public static async Task<Dictionary<int, SongIdentifier>> GetSongsFromRunLogFile(string path) 
+		=> (await GetAllSongsFromRunLogFile(path)).songs;
 
 	public static async Task<(int total, Dictionary<int, SongIdentifier> songs)> GetAllSongsFromRunLogFile(string path)
 	{
@@ -37,10 +46,12 @@ public class YTDLPHelpers
 
 		Console.WriteLine(allFileText);
 		Console.WriteLine(allFileLinesNumbered);
-		foreach (KeyValuePair<int, string> x in allFileLinesNumbered) {
+		//curly braces optional below
+		foreach (KeyValuePair<int, string> x in allFileLinesNumbered) 
+		{
 			Console.WriteLine($"{x.Key} : {x.Value}");
 		}
-
+		#region codeblock
 		/*Dictionary<(int line, int song), (int line, int songEnd)> songToLine = new();
 		foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) {
 			int curSong = 0;
@@ -63,19 +74,37 @@ public class YTDLPHelpers
 			// We need to test if it is between any pair 
 
 		}*/
+		#endregion codeblock
+		//i don't understand why you're using inSong to put every other line in the alternate dictionary??
+		//is there a better way to determine which dictionary to add a line to besides the order that it occurred in allFileLinesNumbered?
+		//for lists and dictionaries order shouldn't matter, and we shouldn't depend on the order being a certain way.
+		//when order matters, array respects order
 		bool inSong = false;
 		Dictionary<int, int> songStarts = new();
 		Dictionary<int, int> songEnds = new();
-		foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) { // Loops through all the lines
-			if (Regex.IsMatch(kvp.Value, SongDeclarePattern)) {
-				matchCollection = Regex.Matches(kvp.Value, SongDeclarePattern);
+		foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered)  // Loops through all the lines
+		{
+			//used Match() here instead.
+			var match = Regex.Match(kvp.Value, _songDeclarePattern);
+			if (match.Success) 
+			{
 				// So we have the current line number as well as the matches
-				if (!inSong) { // Adds the song data to the 2 lists
+				var thisDownloadItemNumber = int.Parse(match.Groups[1].Value);
+				var totalNumberOfDownloadItems = int.Parse(match.Groups[2].Value);
+				if (!inSong)  // Adds the song data to the 2 lists
+				{
 					inSong = true;
-					songStarts.Add(kvp.Key, int.Parse(matchCollection[0].Value));
-				} else {
+					//I don't think this will work anymore because match.Value should return the entire match... which isn't an int
+					//I don't know what you're attempting to do here.
+					//the values in allFileLinesNumbered should be strings that may or may not match _songDeclarePattern
+					//when they match the first value I named thisDownloadItemNumber up above, and the second number I named totalNumberOfDownloadItems up above.
+					//you can throw this all away if it doesn't help, but I bet you're probably wanting Match().
+					songStarts.Add(kvp.Key, thisDownloadItemNumber); 
+				} 
+				else 
+				{
 					inSong = false;
-					songEnds.Add(kvp.Key - 1, int.Parse(matchCollection[0].Value)); // Adds the previous line number
+					songEnds.Add(kvp.Key - 1, thisDownloadItemNumber); // Adds the previous line number
 				}
 			}
 		}

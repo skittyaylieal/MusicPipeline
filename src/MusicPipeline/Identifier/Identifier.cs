@@ -13,7 +13,7 @@ public class SongIdentifier
 	public required string Album {get; set;} = "Null";
 	public required List<FileInfo> Paths {get; set;} = new List<FileInfo>([new FileInfo("Null")]);
 	public UInt64 PermenantID {get; set;} = 0;
-	public required string Type {get; set;} = "Null";
+	public required string Type {get; set;} = "Null"; //typically don't want a property named Type because of System.Type
 	public double SizeMB {get; set;} = 0.0;
 	public List<double> SizesCompressed {get; set;} = new List<double>([0.0]);
 	public bool Instrumental {get; set;} = false;
@@ -56,6 +56,10 @@ public class SongIdentifier
 			LoreDate = loreDate;
 		}
 	}
+
+	[SetsRequiredMembers]
+	public SongIdentifier(){ }
+	//you have default values for all the properties, so we don't have to set anything for this constructor.
 
 	[SetsRequiredMembers]
 	public SongIdentifier(List<string> scriptOutput, string step)
