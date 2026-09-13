@@ -158,11 +158,12 @@ public class YTDLPHelpers
 
 		//foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) {
 		for (int i = 0; i < allFileLinesNumbered.Count; i++) {
-			if (Regex.IsMatch(allFileLinesNumbered[i], _songDeclarePattern)) {
+			string val = allFileLinesNumbered[i];
+			if (Regex.IsMatch(val, _songDeclarePattern)) {
 				// If the current line is a song decleration
 				inSong = true;
-				songNum = int.Parse(Regex.Matches(allFileLinesNumbered[i], _songDeclarePattern)[0].Value);
-				songs.Add(songNum, [allFileLinesNumbered[i]]);
+				songNum = int.Parse(Regex.Matches(val, _songDeclarePattern)[0].Value);
+				songs.Add(songNum, [val]);
 				Console.WriteLine(songs);
 				Console.WriteLine(songNum);
 				Console.WriteLine(songs[songNum]);
@@ -171,7 +172,7 @@ public class YTDLPHelpers
 			}
 			// IF I have any issues with things that are after the end of a song but before the start of the next, add a pattern for the end of the song
 			if (inSong == true) {
-				songs[songNum].Append(allFileLinesNumbered[i]);
+				songs[songNum].Append(val);
 				Console.WriteLine(songs[songNum]);
 				foreach (string x in songs[songNum])
 					Console.WriteLine(x);
