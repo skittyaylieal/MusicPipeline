@@ -156,12 +156,13 @@ public class YTDLPHelpers
 
 		Dictionary<int, string[]> songs = new();
 
-		foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) {
-			if (Regex.IsMatch(kvp.Value, _songDeclarePattern)) {
+		//foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) {
+		for (int i = 0; i < allFileLinesNumbered.Count; i++) {
+			if (Regex.IsMatch(allFileLinesNumbered[i], _songDeclarePattern)) {
 				// If the current line is a song decleration
 				inSong = true;
-				songNum = int.Parse(Regex.Matches(kvp.Value, _songDeclarePattern)[0].Value);
-				songs.Add(songNum, [kvp.Value]);
+				songNum = int.Parse(Regex.Matches(allFileLinesNumbered[i], _songDeclarePattern)[0].Value);
+				songs.Add(songNum, [allFileLinesNumbered[i]]);
 				Console.WriteLine(songs);
 				Console.WriteLine(songNum);
 				Console.WriteLine(songs[songNum]);
@@ -170,7 +171,7 @@ public class YTDLPHelpers
 			}
 			// IF I have any issues with things that are after the end of a song but before the start of the next, add a pattern for the end of the song
 			if (inSong == true) {
-				songs[songNum].Append(kvp.Value);
+				songs[songNum].Append(allFileLinesNumbered[i]);
 				Console.WriteLine(songs[songNum]);
 				foreach (string x in songs[songNum])
 					Console.WriteLine(x);
