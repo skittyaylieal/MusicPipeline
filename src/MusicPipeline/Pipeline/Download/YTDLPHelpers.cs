@@ -79,6 +79,7 @@ public class YTDLPHelpers
 		//is there a better way to determine which dictionary to add a line to besides the order that it occurred in allFileLinesNumbered?
 		//for lists and dictionaries order shouldn't matter, and we shouldn't depend on the order being a certain way.
 		//when order matters, array respects order
+		// Got it. I just don't know a good way to go through a list and then dynamically add to stuff. I will do it better
 		bool inSong = false;
 		Dictionary<int, int> songStarts = new();
 		Dictionary<int, int> songEnds = new();

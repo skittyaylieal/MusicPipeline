@@ -364,6 +364,9 @@ class Downloader
 		if (playlistURL != "")
 		{
 			//I don't know what you're going to use the url for, but wrote this if to help protected it.
+			// URL is for double checking the playlist didn't get fucked up
+			// I was running into issues with my config file not working properly and trying to read random other values so I'll add at some point some failsafe stuff to the geturl method
+			// So that if someone runs it with a broken config file they can help fix it
 		}
 
 		// Get all the songs
