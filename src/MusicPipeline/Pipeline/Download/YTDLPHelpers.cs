@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 using MusicPipeline.Songs;
-//using MusicPipeline.Strings;
+using MusicPipeline.Strings;
 namespace MusicPipeline.Pipeline.Helpers.Download;
 
 //renamed this file to match the class name.
@@ -72,14 +72,7 @@ public class YTDLPHelpers
 		foreach ((int lineNum, string line) in allFileLinesNumbered) {
 			// So we have the current line number
 			// We need to test if it is between any pair 
-
-		}*/
-		#endregion codeblock
-		//i don't understand why you're using inSong to put every other line in the alternate dictionary??
-		//is there a better way to determine which dictionary to add a line to besides the order that it occurred in allFileLinesNumbered?
-		//for lists and dictionaries order shouldn't matter, and we shouldn't depend on the order being a certain way.
-		//when order matters, array respects order
-		// Got it. I just don't know a good way to go through a list and then dynamically add to stuff. I will do it better
+		
 		bool inSong = false;
 		Dictionary<int, int> songStarts = new();
 		Dictionary<int, int> songEnds = new();
@@ -120,7 +113,6 @@ public class YTDLPHelpers
 
 		// Now we have list of start
 		inSong = false;
-		int songNum = 0;
 		Dictionary<int, List<string>> songs= new();
 		foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) {
 			if (songStarts.TryGetValue(kvp.Key, out int value)) {
@@ -146,6 +138,49 @@ public class YTDLPHelpers
 				Console.WriteLine(v);
 			}
 		}
+
+
+
+
+
+
+		}*/
+		#endregion codeblock
+		//i don't understand why you're using inSong to put every other line in the alternate dictionary??
+		//is there a better way to determine which dictionary to add a line to besides the order that it occurred in allFileLinesNumbered?
+		//for lists and dictionaries order shouldn't matter, and we shouldn't depend on the order being a certain way.
+		//when order matters, array respects order
+		// Got it. I just don't know a good way to go through a list and then dynamically add to stuff. I will do it better
+		bool inSong = false;
+		int songNum = 0;
+
+		Dictionary<int, string[]> songs = new();
+
+		foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) {
+			if (Regex.IsMatch(kvp.Value, _songDeclarePattern)) {
+				// If the current line is a song decleration
+				inSong = true;
+				songNum = int.Parse(Regex.Matches(kvp.Value, _songDeclarePattern)[0].Value);
+				songs.Add(songNum, [kvp.Value]);
+				Console.WriteLine(songs);
+				Console.WriteLine(songNum);
+				Console.WriteLine(songs[songNum]);
+				foreach (string x in songs[songNum])
+					Console.WriteLine(x);
+			}
+			// IF I have any issues with things that are after the end of a song but before the start of the next, add a pattern for the end of the song
+			if (inSong == true) {
+				songs[songNum].Append(kvp.Value);
+				Console.WriteLine(songs[songNum]);
+				foreach (string x in songs[songNum])
+					Console.WriteLine(x);
+			}
+		}
+
+
+		// That was easy https://www.youtube.com/watch/3YmMNpbFjp0
+
+
 
 		// So we now have a dictionary of all the text for each song
 		// Now we need to make a songIdentifier from that
