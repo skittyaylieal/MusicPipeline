@@ -47,10 +47,8 @@ public class YTDLPHelpers
 		//Console.WriteLine(allFileText);
 		Console.WriteLine($"allFileLinesNumbered = {allFileLinesNumbered}");
 		//curly braces optional below
-		foreach (KeyValuePair<int, string> x in allFileLinesNumbered) 
-		{
-			Console.WriteLine($"{x.Key} : {x.Value}");
-		}
+		//foreach (KeyValuePair<int, string> x in allFileLinesNumbered) 
+			//Console.WriteLine($"{x.Key} : {x.Value}");
 		#region codeblock
 		/*Dictionary<(int line, int song), (int line, int songEnd)> songToLine = new();
 		foreach (KeyValuePair<int, string> kvp in allFileLinesNumbered) {
