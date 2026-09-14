@@ -23,6 +23,8 @@ public class YTDLPHelpers
 			if (Regex.IsMatch(line, _uRLPattern)) 
 			{
 				match = Regex.Match(line, _uRLPattern).Value;
+				Console.WriteLine($"Regex.Match = {Regex.Match(line, _uRLPattern)}, Value = {Regex.Match(line, _uRLPattern).Value}, Captures = {Regex.Match(line, _uRLPattern).Captures}, Captures[0] = {Regex.Match(line, _uRLPattern).Captures[0]}, Captures[0].Value = {Regex.Match(line, _uRLPattern).Captures[0].Value}, Captures[0].ToString = {Regex.Match(line, _uRLPattern).Captures[0].ToString()}, Captures[0].Length = {Regex.Match(line, _uRLPattern).Captures[0].Length}");
+				break;
 			}
 		}
 		//the above foreach and if don't require curly braces.
