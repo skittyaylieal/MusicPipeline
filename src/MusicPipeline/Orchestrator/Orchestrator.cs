@@ -30,6 +30,7 @@ public class Orchestrator
 			string upperRoot = Directory.GetParent(rootDir).Parent.FullName;
 			Console.WriteLine($"rootDir = {rootDir}, upperRoot = {upperRoot}, machineName = {machineName}");
 			string tempProfileFile = $@"{upperRoot}\Config\csProfilesPortable.json";
+			profileFile = tempProfileFile;
 			//await ProfileManager.SaveProfile(tempProfileFile, DefaultProfiles.DefaultProfile, true, true);// Temporary debug
 		}
 		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
