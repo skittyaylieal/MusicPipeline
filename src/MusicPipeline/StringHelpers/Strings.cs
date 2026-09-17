@@ -10,7 +10,7 @@ public class StringHelpers
 		Dictionary<int, string> res = new();
 		for (int i = 0; i < (lines.Count()); i++) {
 			res.Add(i, lines[i]);
-			//Console.WriteLine($"New line, {res[i]}");
+			Console.WriteLine($"New line, {res[i]}");
 		}
 		Console.WriteLine("res is ", res);
 		return res;
