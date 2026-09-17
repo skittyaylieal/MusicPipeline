@@ -12,6 +12,9 @@ public static class Hasher
 	}
 }
 
+// TODO: Implement myself
+
+
 // NOT WORKING
 // TEST STUFF
 
