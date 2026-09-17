@@ -29,7 +29,8 @@ public class Orchestrator
 			string rootDir = Directory.GetCurrentDirectory(); // This is always the directory with the .csproj, so Repo/src/MusicPipeline
 			string upperRoot = Directory.GetParent(rootDir).Parent.FullName;
 			Console.WriteLine($"rootDir = {rootDir}, upperRoot = {upperRoot}, machineName = {machineName}");
-			string tempprofileFile = $@"{upperRoot}\Config\csProfilesPortable.json";
+			string tempProfileFile = $@"{upperRoot}\Config\csProfilesPortable.json";
+			//await ProfileManager.SaveProfile(tempProfileFile, DefaultProfiles.DefaultProfile, true, true);// Temporary debug
 		}
 		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
 		/* First use of Profiles*/ Profile oldActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);

@@ -133,6 +133,11 @@ public class ProfileManager
 			await logger.Out("The profile file doesn't exist, creating a new DefaultProfile", DefaultColours.Error, true);
 			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 		}
+		catch {
+			await logger.Out("Json read failed", DefaultColours.Error, true);
+			//await logger.Out(e.Message, DefaultColours.Debug);
+			return DefaultProfiles.ErrorProfile;
+		}
 		string jsonString = File.ReadAllText(profileFile);
 		//await logger.Out(jsonString, DefaultColours.Debug);
 		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
@@ -160,11 +165,18 @@ public class ProfileManager
 		// Done
 	}
 
-	public static async Task SaveProfile(string profileFile, Profile? profile = null, bool overrideParam = false)
+	public static async Task SaveProfile(string profileFile, Profile? profile = null, bool overrideParam = false/*, bool fullDebugOverride = false*/)
 	{
 		// TODO: fix
 		//next step of todo, name what is broken :)
 		// i think i fixed it already actually lol
+		/*if (fullDebugOverride) {
+			ProfileFile debugProfileFile = new ProfileFile(new([profile]), profile.Name);
+			var debugOptions = new JsonSerializerOptions { WriteIndented = true };
+			string debugJsonToWrite = JsonSerializer.Serialize(debugProfileFile, debugOptions);
+			File.WriteAllText(profileFile, debugJsonToWrite);
+		}*/
+
 		if (profile == null) {
 			profile = DefaultProfiles.DefaultProfile;
 		} else if (await SafetyCheck.CheckProfileToBeSaved(profile) & !overrideParam) {await logger.Out("A new profile that matchs a default profile exactly is being added. Please check that this is intentional, and if so pass override", DefaultColours.Error, true); return;}
