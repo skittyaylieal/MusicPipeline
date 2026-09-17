@@ -32,6 +32,25 @@ I should make the result and timing stuff have much more finegrained taking of h
 Like for every method call or for loop or if you get a metric of how long it took maybe
 
 
+Maybe add support for apple music 
+"Apple Music's player engine only processes TTML files when they are delivered directly from **Apple's ingestion servers** (uploaded by artists or distributors via iTunes Connect).
+
+Here is why supplying your own TTML fails:
+
+* **No Local TTML Parser:** The macOS Apple Music app literally lacks code to read local `.ttml` files or parse TTML markup embedded in audio metadata. For local files, it only checks for standard static `USLT` text tags.
+* **Server-Side Rendering Only:** The animated karaoke UI—line highlighting, vocal suppression, and time-syncing—is rendered exclusively using data streams fetched from Apple's servers.
+
+**The Only Exception: Catalog Matching**
+If the song you own exists in the official Apple Music catalog (and has synced lyrics there), you can trick Apple Music into pulling Apple's server-side TTML for your local file:
+
+1. Find the track on Apple Music, right-click, select **Copy Link**, and extract the track ID number at the end (e.g., `?i=149257852`).
+2. Use a metadata editor (like Mp3tag or Kid3) to add a custom tag named `ITUNESCATALOGID` containing that track ID.
+3. If **Sync Library** is enabled in Apple Music, the app matches your file to their catalog version and streams Apple's synced lyrics over your local audio.
+
+If the song isn't in Apple's catalog or is a custom edit, Apple Music won't play synced lyrics no matter what format you feed it—which is why external tools like **LyricsX** exist."
+Should be possible
+
+
 
 TODO:
 Make the profile initialise to defaults

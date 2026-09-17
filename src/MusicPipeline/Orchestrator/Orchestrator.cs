@@ -22,17 +22,8 @@ public class Orchestrator
 	//Orchestrator.Start(); in program.cs
 	// Need tools
 	// 
-	public async Task Start(string profileFile = @"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json")
+	public async Task Start(string profileFile)
 	{	
-		string machineName = Environment.MachineName;
-		if (machineName != "FILIPS_MICRO_PC") {
-			string rootDir = Directory.GetCurrentDirectory(); // This is always the directory with the .csproj, so Repo/src/MusicPipeline
-			string upperRoot = Directory.GetParent(rootDir).Parent.FullName;
-			Console.WriteLine($"rootDir = {rootDir}, upperRoot = {upperRoot}, machineName = {machineName}");
-			string tempProfileFile = $@"{upperRoot}\Config\csProfilesPortable.json";
-			profileFile = tempProfileFile;
-			//await ProfileManager.SaveProfile(tempProfileFile, DefaultProfiles.DefaultProfile, true, true);// Temporary debug
-		}
 		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
 		/* First use of Profiles*/ Profile oldActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		string logFile = oldActiveProfile.DiagLogFile;

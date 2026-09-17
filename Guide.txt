@@ -1,5 +1,7 @@
 This file acts a guide to the c# code.
 
+TODO: Add Async to the end of all asynchronous functions
+
 PROFILES:
 
 To add values to the profile file, go to the Profiles folder
@@ -7,6 +9,7 @@ you will need to edit the definition of the Profile class in Profile.cs, and the
 
 In future: let you choose a default profile that is inherited from when creating new profiles
 and let you inherit from any profile
+
 
 
 LOGGING:
