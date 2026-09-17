@@ -28,6 +28,7 @@ public class Orchestrator
 		if (machineName != "FILIPS_MICRO_PC") {
 			string rootDir = Directory.GetCurrentDirectory(); // This is always the directory with the .csproj, so Repo/src/MusicPipeline
 			string upperRoot = Directory.GetParent(rootDir).Parent.FullName;
+			Console.WriteLine($"rootDir = {rootDir}, upperRoot = {upperRoot}, machineName = {machineName}");
 			string tempprofileFile = $@"{upperRoot}\Config\csProfilesPortable.json";
 		}
 		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
