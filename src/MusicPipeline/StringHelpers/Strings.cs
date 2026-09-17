@@ -12,7 +12,7 @@ public class StringHelpers
 			res.Add(i, lines[i]);
 			Console.WriteLine($"New line, {res[i]}");
 		}
-		Console.WriteLine("res is ", res);
+		Console.WriteLine($"res is {res}");
 		return res;
 	}
 }
