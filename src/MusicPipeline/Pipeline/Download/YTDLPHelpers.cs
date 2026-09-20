@@ -47,7 +47,7 @@ public class YTDLPHelpers
 		Dictionary<int, string> allFileLinesNumbered = await StringHelpers.SplitLinesDict(allFileText);
 
 		//Console.WriteLine(allFileText);
-		Console.WriteLine($"allFileLinesNumbered = {allFileLinesNumbered}");
+		//Console.WriteLine($"allFileLinesNumbered = {allFileLinesNumbered}");
 		//curly braces optional below
 		//foreach (KeyValuePair<int, string> x in allFileLinesNumbered) 
 			//Console.WriteLine($"{x.Key} : {x.Value}");
