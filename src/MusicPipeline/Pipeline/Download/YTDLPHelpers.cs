@@ -3,13 +3,10 @@ using MusicPipeline.Songs;
 using MusicPipeline.Strings;
 namespace MusicPipeline.Pipeline.Helpers.Download;
 
-//renamed this file to match the class name.
 public class YTDLPHelpers
 {
-	//these fields are only used in this class, and so shouldn't be made visible.
-	//they are never modified, and their values are known at compilation, so they should be const.
-	//nameing convention for private members is camelCase with a leading underscore.
 	private const string _uRLPattern = @"\[youtube:tab\] Extracting URL: (https://(?:music.y|www.y|y)outube.co(?:m|.uk)/playlist?list=.*)";
+	//good job escaping these square brackets. I didn't understand why until I tested it.
 	private const string _songDeclarePattern = @"\[download\] Downloading item (\d+) of (\d+)";
 	public static async Task<string> GetUrlFromRunLogFile(string path)
 	{
@@ -164,9 +161,13 @@ public class YTDLPHelpers
 				// If the current line is a song decleration
 				inSong = true;
 				Console.WriteLine($"Line = {val}");
-				Console.WriteLine($"First capture value = {Regex.Matches(val, _songDeclarePattern).Captures[0].Value}, Regex Capture count = {Regex.Matches(val, _songDeclarePattern).Captures.Count}, first Matches() match = {Regex.Matches(val, _songDeclarePattern)[0].Value}, Matches() = {Regex.Matches(val, _songDeclarePattern)}");
-				songNum = int.Parse(Regex.Match(val, _songDeclarePattern).Captures[0].Value);
-				total = int.Parse(Regex.Match(val, _songDeclarePattern).Captures[1].Value);
+				//I think here we probably only care about the first match.
+				//Console.WriteLine($"First capture value = {matches[0].Value}, Regex Capture count = {matches.Count}, first Matches() match = {matches[0].Value}, Matches() = {matches}");
+				var firstMatch = Regex.Match(val, _songDeclarePattern);
+				songNum = int.Parse(firstMatch.Captures[1].Value);
+				total = int.Parse(firstMatch.Captures[2].Value);
+				Console.WriteLine($"First value in match = {songNum}, Second value in match = {total}");
+
 				songs.Add(songNum, [val]);
 				Console.WriteLine(songs);
 				Console.WriteLine(songNum);

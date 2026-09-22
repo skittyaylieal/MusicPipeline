@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+using System.Reflection;
+using System.Text.RegularExpressions;
 using MusicPipeline.Colours;
 using MusicPipeline.Profiles;
 //using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -69,5 +70,25 @@ namespace MusicPipelineTests
             }
             Assert.Pass();
         }
+
+        [Test]
+        public void RegexMatchMethodGroups()
+        {
+            var pattern = @"\[download\] Downloading item (\d+) of (\d+)";
+            var exampleString = @"[download] Downloading item 3 of 33";
+
+            var expectedFirstValue = "3";
+            var expectedSecondValue = "33";
+
+            var match = Regex.Match(exampleString, pattern);
+            var actualFirstValue = match.Groups[1].Value;
+            var actualSecondValue = match.Groups[2].Value;
+
+			Assert.Multiple(() =>
+			{
+				Assert.That(actualFirstValue, Is.EqualTo(expectedFirstValue));
+				Assert.That(actualSecondValue, Is.EqualTo(expectedSecondValue));
+			});
+		}
     }
 }
