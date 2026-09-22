@@ -162,10 +162,10 @@ public class YTDLPHelpers
 				inSong = true;
 				Console.WriteLine($"Line = {val}");
 				//I think here we probably only care about the first match.
-				//Console.WriteLine($"First capture value = {matches[0].Value}, Regex Capture count = {matches.Count}, first Matches() match = {matches[0].Value}, Matches() = {matches}");
-				var firstMatch = Regex.Match(val, _songDeclarePattern);
-				songNum = int.Parse(firstMatch.Captures[1].Value);
-				total = int.Parse(firstMatch.Captures[2].Value);
+				//Console.WriteLine($"First capture value = {matches[0].Value}, Regex Capture count = {matches.Count}, first Matches() match = {matches[0].Value}, Matches() = {matches}");				
+				var numbersPair = GetFirstTwoNumbersInPattern(val, _songDeclarePattern);
+				songNum = numbersPair.Item1;
+				total = numbersPair.Item2;
 				Console.WriteLine($"First value in match = {songNum}, Second value in match = {total}");
 
 				songs.Add(songNum, [val]);
@@ -196,5 +196,13 @@ public class YTDLPHelpers
 		// Go through each match and check it for being a song
 
 		return new();
+	}
+
+	public static (int, int) GetFirstTwoNumbersInPattern(string val, string songDeclarePattern)
+	{
+		var firstMatch = Regex.Match(val, songDeclarePattern);
+		var firstNum = int.Parse(firstMatch.Groups[1].Value);
+		var secondNum = int.Parse(firstMatch.Groups[2].Value);
+		return new(firstNum,secondNum);
 	}
 }
