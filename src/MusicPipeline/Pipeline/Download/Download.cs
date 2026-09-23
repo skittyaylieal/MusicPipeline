@@ -88,7 +88,7 @@ class Downloader
 						// Ey looks like it does!
 
 		await Parser.ParseYTDLPConfigFile(activeProfile); // Parse the config file, adding variables into the {} text
-		activeProfile = await ProfileManager.LoadActiveProfile(profileFile); // Get the new config file (If we move to the contained approach this will be reworked ofc)
+		activeProfile = await ProfileManager.LoadActiveProfile("C:/MusicTools/MusicPipeline/Sandbox/Config/csProfiles.json"); // Get the new config file (If we move to the contained approach this will be reworked ofc)
 		YTDLPConfigFile = activeProfile.YTDLPConfigFile; // Set the new value
 		Parallel.For(0, maxDownloadThreads, i => j = DownloadThread(i)); // Run the parallel for
 		await j; // Await the task
