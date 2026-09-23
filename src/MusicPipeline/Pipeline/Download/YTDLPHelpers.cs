@@ -163,7 +163,7 @@ public class YTDLPHelpers
 				Console.WriteLine($"Line = {val}");
 				//I think here we probably only care about the first match.
 				//Console.WriteLine($"First capture value = {matches[0].Value}, Regex Capture count = {matches.Count}, first Matches() match = {matches[0].Value}, Matches() = {matches}");				
-				var numbersPair = GetFirstTwoNumbersInPattern(val, _songDeclarePattern);
+				(int, int) numbersPair = GetFirstTwoNumbersInPattern(val, _songDeclarePattern);
 				songNum = numbersPair.Item1;
 				total = numbersPair.Item2;
 				Console.WriteLine($"First value in match = {songNum}, Second value in match = {total}");
