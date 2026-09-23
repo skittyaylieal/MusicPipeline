@@ -31,6 +31,8 @@ public class LogEngine
 
 	public async Task Out(string message, int? style, bool colourFullString = false)
 	{
+		Console.WriteLine("This is the first overload used in ProfileManager");
+		Console.WriteLine($"message = {message}, this.user = {this.user}, style = {style}, colourFullString = {colourFullString}");
 		if (user is null) {await Engine("To use Out() without a user please set a user in the class", "System", DefaultColours.Error, true);}
 		else {await Engine(message, user, style, colourFullString);}
 	}
