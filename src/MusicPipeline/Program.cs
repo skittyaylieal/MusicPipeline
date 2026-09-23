@@ -14,8 +14,10 @@ if (machineName != "FILIPS_MICRO_PC") {
 	string? upperRoot = Directory.GetParent(rootDir).Parent.FullName;
 	Console.WriteLine($"rootDir = {rootDir}, upperRoot = {upperRoot}, machineName = {machineName}");
 	tempProfileFile = $@"{upperRoot}\Config\csProfilesPortable.json";
+	Console.WriteLine($@"{upperRoot}\Config\csProfilesPortable.json");
 	//await ProfileManager.SaveProfile(tempProfileFile, DefaultProfiles.DefaultProfile, true, true);// Temporary debug
 }
+Console.WriteLine("Starting Orchestrator");
 await orc.Start(tempProfileFile ?? @"C:\MusicTools\MusicPipeline\Sandbox\Config\csProfiles.json");
 /*var fields = typeof(DefaultProfiles).GetFields();
 foreach (System.Reflection.FieldInfo field in fields) {
