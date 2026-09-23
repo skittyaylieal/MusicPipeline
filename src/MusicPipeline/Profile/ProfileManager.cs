@@ -132,6 +132,8 @@ public class ProfileManager
 	{
 		Console.WriteLine("Welcome to ProfileManager!");
 		Console.WriteLine($"profileFile = {profileFile}");
+		// Skipping this. Not sure why it's here to begin with
+		/*
 		try {
 			Console.WriteLine("Trying to read all bytes");
 			File.ReadAllBytes(profileFile);
@@ -148,13 +150,14 @@ public class ProfileManager
 			//await logger.Out(e.Message, DefaultColours.Debug);
 			return DefaultProfiles.ErrorProfile;
 		}
+		*/
 		Console.WriteLine("Getting jsonString");
 		string jsonString = File.ReadAllText(profileFile);
 		Console.WriteLine($"jsonString = {jsonString}");
 		await logger.Out(jsonString, DefaultColours.Debug);
 		Console.WriteLine("Deserializing jsonString");
 		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
-		Console.WriteLine($"file = {file.ToString()}");
+		Console.WriteLine($"file = {file?.ToString()}");
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
 			Profile activeProfile = file.GetActiveProfile();
