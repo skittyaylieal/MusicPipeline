@@ -136,10 +136,9 @@ public class ProfileManager
 	private static readonly LogEngine logger = new LogEngine(@"C:/MusicTools/MusicPipeline/Sandbox/Config/csLogFile.log", "ProfileManager");
 	public async static Task<Profile> LoadActiveProfile(string profileFile)
 	{
-		Console.WriteLine("Welcome to ProfileManager!");
-		Console.WriteLine($"profileFile = {profileFile}");
 		// Skipping this. Not sure why it's here to begin with
-		/*
+		// Oh if the file doesn't exist
+		// Oops
 		try {
 			Console.WriteLine("Trying to read all bytes");
 			File.ReadAllBytes(profileFile);
@@ -156,7 +155,6 @@ public class ProfileManager
 			//await logger.Out(e.Message, DefaultColours.Debug);
 			return DefaultProfiles.ErrorProfile;
 		}
-		*/
 		Console.WriteLine("Getting jsonString");
 		string jsonString = File.ReadAllText(profileFile);
 		Console.WriteLine($"jsonString = {jsonString}");
