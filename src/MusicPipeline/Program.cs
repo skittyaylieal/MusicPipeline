@@ -25,7 +25,7 @@ if (!machineName.Contains("MICRO_PC")) {
 	if ($"{Environment.OSVersion.Platform}" != "Unix")
 		tempProfileFile = $@"{upperRoot}\Config\csProfilesPortable.json";
 	else 
-		tempProfileFile = $@"{upperRoot}/Config/csProfilesPortable.json";
+		tempProfileFile = $"{upperRoot}/Config/csProfilesPortable.json";
 	// TODO: Do this the proper way
 	Console.WriteLine(tempProfileFile);
 	//await ProfileManager.SaveProfile(tempProfileFile, DefaultProfiles.DefaultProfile, true, true);// Temporary debug
