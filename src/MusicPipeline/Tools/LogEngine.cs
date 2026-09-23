@@ -107,7 +107,7 @@ public class LogEngine
 				break;
 			}
 			catch (System.IO.IOException) {
-				//Console.WriteLine($"{timeStamp} Oops, IO Exception!");
+				Console.WriteLine($"{timeStamp} Oops, IO Exception!");
 				//Console.WriteLine($"{esc}[38;5;203m{timeStamp} [System] TODO: Fix this a better way {reset}");
 				await Engine("File lock", "System", DefaultColours.Error, true);
 				Thread.Sleep(50);
@@ -119,6 +119,9 @@ public class LogEngine
 
 	// I think theres some kind of summary thing I'm supposed to use for this but idk how that works
 	// Wipe just overwrites the file with a simple file cleared message
+	/// <summary>
+	/// Asynchronously overwrites the current logfile with one line saying the time of the date and the user who requested it.
+	/// </summary>
 	public async Task WipeAsync()
 	{
 		DateTime current = DateTime.Now;
