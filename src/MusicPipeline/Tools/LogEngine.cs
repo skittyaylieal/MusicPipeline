@@ -24,15 +24,11 @@ public class LogEngine
 	public async Task Out(string message, string userParam, int? style = null, bool colourFullString = false) 
 	{
 		// New system
-		Console.WriteLine("This is the first overload used in Orchestrator");
-		Console.WriteLine($"message = {message}, userParam = {userParam}, style = {(style is null? style.ToString(): "A style was not given")}, colourFullString = {colourFullString}");
 		await Engine(message, userParam, style, colourFullString);
 	}
 
 	public async Task Out(string message, int? style, bool colourFullString = false)
 	{
-		Console.WriteLine("This is the first overload used in ProfileManager");
-		Console.WriteLine($"message = {message}, this.user = {this.user}, style = {style}, colourFullString = {colourFullString}");
 		if (user is null) {await Engine("To use Out() without a user please set a user in the class", "System", DefaultColours.Error, true);}
 		else {await Engine(message, user, style, colourFullString);}
 	}
@@ -52,7 +48,6 @@ public class LogEngine
 			throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
 		}*/
 		if (logFile == "Null" & logFileParam != null) {logFile = logFileParam;}
-		Console.WriteLine("You have reached the Engine");
 
 		switch (style) {
 			case 0:
@@ -60,7 +55,6 @@ public class LogEngine
 				await Engine("0 is black, do not use it", "System", DefaultColours.Error, true);
 				break;
 			case null:
-				Console.WriteLine($"Finding value for user {this.user}");
 				// Should've been omitted
 				var field = typeof(DefaultColours).GetField(user);
 				Console.WriteLine($"field = {field}");
@@ -71,34 +65,25 @@ public class LogEngine
 				else {
 					// Wrong Username given
 					style = 36;
-					Console.WriteLine("Wrong username");
 					await Engine("Given username was invalid or not in the default colours", "System", DefaultColours.Warning, true);
 				}
 				break;
 		}
-
-		Console.WriteLine("Style is now correct/was specified");
 		//var l = new LogEngine(); //looks like this variable is not used.
 		DateTime current = DateTime.Now;
-		Console.WriteLine($"current = {current}");
 		string timeStamp = "[" + current.ToString("HH:mm:ss") + "]";
-		Console.WriteLine($"timeStamp = {timeStamp}");
 		//what is colPrefix, the 38 and the 5?
 		//these would be called "magic numbers" if it's not clear from the code what they are.
 		// I've been meaning to put more explanatory comments for a bit
 		string colPrefix = $"{esc}[38;5;{style.ToString()}m{timeStamp} [{user}] {(colourFullString ? "" : reset)}";
-		Console.WriteLine($"colPrefix = {colPrefix} {reset}");
 		// colPrefix
 		// The escape marks that this is ANSI escaped colouring, not raw text
 		// The [38;5; marks that the following value is an ANSI256 colour code.
 		// The reset resets the text colour back to white for the actual message
 		// I have considered adding an option to make the whole message that colour
 		string processedMessage = $"{colPrefix} {message} {reset}";
-		Console.WriteLine($"processedMessage = {processedMessage}");
 		string dateYear = current.Date.ToString("dd/MM/yyyy");
-		Console.WriteLine($"dateYear = {dateYear}");
 		string processedMessageDate = $"\u000A{esc}[38;5;{DefaultColours.Date.ToString()}m{dateYear} {reset} {processedMessage}";
-		Console.WriteLine($"processedMessageDate = {processedMessageDate}");
 
 		
 		// TODO: Make sure all directories above the logfile exist before trying to append to the file.
