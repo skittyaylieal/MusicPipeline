@@ -117,9 +117,15 @@ public class ProfileFile
 	// then its just returning whether or not it hits a Profile p satisfying p.Name == profileName
 	// Simples!
 
-	public override string ToString()
+	public string? toString()
 	{
-			return $"ActiveProfile = {this.ActiveProfile}, Profiles = {this.Profiles}, this = {this}. First Profile = {this.Profiles[0]}";
+		string? x = "";
+		try {
+			x = $"ActiveProfile = {this.ActiveProfile}, Profiles = {this.Profiles}, this = {this}. First Profile = {this.Profiles[0]}";
+		} catch {
+			x = this.ToString();
+		}
+		return x;
 	}
 }
 
@@ -157,7 +163,7 @@ public class ProfileManager
 		await logger.Out(jsonString, DefaultColours.Debug);
 		Console.WriteLine("Deserializing jsonString");
 		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
-		Console.WriteLine($"file = {file?.ToString()}");
+		Console.WriteLine($"file = {file?.toString()}");
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
 			Profile activeProfile = file.GetActiveProfile();
