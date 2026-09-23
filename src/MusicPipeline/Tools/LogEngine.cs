@@ -24,6 +24,8 @@ public class LogEngine
 	public async Task Out(string message, string userParam, int? style = null, bool colourFullString = false) 
 	{
 		// New system
+		Console.WriteLine("This is the first overload used in Orchestrator");
+		Console.WriteLine($"message = {message}, userParam = {userParam}, style = {(style is null? style.ToString(): "A style was not given")}, colourFullString = {colourFullString}");
 		await Engine(message, userParam, style, colourFullString);
 	}
 

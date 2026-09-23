@@ -25,10 +25,17 @@ public class Orchestrator
 	public async Task Start(string profileFile)
 	{	
 		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
+		Console.WriteLine($"profileFile = {profileFile}");
+		Console.WriteLine($"Loading profile");
 		/* First use of Profiles*/ Profile oldActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
+		Console.WriteLine(JsonSerializer.Serialize(oldActiveProfile, new JsonSerializerOptions { WriteIndented = true }));
 		string logFile = oldActiveProfile.DiagLogFile;
+		Console.WriteLine($"logFile = {logFile}");
 		LogEngine logger = new LogEngine(oldActiveProfile.DiagLogFile);
+		Console.WriteLine($"logger = {logger}, logger.logFile = {logger.logFile}, logger.user = {logger.user??"No user set"}");
+		Console.WriteLine("Trying to log");
 		await logger.Out("Why won't you just work!!!", "Orchestrator", DefaultColours.Error, true);
+		Console.WriteLine("Did that work??");
 		oldActiveProfile.LogEngine = logger;
 		oldActiveProfile.Name = "Current Working Profile";
 		await ProfileManager.SaveProfile(profileFile, oldActiveProfile);
