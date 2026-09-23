@@ -116,6 +116,11 @@ public class ProfileFile
 	// (for Profile p in this.Profiles)
 	// then its just returning whether or not it hits a Profile p satisfying p.Name == profileName
 	// Simples!
+
+	public override string ToString()
+	{
+			return $"ActiveProfile = {this.ActiveProfile}, Profiles = {this.Profiles}, this = {this}. First Profile = {this.Profiles[0]}";
+	}
 }
 
 
@@ -125,22 +130,31 @@ public class ProfileManager
 	private static readonly LogEngine logger = new LogEngine(@"C:\MusicTools\MusicPipeline\Sandbox\Config\csLogFile.log", "ProfileManager");
 	public async static Task<Profile> LoadActiveProfile(string profileFile)
 	{
+		Console.WriteLine("Welcome to ProfileManager!");
+		Console.WriteLine($"profileFile = {profileFile}");
 		try {
+			Console.WriteLine("Trying to read all bytes");
 			File.ReadAllBytes(profileFile);
 			await logger.Out($"Read profile file {profileFile} successfully!", DefaultColours.Success, true);
 		}
 		catch (FileNotFoundException) {
+			Console.WriteLine("Caught a FileNotFoundException");
 			await logger.Out("The profile file doesn't exist, creating a new DefaultProfile", DefaultColours.Error, true);
 			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 		}
 		catch {
+			Console.WriteLine("Caught something else");
 			await logger.Out("Json read failed", DefaultColours.Error, true);
 			//await logger.Out(e.Message, DefaultColours.Debug);
 			return DefaultProfiles.ErrorProfile;
 		}
+		Console.WriteLine("Getting jsonString");
 		string jsonString = File.ReadAllText(profileFile);
-		//await logger.Out(jsonString, DefaultColours.Debug);
+		Console.WriteLine($"jsonString = {jsonString}");
+		await logger.Out(jsonString, DefaultColours.Debug);
+		Console.WriteLine("Deserializing jsonString");
 		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
+		Console.WriteLine($"file = {file.ToString()}");
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
 			Profile activeProfile = file.GetActiveProfile();

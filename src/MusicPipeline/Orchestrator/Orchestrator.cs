@@ -27,6 +27,7 @@ public class Orchestrator
 		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
 		Console.WriteLine($"profileFile = {profileFile}");
 		Console.WriteLine($"Loading profile");
+		// Aha. ProfileManager is where the stack overflow starts
 		/* First use of Profiles*/ Profile oldActiveProfile = await ProfileManager.LoadActiveProfile(profileFile);
 		Console.WriteLine(JsonSerializer.Serialize(oldActiveProfile, new JsonSerializerOptions { WriteIndented = true }));
 		string logFile = oldActiveProfile.DiagLogFile;
