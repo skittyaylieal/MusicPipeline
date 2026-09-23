@@ -7,14 +7,20 @@ using MusicPipeline.Orchestrator;
 // using System.Diagnostics;
 
 var orc = new Orchestrator();
+Console.WriteLine(orc);
 string machineName = Environment.MachineName;
+Console.WriteLine(machineName);
 string? tempProfileFile = null;
 if (machineName != "FILIPS_MICRO_PC") {
+	Console.WriteLine("Finding portable profile file");
 	string rootDir = Directory.GetCurrentDirectory(); // This is always the directory with the .csproj, so Repo/src/MusicPipeline
-	string? upperRoot = Directory.GetParent(rootDir).Parent.FullName;
+	Console.WriteLine(rootDir);
+	string? upperRoot = Directory.GetParent(rootDir)?.Parent?.FullName;
+	Console.WriteLine(upperRoot);
 	Console.WriteLine($"rootDir = {rootDir}, upperRoot = {upperRoot}, machineName = {machineName}");
+	// Need to know whether it's a unix or dos based system for back slash or forward slash
 	tempProfileFile = $@"{upperRoot}\Config\csProfilesPortable.json";
-	Console.WriteLine($@"{upperRoot}\Config\csProfilesPortable.json");
+	Console.WriteLine(tempProfileFile);
 	//await ProfileManager.SaveProfile(tempProfileFile, DefaultProfiles.DefaultProfile, true, true);// Temporary debug
 }
 Console.WriteLine("Starting Orchestrator");
