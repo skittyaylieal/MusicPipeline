@@ -55,7 +55,7 @@ public class Parser
 		}
 
 		string parentDir = Path.GetDirectoryName(YTDLPOriginalConfigFilePath);
-		string tempFilePath = $@"{parentDir}\yt-dlp{Guid.NewGuid()}.conf";
+		string tempFilePath = $@"{parentDir}/yt-dlp{Guid.NewGuid()}.conf";
 		await File.WriteAllTextAsync(tempFilePath, String.Join("\n", parsedLines));
 		Profile activeProfile = await ProfileManager.LoadActiveProfile(context.ProfileFile);
 		activeProfile.YTDLPConfigFile = tempFilePath;

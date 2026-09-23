@@ -48,7 +48,7 @@ class Downloader
 		historyPath = activeProfile.HistoryFile;
 		playlists = activeProfile.Playlists;
 		configDir = $@"{activeProfile.RootDir}\Config";
-		cacheDir = $@"{configDir}\.cache";
+		cacheDir = $@"{configDir}/.cache";
 		sleepInterval = activeProfile.SleepInterval;
 		maxSleepInterval = activeProfile.MaxSleepInterval;
 		sleepRequests = activeProfile.SleepRequests;
@@ -128,7 +128,7 @@ class Downloader
 			// If cleanSweep then fake file
 			//activeProfile.HistoryFile = historyPath;
 			//await ProfileManager.SaveProfile(profileFile, activeProfile);
-			historyPath = $@"{configDir}\pipeline_null_history_{Guid.NewGuid()}.txt";
+			historyPath = $@"{configDir}/pipeline_null_history_{Guid.NewGuid()}.txt";
 			await l.Out("Clean sweep active"); // Logging
 		}
 	}
@@ -321,7 +321,7 @@ class Downloader
 						// Will do that if I ever run into issues with the program crashing and only having the log output
 					}
 				}
-				string errorFile = $@"{configDir}\run_errors_playlist{index+1}.txt";
+				string errorFile = $@"{configDir}/run_errors_playlist{index+1}.txt";
 				await File.AppendAllTextAsync(errorFile, String.Join("\n", lines));
 				
 
@@ -358,7 +358,7 @@ class Downloader
 		//currently you're not doing anything with this variable besides returning it as the only member of a list.
 		//I'm sure you'll want to modify it in some way before returning it.
 
-		string path = $@"{configDir}\run_errors_playlist{index+1}.txt";
+		string path = $@"{configDir}/run_errors_playlist{index+1}.txt";
 		// Parse URL
 		string playlistURL = await YTDLPHelpers.GetUrlFromRunLogFile(path);		
 		if (playlistURL != "")

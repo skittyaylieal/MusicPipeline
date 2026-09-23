@@ -16,17 +16,17 @@ public class ProfileFile
 	public static readonly Profile DefaultProfile = new Profile
 	{
 		Name = "Default",
-		BackupDir = @"C:\Users\filip\Music\YT_Music_Backup",
-		MobileDir = @"C:\Users\filip\Music\YT_Music_Mobile",
-		BrokenSongsFile = @"C:\MusicTools\MusicPipeline\Config\broken_songs.json",
-		DiagLogFile = @"C:\MusicTools\MusicPipeline\Config\web_console_stream.log",
-		CacheFile = @"C:\MusicTools\MusicPipeline\Config\dashboard_cache.json",
-		TimingFile = @"C:\MusicTools\MusicPipeline\Config\timing_history.json",
-		CookieFile = @"C:\MusicTools\MusicPipeline\Config\cookies.txt",
-		HistoryFile = @"C:\MusicTools\MusicPipeline\Config\downloaded_history.txt",
-		YTDLPExe = @"C:\MusicTools\yt-dlp.exe",
-		FFmpegExe = @"C:\MusicTools\ffmpeg.exe",
-		FirefoxExe = @"C:\Program Files\Mozilla Firefox\firefox.exe",
+		BackupDir = @"C:/Users/filip/Music/YT_Music_Backup",
+		MobileDir = @"C:/Users/filip/Music/YT_Music_Mobile",
+		BrokenSongsFile = @"C:/MusicTools/MusicPipeline/Config/broken_songs.json",
+		DiagLogFile = @"C:/MusicTools/MusicPipeline/Config/web_console_stream.log",
+		CacheFile = @"C:/MusicTools/MusicPipeline/Config/dashboard_cache.json",
+		TimingFile = @"C:/MusicTools/MusicPipeline/Config/timing_history.json",
+		CookieFile = @"C:/MusicTools/MusicPipeline/Config/cookies.txt",
+		HistoryFile = @"C:/MusicTools/MusicPipeline/Config/downloaded_history.txt",
+		YTDLPExe = @"C:/MusicTools/yt-dlp.exe",
+		FFmpegExe = @"C:/MusicTools/ffmpeg.exe",
+		FirefoxExe = @"C:/Program Files/Mozilla Firefox/firefox.exe",
 		CheckURL = @"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		SleepInterval = 4,
 		MaxSleepInterval = 12, 
@@ -133,7 +133,7 @@ public class ProfileFile
 public class ProfileManager
 {
 
-	private static readonly LogEngine logger = new LogEngine(@"C:\MusicTools\MusicPipeline\Sandbox\Config\csLogFile.log", "ProfileManager");
+	private static readonly LogEngine logger = new LogEngine(@"C:/MusicTools/MusicPipeline/Sandbox/Config/csLogFile.log", "ProfileManager");
 	public async static Task<Profile> LoadActiveProfile(string profileFile)
 	{
 		Console.WriteLine("Welcome to ProfileManager!");
