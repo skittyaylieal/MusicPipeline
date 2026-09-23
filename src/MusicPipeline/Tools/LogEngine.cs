@@ -87,7 +87,7 @@ public class LogEngine
 		//these would be called "magic numbers" if it's not clear from the code what they are.
 		// I've been meaning to put more explanatory comments for a bit
 		string colPrefix = $"{esc}[38;5;{style.ToString()}m{timeStamp} [{user}] {(colourFullString ? "" : reset)}";
-		Console.WriteLine($"colPrefix = {colPrefix} {esc}{reset}");
+		Console.WriteLine($"colPrefix = {colPrefix} {reset}");
 		// colPrefix
 		// The escape marks that this is ANSI escaped colouring, not raw text
 		// The [38;5; marks that the following value is an ANSI256 colour code.
