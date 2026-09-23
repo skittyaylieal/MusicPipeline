@@ -101,12 +101,14 @@ public class LogEngine
 		Console.WriteLine($"processedMessageDate = {processedMessageDate}");
 
 		
+		// TODO: Make sure all directories above the logfile exist before trying to append to the file.
 		for (int i = 0; i < 5; i++) {
 			try {
 				await File.AppendAllTextAsync(logFile, processedMessageDate);
 				break;
 			}
 			catch (System.IO.IOException) {
+				// This can also mean the directory containing the log file doesn't exist
 				Console.WriteLine($"{timeStamp} Oops, IO Exception!");
 				//Console.WriteLine($"{esc}[38;5;203m{timeStamp} [System] TODO: Fix this a better way {reset}");
 				await Engine("File lock", "System", DefaultColours.Error, true);
