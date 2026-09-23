@@ -57,10 +57,8 @@ public class LogEngine
 			case null:
 				// Should've been omitted
 				var field = typeof(DefaultColours).GetField(user);
-				Console.WriteLine($"field = {field}");
 				if (field != null) {
 					style = (int)field.GetValue(null)!;
-					Console.WriteLine($"style = {style}");
 				}
 				else {
 					// Wrong Username given
