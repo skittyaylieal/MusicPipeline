@@ -35,6 +35,7 @@ public class Orchestrator
 		LogEngine logger = new LogEngine(oldActiveProfile.DiagLogFile);
 		Console.WriteLine($"logger = {logger}, logger.logFile = {logger.logFile}, logger.user = {logger.user??"No user set"}");
 		Console.WriteLine("Trying to log");
+		await logger.WipeAsync("Orchestrator");
 		await logger.Out("Why won't you just work!!!", "Orchestrator", DefaultColours.Error, true);
 		Console.WriteLine("Did that work??");
 		oldActiveProfile.LogEngine = logger;

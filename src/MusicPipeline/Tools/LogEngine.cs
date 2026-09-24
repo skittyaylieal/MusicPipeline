@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Collections;
 using MusicPipeline.Profiles;
 using MusicPipeline.Colours;
 namespace MusicPipeline.Tools.LogEngine;
@@ -41,6 +42,7 @@ public class LogEngine
 
 	private async Task Engine(string message, string user, int? style, bool colourFullString = false, string? logFileParam = null)
 	{
+		// Maybe make it try to find the log file if it's set as "Null"
 		/*ArgumentException.ThrowIfNullOrEmpty(LogFile);
 		ArgumentException.ThrowIfNullOrEmpty(Message);
 		ArgumentException.ThrowIfNullOrEmpty(Style);
@@ -90,9 +92,13 @@ public class LogEngine
 				await File.AppendAllTextAsync(logFile, processedMessageDate);
 				break;
 			}
-			catch (System.IO.IOException) {
+			catch (System.IO.IOException e) {
 				// This can also mean the directory containing the log file doesn't exist
-				Console.WriteLine($"{timeStamp} Oops, IO Exception!");
+				/*Console.WriteLine($"{timeStamp} Oops, IO Exception!");
+				Console.WriteLine($"e.Message = {e.Message}, e.Source = {e.Source}");
+				foreach (DictionaryEntry data in e.Data) {
+					Console.WriteLine($"data.Key = {data.Key}, data.Value = {data.Value}");
+				}*/
 				//Console.WriteLine($"{esc}[38;5;203m{timeStamp} [System] TODO: Fix this a better way {reset}");
 				await Engine("File lock", "System", DefaultColours.Error, true);
 				Thread.Sleep(50);
@@ -108,6 +114,17 @@ public class LogEngine
 	/// Asynchronously overwrites the current logfile with one line saying the time of the date and the user who requested it.
 	/// </summary>
 	public async Task WipeAsync()
+	{
+		DateTime current = DateTime.Now;
+		string timeStamp = $"[{current.ToString("HH:mm:ss")}]";
+		string colPrefix = $"{esc}[38;5;{typeof(DefaultColours)?.GetField(user)?.GetValue(null)?.ToString()}m{timeStamp}";
+		string dateYear = current.Date.ToString("dd/MM/yyyy");
+		string tempMessage = $"{colPrefix} File Cleared by {user}{reset}";
+		string processedMessage = $"{esc}[38;5;{DefaultColours.Date.ToString()}m{dateYear} {reset} {tempMessage}";
+		await File.WriteAllTextAsync(logFile, processedMessage);
+	}
+
+	public async Task WipeAsync(string user)
 	{
 		DateTime current = DateTime.Now;
 		string timeStamp = $"[{current.ToString("HH:mm:ss")}]";

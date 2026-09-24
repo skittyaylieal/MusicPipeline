@@ -133,45 +133,46 @@ public class ProfileFile
 public class ProfileManager
 {
 
-	private static readonly LogEngine logger = new LogEngine(@"C:/MusicTools/MusicPipeline/Sandbox/Config/csLogFile.log", "ProfileManager");
+	private static LogEngine? logger = null;
 	public async static Task<Profile> LoadActiveProfile(string profileFile)
 	{
 		// Skipping this. Not sure why it's here to begin with
 		// Oh if the file doesn't exist
 		// Oops
 		try {
-			Console.WriteLine("Trying to read all bytes");
+			//Console.WriteLine("Trying to read all bytes");
 			File.ReadAllBytes(profileFile);
-			await logger.Out($"Read profile file {profileFile} successfully!", DefaultColours.Success, true);
+			//Console.WriteLine("Read all bytes");
+			//await logger.Out($"Read profile file {profileFile} successfully!", DefaultColours.Success, true);
 		}
 		catch (FileNotFoundException) {
-			Console.WriteLine("Caught a FileNotFoundException");
-			await logger.Out("The profile file doesn't exist, creating a new DefaultProfile", DefaultColours.Error, true);
+			//Console.WriteLine("Caught a FileNotFoundException");
+			//await logger.Out("The profile file doesn't exist, creating a new DefaultProfile", DefaultColours.Error, true);
 			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 		}
 		catch {
-			Console.WriteLine("Caught something else");
-			await logger.Out("Json read failed", DefaultColours.Error, true);
+			//Console.WriteLine("Caught something else");
+			//await logger.Out("Json read failed", DefaultColours.Error, true);
 			//await logger.Out(e.Message, DefaultColours.Debug);
 			return DefaultProfiles.ErrorProfile;
 		}
-		Console.WriteLine("Getting jsonString");
+		//Console.WriteLine("Getting jsonString");
 		string jsonString = File.ReadAllText(profileFile);
-		Console.WriteLine($"jsonString = {jsonString}");
-		await logger.Out(jsonString, DefaultColours.Debug);
-		Console.WriteLine("Deserializing jsonString");
+		//Console.WriteLine($"jsonString = {jsonString}");
+		//await logger.Out(jsonString, DefaultColours.Debug);
+		//Console.WriteLine("Deserializing jsonString");
 		ProfileFile? file = JsonSerializer.Deserialize<ProfileFile>(jsonString);
 		Console.WriteLine($"file = {file?.toString()}");
 #pragma warning disable CS8602 // If the file were empty that would've already been caught
 		if (!file.NoProfiles()) {
 			Profile activeProfile = file.GetActiveProfile();
 			return activeProfile;
-#pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, I think my code is safe enough to warrant it
 		} else {
-			await logger.Out($"No profiles were found in the file {profileFile}. A default profile has been initialised.", DefaultColours.Error, true);
+			await DefaultProfiles.DefaultProfile.LogEngine.Out($"No profiles were found in the file {profileFile}. A default profile has been initialised.", "ProfileManager", DefaultColours.Error, true);
 			await SaveProfile(profileFile, DefaultProfiles.DefaultProfile);
 			return DefaultProfiles.DefaultProfile;
 		}
+#pragma warning restore CS8602 // I hope I am not disabling this warning innapropriatly, I think my code is safe enough to warrant it
 
 		// Ok so we have a profile file in this form
 		/*
@@ -200,11 +201,12 @@ public class ProfileManager
 
 		if (profile == null) {
 			profile = DefaultProfiles.DefaultProfile;
-		} else if (await SafetyCheck.CheckProfileToBeSaved(profile) & !overrideParam) {await logger.Out("A new profile that matchs a default profile exactly is being added. Please check that this is intentional, and if so pass override", DefaultColours.Error, true); return;}
+			logger = DefaultProfiles.DefaultProfile.LogEngine;
+		} else if (await SafetyCheck.CheckProfileToBeSaved(profile) & !overrideParam) {await logger.Out("A new profile that matchs a default profile exactly is being added. Please check that this is intentional, and if so pass override", "ProfileManager", DefaultColours.Error, true); return;}
 		ProfileFile Existing = await GetProfileFile(profileFile);
 		if (Existing.ActiveProfile == "ERROR")
 		{
-			await logger.Out($"Failed to get ProfileFile from {profileFile}, creating new file", DefaultColours.Error, true);
+			await DefaultProfiles.DefaultProfile.LogEngine.Out($"Failed to get ProfileFile from {profileFile}, creating new file", DefaultColours.Error, true);
 		}
 		if (Existing.ProfileAlreadyExists(profile) || Existing.ActiveProfile=="ERROR") {
 			Existing.Profiles = new List<Profile>() {profile};
@@ -228,7 +230,7 @@ public class ProfileManager
 	public static async Task SwitchProfile(string profileFile)
 	{
 		// TODO
-		await logger.Out("Oopsies, this function doesn't exist yet!", DefaultColours.Warning, true);
+		await DefaultProfiles.DefaultProfile.LogEngine.Out("Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning, true);
 		throw new NotImplementedException();
 	}
 
@@ -241,13 +243,13 @@ public class ProfileManager
 				ProfileFile Result =  JsonSerializer.Deserialize<ProfileFile>(jsonString);
 				return Result;
 			} else {
-				await logger.Out($"ProfileFile {profileFile} doesn't exist.", DefaultColours.Error, true);
+				await DefaultProfiles.DefaultProfile.LogEngine.Out($"ProfileFile {profileFile} doesn't exist.", "ProfileManager", DefaultColours.Error, true);
 				return new ProfileFile(new List<Profile>(){DefaultProfiles.ErrorProfile}, "ERROR");
 				//can't do anything after it has already returned, line below is unreachable.
 				// Yes I thought i swapped them a while ago
 			}
 		} else {
-			await logger.Out($"Parent directory to profile file path {profileFile} doesn't exist. Creating");
+			await logger.Out($"Parent directory to profile file path {profileFile} doesn't exist. Creating", "ProfileManager");
 			Directory.CreateDirectory(Directory.GetParent(profileFile).Name);
 			return await GetProfileFile(profileFile);
 		}

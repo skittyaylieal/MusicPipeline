@@ -22,6 +22,11 @@ if (!machineName.Contains("MICRO_PC")) {
 	//Console.WriteLine(tempProfileFile);
 	//await ProfileManager.SaveProfile(tempProfileFile, DefaultProfiles.DefaultProfile, true, true);// Temporary debug
 }
+using (var fs = File.Open(@"C:/Users/23fpybus_cheneyschoo/SublimeContained/Music/MusicPipeline/Sandbox/Config/csLogFile.log", FileMode.Open))
+{
+    Console.WriteLine(fs.CanRead);
+    Console.WriteLine(fs.CanWrite);
+}
 Console.WriteLine("Starting Orchestrator");
 await orc.Start(tempProfileFile ?? @"C:/MusicTools/MusicPipeline/Sandbox/Config/csProfiles.json");
 /*var fields = typeof(DefaultProfiles).GetFields();
