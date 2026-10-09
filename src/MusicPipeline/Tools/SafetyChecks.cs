@@ -59,7 +59,7 @@ public class SafetyCheck
 			foreach (KeyValuePair<string, bool> kvp in res) {count += kvp.Value ? 1:0; string.Concat([Out, $"{kvp.Key} "]);}
 			bool a = res.Count() == count;
 			if (a) {return true;}
-			await (a ? profile.LogEngine.Out($"{profile.Name} is the exact same as the Default Profile, {fields[i].Name}", "SafetyChecker", (int)DefaultColours.Warning, true) : profile.LogEngine.Out($"{count} Properties of {profile.Name} were the same as Default Profile {fields[i].Name}'s. They are: {Out}", "SafetyChecker"));
+			await (a ? profile.LogEngine.Out($"{profile.Name} is the exact same as the Default Profile, {fields[i].Name}", "SafetyChecker", DefaultColours.Warning, true) : profile.LogEngine.Out($"{count} Properties of {profile.Name} were the same as Default Profile {fields[i].Name}'s. They are: {Out}", "SafetyChecker"));
 		}
 		// So now we have a list of values and names, first from the profile, then from each defaultProfile
 		// Ok

@@ -28,29 +28,29 @@ class Cookies
 		Profiles.Profile activeProfile = await ProfileManager.LoadActiveProfileAsync();
 		LogEngine? l = activeProfile.LogEngine;
 		l.user = "Cookies";
-		await l.Out("Profile Done", (int)DefaultColours.Debug);
+		await l.Out("Profile Done", DefaultColours.Debug);
 		string cookieFile = activeProfile.CookieFile.p;
 		string YTDLPPath = activeProfile.YTDLPExe.p;
 		string testURL = activeProfile.CheckURL;
 		List<Result> res = new();
 
-		await l.Out("Variables Done", (int)DefaultColours.Debug);
+		await l.Out("Variables Done", DefaultColours.Debug);
 
 		DateTime start = DateTime.UtcNow;
 
-		await l.Out("Started timer", (int)DefaultColours.Debug);
+		await l.Out("Started timer", DefaultColours.Debug);
 
 		await l.Out("==============================================");
 		await l.Out("                Cookie Checker                ");
 		await l.Out("==============================================");
 
 		if (!File.Exists(cookieFile)){
-			await l.Out("Cookie File could not be found. Please export one.", (int)DefaultColours.Error, true);
+			await l.Out("Cookie File could not be found. Please export one.", DefaultColours.Error, true);
 			res.Append(CookieDefaults.FileError(false, start));
 			return res;
 		}
 		if (!File.Exists(YTDLPPath)){
-			await l.Out("YTDLP Executable could not be found.", (int)DefaultColours.Error, true);
+			await l.Out("YTDLP Executable could not be found.", DefaultColours.Error, true);
 			res.Append(CookieDefaults.FileError(true, start));
 			return res;
 		}
@@ -63,7 +63,7 @@ class Cookies
 		await l.Out("Updating Certificates");
 		res.Append(await Helper.RunSilentAsync("python.exe", "-m pip install --upgrade certifi", "Certificate Update", "PythonProcess"));
 
-		await l.Out("Cookie and YTDLP files located successfully!", (int)DefaultColours.Success, true);
+		await l.Out("Cookie and YTDLP files located successfully!", DefaultColours.Success, true);
 		await l.Out("Testing cookies on YouTube.");
 		try
 		{

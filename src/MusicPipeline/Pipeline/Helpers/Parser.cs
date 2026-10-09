@@ -23,7 +23,7 @@ public class Parser
 		// Parse in the conf
 		string? confFileContents = await File.ReadAllTextAsync(YTDLPOriginalConfigFilePath.p);
 		if (confFileContents is null) {
-			await l.Out($"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid", (int)DefaultColours.Error, true);
+			await l.Out($"YTDLP Config File {YTDLPOriginalConfigFilePath} is blank/invalid", DefaultColours.Error, true);
 			return;
 		}
 		List<string> confFileLines = new List<string>(confFileContents.Split("\n"));
@@ -41,20 +41,20 @@ public class Parser
 		foreach (string line in confFileLinesFiltered) {
 			Match match = Regex.Match(line, @"\{(\w+)\}");
 			if (!match.Success) {
-				await l.Out($"Line {line} did not need any replacing", (int)DefaultColours.Debug);
+				await l.Out($"Line {line} did not need any replacing", DefaultColours.Debug);
 				parsedLines.Add(line);
 				continue;
 			} 
 			string variable = match.Groups[1].Value;
 			string? replace = "";
-			await l.Out($"variable = {variable}", (int)DefaultColours.Debug);
+			await l.Out($"variable = {variable}", DefaultColours.Debug);
 			if (variable == "RootDir") {
 				replace = new MyPath("").RootDir;
 			}
 			// Uses Reflection somehow idfk
 			// TODO: Write a better explanation
 			replace = replace == "" ? typeof(Profile).GetProperty(variable).GetValue(context).ToString() : replace;
-			await l.Out($"typeof(Profile) = {typeof(Profile)}, Property = {typeof(Profile)?.GetProperty(variable)}, Value = {typeof(Profile)?.GetProperty(variable)?.GetValue(context)}, To String = {typeof(Profile)?.GetProperty(variable)?.GetValue(context).ToString()}. replace = {replace}", (int)DefaultColours.Debug);
+			await l.Out($"typeof(Profile) = {typeof(Profile)}, Property = {typeof(Profile)?.GetProperty(variable)}, Value = {typeof(Profile)?.GetProperty(variable)?.GetValue(context)}, To String = {typeof(Profile)?.GetProperty(variable)?.GetValue(context).ToString()}. replace = {replace}", DefaultColours.Debug);
 			string updatedLine = Regex.Replace(line, @"\{(\w+)\}", replace);
 			parsedLines.Add(updatedLine);
 		}

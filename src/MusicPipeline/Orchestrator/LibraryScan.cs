@@ -72,12 +72,12 @@ public class Scanner
         //var files = masterFiles ?? mobileFiles;
         //maxDownloadThreads = maxDownloadThreads < playlists.Count() ? playlists.Count() : maxDownloadThreads;
         IEnumerable<string> files = masterFiles.Count() < (await ListTools.MaxCountAnyList(compressedFiles)).Length ? compressedFiles[(await ListTools.MaxCountAnyList(compressedFiles)).Name] : masterFiles;
-        await (files?.Count() > masterFiles?.Count() ? l.Out($"Compressed Directory {(await ListTools.MaxCountAnyList(compressedFiles)).Name} has {(await ListTools.MaxCountAnyList(compressedFiles)).Length - masterFiles.Count()} more songs than Master", (int)DefaultColours.Warning, true) : l.Out($"The largest compressed directory, {(await ListTools.MaxCountAnyList(compressedFiles)).Name}, has {(await ListTools.MaxCountAnyList(compressedFiles)).Length - masterFiles?.Count()} fewer songs that Master. Declare this directory a subset to dismiss.", (int)DefaultColours.Warning, true));
+        await (files?.Count() > masterFiles?.Count() ? l.Out($"Compressed Directory {(await ListTools.MaxCountAnyList(compressedFiles)).Name} has {(await ListTools.MaxCountAnyList(compressedFiles)).Length - masterFiles.Count()} more songs than Master", DefaultColours.Warning, true) : l.Out($"The largest compressed directory, {(await ListTools.MaxCountAnyList(compressedFiles)).Name}, has {(await ListTools.MaxCountAnyList(compressedFiles)).Length - masterFiles?.Count()} fewer songs that Master. Declare this directory a subset to dismiss.", DefaultColours.Warning, true));
         //var files;
         if (files is null)
         {
             // TODO, once theres multiple compressed folders then text should read "None of {List of folder names} exist or are empty. Exiting"
-            await l.Out("Neither Backup nor Mobile Directory exist or are empty. Exiting", (int)DefaultColours.Error, true);
+            await l.Out("Neither Backup nor Mobile Directory exist or are empty. Exiting", DefaultColours.Error, true);
             return;
         }
 

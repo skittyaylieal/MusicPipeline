@@ -1,18 +1,18 @@
 namespace MusicPipeline.Colours;
 
-public enum DefaultColours
+public static class DefaultColours
 {
-	Error = 203,
-	Success = 76,
-	Debug = 145,
-	Warning = 220,
-	Cookies = 112,
-	System = 230,
-	Orchestrator = 213,
-	LibraryScanner = 177,
-	StepHandler = 77,
-	Downloader = 121,
-	Parser = 213,
-	SafetyChecker = 24,
-	Date = 251 // Should be different from all other colours as it's used for logging the current date to the file
+	public const int Error = 203;
+	public const int Success = 76;
+	public const int Debug = 145;
+	public const int Warning = 220;
+	public const int Cookies = 112;
+	public const int System = 230;
+	public const int Orchestrator = 213;
+	public const int LibraryScanner = 177;
+	public const int StepHandler = 77;
+	public const int Downloader = 121;
+	public const int Parser = 213;
+	public const int SafetyChecker = 24;
+	public const int Date = 251; // Should be different from all other colours as it's used for logging the current date to the file
 }
