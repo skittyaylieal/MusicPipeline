@@ -20,7 +20,7 @@ class Downloader
 	private string cookiePath = "Null";
 	private string historyPath = "Null";
 	private string[] playlists = ["Null"];
-	private string configDir = "Null";
+	private MyPath configDir = new("[$ConfigDir]");
 	private string cacheDir = "Null";
 	private string downloadArguments = "Null";
 	private string YTDLPConfigFile = "Null";
@@ -151,10 +151,10 @@ class Downloader
 
 	private async Task ClearOutErrorFiles(LogEngine l)
 	{
-		if (!Directory.Exists(configDir)) {
+		if (!Directory.Exists(configDir.ConfigDir)) {
 			return;	
 		}
-		IEnumerable<string> errorFiles = Directory.EnumerateFiles(configDir, "run_errors_playlist*.txt", SearchOption.AllDirectories); // Find error files. Not sure why I called it sub?
+		IEnumerable<string> errorFiles = Directory.EnumerateFiles(configDir.ConfigDir, "run_errors_playlist*.txt", SearchOption.AllDirectories); // Find error files. Not sure why I called it sub?
 		foreach (string file in errorFiles) {
 			await l.Out($"File found {file}", DefaultColours.Debug); // Debugging
 																	 // Temporary debug to check that it's finding the right files
