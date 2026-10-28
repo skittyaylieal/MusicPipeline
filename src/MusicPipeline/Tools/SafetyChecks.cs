@@ -108,4 +108,45 @@ public class SafetyCheck
 		}
 		return new(false, new());
 	}
-}	
+
+	public static async Task<KeyValuePair<bool, Object>> ChrisHandleNullValue(string name) => name switch
+	{
+		"ShellShortcut" => DetermineShellShortcutResult(),
+		_ => new(false, new())
+	};
+	private static string DetermineBinPath()
+	{
+		string bin = "/bin/";
+
+		string binbash = bin + "bash";
+		string binsh = bin + "sh";
+		string bashOrShBin = File.Exists(binbash) ? binbash : binsh;
+
+		string binzsh = bin + "zsh";
+		string result = File.Exists(binzsh) ? binzsh : bashOrShBin;
+		return result;
+	}
+	private static string DetermineOtherOSValue()
+	{
+		string bashShOrZshBin = DetermineBinPath();
+		string? shellEnvVar = Environment.GetEnvironmentVariable("SHELL");
+		string result = !string.IsNullOrEmpty(shellEnvVar) ? shellEnvVar : bashShOrZshBin;
+		return result;
+	}
+	private static string DetermineWindowsOSValue()
+	{
+		string commandExecutableFullPath = @"C:\Windows\System32\cmd.exe";
+		string? comspecEnvVar = Environment.GetEnvironmentVariable("COMSPEC");
+		return comspecEnvVar ?? commandExecutableFullPath;
+	}
+	private static KeyValuePair<bool, object> DetermineShellShortcutResult()
+	{
+		bool isWindowsOS = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+		string osValue;
+		if (isWindowsOS)
+			osValue = DetermineWindowsOSValue();
+		else
+			osValue = DetermineOtherOSValue();
+		return new(true, osValue);
+	}
+}
