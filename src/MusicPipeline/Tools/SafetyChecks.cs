@@ -92,7 +92,7 @@ public class SafetyCheck
 		foreach (PropertyInfo p in profileFields) {
 			if (p.GetValue(profile) is null) {
 				handleable = await HandleNullValue(p.Name);
-				if (handleable.HasValue && handleable.Value.Key == true) p.SetValue(profile, handleable.Value);
+				if (handleable.HasValue && handleable.Value.Key == true) p.SetValue(profile, handleable.Value.Value); // KeyValuePairs are wack
 			}
 		}
 		// Well that was easy
