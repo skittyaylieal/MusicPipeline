@@ -49,7 +49,7 @@ public class YTDLPHelpers
 		//l.UserName = "YTDLPHelper";
 		int total = 0;
 		// Get all text in file
-		MatchCollection? matchCollection = null;
+		//MatchCollection? matchCollection = null;
 		string allFileText = await File.ReadAllTextAsync(path.p);
 		Dictionary<int, string> allFileLinesNumbered = await StringHelpers.SplitLinesDict(allFileText);
 

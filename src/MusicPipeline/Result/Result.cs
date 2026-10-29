@@ -29,7 +29,7 @@ public class Result
 		Elapsed = elapsed;
 		Error = error;
 		Songs = new(); // There's got to be a way to just init the dictionary with these values, but for some reason it's not working
-		Songs.Append(new KeyValuePair<int, List<SongIdentifier>>(0, songs));
+		Songs.Append(new KeyValuePair<int, List<SongIdentifier>>(0, songs ??  new()));
 	}
 
 	public Result(string step, TimeSpan elapsed)

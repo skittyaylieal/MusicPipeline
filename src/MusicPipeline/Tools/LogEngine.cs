@@ -53,7 +53,7 @@ public class LogEngine
 		if (!File.Exists(LogFile)) {
 			throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
 		}*/
-		if (LogFile.p == "Null" & logFileParam != null) {LogFile = logFileParam ?? new("Null");}
+		if (LogFile.p == "Null" && logFileParam != null) {LogFile = logFileParam;}
 
 		bool fontColourCodeIsBlack = fontColourCode == 0;
 		if (fontColourCodeIsBlack)

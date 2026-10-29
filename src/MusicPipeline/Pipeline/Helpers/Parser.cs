@@ -17,7 +17,7 @@ public class Parser
 		// TODO: Make this use the active profile
 		// No idea why it wont work
 		//LogEngine? l = new LogEngine(context.DiagLogFile);
-		LogEngine? l = context.LogEngine;
+		LogEngine l = context.LogEngine ?? new(context.DiagLogFile);
 		l.UserName = "Parser";
 		MyPath YTDLPOriginalConfigFilePath = context.YTDLPConfigFileOriginal;
 		// Parse in the conf

@@ -10,11 +10,11 @@ namespace MusicPipeline.Orchestrator;
 
 public class Scanner
 {
-    private LogEngine l;
+    private LogEngine l = new("Null");
 	public async void ScanLibrary()
     {
         Profile activeProfile = await ProfileManager.LoadActiveProfileAsync();
-        l = activeProfile.LogEngine;
+        l = activeProfile.LogEngine ?? new (activeProfile.DiagLogFile);
         l.UserName = "LibraryScanner";
         MyPath backupDir = activeProfile.BackupDir;
         List<MyPath> compressedDirs = activeProfile.CompressedDirs;

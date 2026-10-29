@@ -93,13 +93,13 @@ class Downloader
 		await Parser.ParseYTDLPConfigFile(); // Parse the config file, adding variables into the {} text
 		activeProfile = await ProfileManager.LoadActiveProfileAsync(); // Get the new config file (If we move to the contained approach this will be reworked ofc)
 		YTDLPConfigFile = activeProfile.YTDLPConfigFile.p; // Set the new value
-		Parallel.For(0, maxDownloadThreads, i => j = DownloadThread(i) ?? null); // Run the parallel for
-		await j; // Await the task
+		Parallel.For(0, maxDownloadThreads, i => j = DownloadThread(i)); // Run the parallel for
+		await (j ?? DownloadThread(0)); // Await the task
 		List<Result> results = new List<Result>(); // An intermediary list
 		foreach (KeyValuePair<int, Result> r in res)
 		{ // Go through each result from each thread
 			results.Add(r.Value); // Add the result to the main list
-			if (!(r.Value.Error == "YTDLPProcess is Null" || r.Value.Error.Contains("Exception thrown"))){
+			if (!(r.Value.Error == "YTDLPProcess is Null" || ((r.Value.Error) ?? "Null").Contains("Exception thrown"))){
 				songs.Add(r.Key, await GetAffectedSongInfoInThread(r.Key)); // Get the songs for that thread
 			} else {
 				songs.Add(r.Key, [new(true)]);

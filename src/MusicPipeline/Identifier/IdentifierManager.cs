@@ -30,7 +30,7 @@ public class IdentifierHelper
 		return new(["Null"], "YTDLP");
 	}
 
-	private static MatchCollection FindMatchesInLine(string line)
+	private static MatchCollection? FindMatchesInLine(string line)
 	{
 		foreach (string expression in Expressions) {
 			if (Regex.Matches(line, expression).Count > 0) {

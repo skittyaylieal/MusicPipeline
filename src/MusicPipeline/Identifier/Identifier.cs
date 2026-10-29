@@ -35,7 +35,7 @@ public class SongIdentifier
 		SizesCompressed = sizesCompressed;
 		Instrumental = instrumental;
 		Lyrics = lyrics;
-		if (lyrics) {
+		if (lyrics && lyricsPath != null) {
 			SyncedLyrics = syncedLyrics;
 			// TODO: make this code properly support different extensions and actually providing lyric paths
 			if (SyncedLyrics) {
@@ -98,7 +98,7 @@ public class SongIdentifier
 		SizesCompressed = id.SizesCompressed;
 		Instrumental = id.Instrumental;
 		Lyrics = id.Lyrics;
-		if (id.Lyrics) {
+		if (id.Lyrics && id.LyricsPath != null) {
 			SyncedLyrics = id.SyncedLyrics;
 			// TODO: make this code properly support different extensions and actually providing lyric paths
 			if (SyncedLyrics) {

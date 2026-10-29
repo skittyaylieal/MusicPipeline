@@ -258,7 +258,7 @@ public class ProfileManager
 	{
 		//MyPath profileFilePath = await GetProfileFilePathAsync();
 		// TODO
-		await (await GetProfileFileAsync()).ActiveProfile.LogEngine.Out("Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning, true);
+		await (((await GetProfileFileAsync()).ActiveProfile.LogEngine) ?? (new LogEngine((await GetProfileFileAsync()).ActiveProfile.DiagLogFile))).Out("Oopsies, this function doesn't exist yet!", "ProfileManager", DefaultColours.Warning, true);
 		throw new NotImplementedException();
 	}
 
@@ -286,7 +286,7 @@ public class ProfileManager
 			}
 		} else {
 			await (logger ?? new("Null")).Out($"Parent directory to profile file path {profileFilePath} doesn't exist. Creating", "ProfileManager");
-			Directory.CreateDirectory(Directory.GetParent(profileFilePath.p).Name);
+			Directory.CreateDirectory(Directory.GetParent(profileFilePath.p)?.Name ?? "Null");
 			return await GetProfileFileAsync();
 		}
 	}
