@@ -44,7 +44,7 @@ public class LogEngine
 	public async Task Out(string message, int? fontColourCode, bool applyColourToEntireMessage) => await MyOut(message, "", fontColourCode, applyColourToEntireMessage);
 	public async Task Out(string message, string userName, int? fontColourCode, bool applyColourToEntireMessage) => await MyOut(message, userName, fontColourCode, applyColourToEntireMessage);
 
-	private async Task Engine(string message, string userName, int? fontColourCode, bool applyColourToEntireMessage = false, string? logFileParam = null)
+	private async Task Engine(string message, string userName, int? fontColourCode, bool applyColourToEntireMessage = false, MyPath? logFileParam = null)
 	{
 		// Maybe make it try to find the log file if it's set as "Null"
 		/*ArgumentException.ThrowIfNullOrEmpty(LogFile);
@@ -53,7 +53,7 @@ public class LogEngine
 		if (!File.Exists(LogFile)) {
 			throw new ArgumentException("Log file must exist", nameof(Profiler.LogFile));
 		}*/
-		if (LogFile.p == "Null" & logFileParam != null) {LogFile = new(logFileParam);}
+		if (LogFile.p == "Null" & logFileParam != null) {LogFile = logFileParam ?? new("Null");}
 
 		bool fontColourCodeIsBlack = fontColourCode == 0;
 		if (fontColourCodeIsBlack)
@@ -89,7 +89,7 @@ public class LogEngine
 					Console.WriteLine($"data.Key = {data.Key}, data.Value = {data.Value}");
 				}*/
 				//Console.WriteLine($"{esc}[38;5;203m{timeStamp} [System] TODO: Fix this a better way {reset}");
-				await Engine("File lock", "System", DefaultColours.Error, true);
+				await Engine($"File lock: e = {e}", "System", DefaultColours.Error, true);
 				Thread.Sleep(50);
 				continue;
 			}
@@ -102,7 +102,7 @@ public class LogEngine
 	/// <summary>
 	/// Asynchronously overwrites the current logfile with one line saying the time of the date and the user who requested it.
 	/// </summary>
-	public async Task WipeAsync() => await WipeAsync(UserName);
+	public async Task WipeAsync() => await WipeAsync(UserName ?? "Null");
 
 	public async Task WipeAsync(string user)
 	{

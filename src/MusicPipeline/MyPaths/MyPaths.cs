@@ -124,7 +124,7 @@ public class MyPath
 			if (prop.Name == "path" || prop.Name == "p" || prop.Name == "FormattedPath")
 				continue;
 			// Arguably the this in the next line could be replaced with  a new MyPath()
-			res = rawPath.Replace((string)prop.GetValue(this), prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
+			res = rawPath.Replace((string?)prop.GetValue(this) ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
 		}
 		return res;
 	}

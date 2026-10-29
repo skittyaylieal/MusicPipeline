@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using MusicPipeline.Colours;
+using MusicPipeline.Tools.LogEngine;
 using MusicPipeline.Profiles;
 
 namespace MusicPipeline.Tools.SafetyCheck;
@@ -9,6 +10,8 @@ public class SafetyCheck
 {
 	public static async Task<bool> CheckProfileToBeSaved(Profile profile)
 	{
+		LogEngine.LogEngine l = profile.LogEngine ?? new(profile.DiagLogFile);
+		l.UserName = "SafetyChecker";
 		// I Do not know what I'm doing
 		PropertyInfo[] fields = typeof(DefaultProfiles).GetProperties();
 
@@ -31,7 +34,7 @@ public class SafetyCheck
 				
 				foreach (PropertyInfo p in fieldFields) {
 					string temp1 = p.Name;
-					await profile.LogEngine.Out(p.ToString() ?? "p was null lol", "SafetyChecker");
+					await l.Out(p.ToString() ?? "p was null lol", "SafetyChecker");
 					Object? temp2 = p.GetValue(profile);
 					 
 					//ok, so the line below is throwing the error.
@@ -60,10 +63,10 @@ public class SafetyCheck
 			foreach (KeyValuePair<string, bool> kvp in res) {count += kvp.Value ? 1:0; string.Concat([Out, $"{kvp.Key} "]);}
 			bool a = res.Count() == count;
 			if (a) {return true;}
-			await (a ? profile.LogEngine.Out($"{profile.Name} is the exact same as the Default Profile, {fields[i].Name}", "SafetyChecker", DefaultColours.Warning, true) : profile.LogEngine.Out($"{count} Properties of {profile.Name} were the same as Default Profile {fields[i].Name}'s. They are: {Out}", "SafetyChecker"));
+			await (a ? l.Out($"{profile.Name} is the exact same as the Default Profile, {fields[i].Name}", "SafetyChecker", DefaultColours.Warning, true) : l.Out($"{count} Properties of {profile.Name} were the same as Default Profile {fields[i].Name}'s. They are: {Out}", "SafetyChecker"));
 		}
 
-		Console.WriteLine("Unfinished method: SafetyCheck.CheckProfileToBeSaved()");
+		await l.Out("Unfinished method: SafetyCheck.CheckProfileToBeSaved()", DefaultColours.Error);
 		// So now we have a list of values and names, first from the profile, then from each defaultProfile
 		// Ok
 		// So
@@ -103,8 +106,8 @@ public class SafetyCheck
 	public static async Task<KeyValuePair<bool, Object>> HandleNullValue(string name)
 	{
 		bool windows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-		string COMSPEC = Environment.GetEnvironmentVariable("COMSPEC");
-		string SHELL = Environment.GetEnvironmentVariable("SHELL");
+		string COMSPEC = Environment.GetEnvironmentVariable("COMSPEC") ?? "C:/Windows/System32/cmd.exe";
+		string SHELL = Environment.GetEnvironmentVariable("SHELL") ?? "/bin/sh";
 
 		switch (name) {
 			case "ShellShortcut":

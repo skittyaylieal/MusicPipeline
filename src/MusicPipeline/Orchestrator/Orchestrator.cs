@@ -37,8 +37,8 @@ public class Orchestrator
 		oldActiveProfile.Name = "Current Working Profile";
 		await ProfileManager.SaveProfileAsync(oldActiveProfile);
 		Profile activeProfile = await ProfileManager.LoadActiveProfileAsync();
-		LogEngine? l = new(activeProfile.LogEngine); // This stops the orchestrator from modifying the Profile's LogEngine
-		l?.UserName = "Orchestrator";
+		LogEngine l = new(activeProfile.LogEngine ?? new (activeProfile.DiagLogFile)); // This stops the orchestrator from modifying the Profile's LogEngine
+		l.UserName = "Orchestrator";
 		await l.WipeAsync();
 		await l.Out("Test", DefaultColours.Error, true);
 		await l.Out("Other Test", DefaultColours.Warning);

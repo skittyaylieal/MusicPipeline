@@ -33,7 +33,7 @@ class Cookies(/*Profile activeProfile, LogEngine logEngine*/)
 		MyPath cookieFile = activeProfile.CookieFile;
 		MyPath YTDLPPath = activeProfile.YTDLPExe;
 		string testURL = activeProfile.CheckURL;
-		LogEngine l = activeProfile.LogEngine;
+		LogEngine l = activeProfile.LogEngine ?? new(activeProfile.DiagLogFile);
 		l.UserName = "Cookies";
 		List<Result> res = new();
 
@@ -68,7 +68,7 @@ class Cookies(/*Profile activeProfile, LogEngine logEngine*/)
 		await l.Out("Testing cookies on YouTube.");
 		try
 		{
-			using (Process YTDLPProcess = await Helper.Execute(YTDLPPath, $"--cookies \"{cookieFile}\" --simulate --quiet {testURL}"))
+			using (Process? YTDLPProcess = await Helper.Execute(YTDLPPath, $"--cookies \"{cookieFile}\" --simulate --quiet {testURL}"))
 			{
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;
