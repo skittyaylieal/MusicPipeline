@@ -26,7 +26,8 @@ class Downloader
 	private string downloadArguments = "Null";
 	private string YTDLPConfigFile = "Null";
 	private string customArguments = "Null";
-	private string ShellShortcut = "Null";
+	private string shellShortcut = "Null";
+	private string shellCommandFlag = "Null";
 	//private int sleepInterval = 0;
 	//private int maxSleepInterval = 0;
 	//private int sleepRequests = 0;
@@ -66,7 +67,8 @@ class Downloader
 		//I think this one (above) definitely should belong to downloader!
 		cleanSweep = activeProfile.CleanSweepDownload; // Note: Make sure that the profile value of CleanSweepDownload is correct before running
 		//customArguments = activeProfile.CustomYTDLPArguments;
-		ShellShortcut = activeProfile.ShellShortcut;
+		shellShortcut = activeProfile.ShellShortcut ?? shellShortcut;
+		shellCommandFlag = activeProfile.ShellCommandFlag ?? shellCommandFlag;
 
 		var iAmDebugging = true;
 
@@ -219,7 +221,7 @@ class Downloader
 
 		// Just found out that it supports putting all this in a file so :eyes:
 		//downloadArguments = $"--config-locations {YTDLPConfigFile}  \"{customArguments}\"  --download-archive \"{historyPath}\"  {playlists[index]}";
-		downloadArguments = $"--config-locations {YTDLPConfigFile}  --download-archive \"{historyPath}\"  {playlists[index]}";
+		downloadArguments = $"--config-locations \'{YTDLPConfigFile}\'  --download-archive \'{historyPath}\'  \'{playlists[index]}\'";
 		/*
 		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring
@@ -273,10 +275,10 @@ class Downloader
 		);
 		*/
 
-		string YTDLPArgs = $"/c \"{YTDLPPath} {downloadArguments} 2>&1\"";
+		string YTDLPArgs = $"{shellCommandFlag}c \"{YTDLPPath} {downloadArguments} 2>&1\"";
 		try
 		{
-			using (Process? YTDLPProcess = await Helper.Execute(ShellShortcut, YTDLPArgs))
+			using (Process? YTDLPProcess = await Helper.Execute(shellShortcut, YTDLPArgs))
 			{
 				if (YTDLPProcess is null) {
 					DateTime endError = DateTime.UtcNow;

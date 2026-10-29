@@ -102,9 +102,17 @@ public class SafetyCheck
 
 	public static async Task<KeyValuePair<bool, Object>> HandleNullValue(string name)
 	{
+		bool windows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+		string COMSPEC = Environment.GetEnvironmentVariable("COMSPEC");
+		string SHELL = Environment.GetEnvironmentVariable("SHELL");
+
 		switch (name) {
 			case "ShellShortcut":
-				return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? new(true, Environment.GetEnvironmentVariable("COMSPEC") ?? @"C:\Windows\System32\cmd.exe") : new(true, string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SHELL")) ? (File.Exists("/bin/zsh") ? "/bin/zsh" : File.Exists("/bin/bash") ? "/bin/bash" : "/bin/sh") : Environment.GetEnvironmentVariable("SHELL"));
+				return new(true, windows ? (COMSPEC ?? @"C:\Windows\System32\cmd.exe") : (string.IsNullOrEmpty(SHELL) ? (File.Exists("/bin/zsh") ? "/bin/zsh" : File.Exists("/bin/bash") ? "/bin/bash" : "/bin/sh") : SHELL));
+
+			case "ShellCommandFlag":
+				return new(true, windows ? "/" : "-");
+
 		}
 		return new(false, new());
 	}
