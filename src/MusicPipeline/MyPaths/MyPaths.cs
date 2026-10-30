@@ -37,9 +37,17 @@ public class MyPath
 	// Root script and config can be done from the running directory
 	// And ConfigDir is being kept as a variable so that I can make it use sandbox right now and move it to main repo later.
 	[JsonIgnore]
-	public string path {get => ToString(); set => FormattedPath = Format(value);}
+	public string path {get => ToString(); set => (FormattedPath, Variables) = Format(value);}
 	[JsonIgnore]
-	public string p {get => ToString(); set => FormattedPath = Format(value);}
+	public string p {get => ToString(); set => (FormattedPath, Variables) = Format(value);}
+	[JsonIgnore]
+	public MyPath dir {get => GetDirectory();}
+	[JsonIgnore]
+	public MyPath parent {get => GetParent();}
+
+	[JsonIgnore]
+	public Dictionary<string, string>? Variables {get; set;}
+
 	public required string FormattedPath {get; set;}
 
 	// For format to work properly, order these in terms of which can be nested within the other on a normal system
@@ -113,20 +121,50 @@ public class MyPath
 	/// <param name="rawPath"/>
 	///	The normal path, as a string, to format.
 	/// </param>
-	/// <returns>String representing the FormattedPath</returns>
-	public string Format(string rawPath)
+	/// <returns>MyPath with the FormattedPath</returns>
+	public MyPath FormatToMyPath(string rawPath)
 	{
 		string res = rawPath.Replace(@"\", "/");
+		Dictionary<string, string> vars = new();
 		// Iterate through properties in MyPath
 		// Replace any instances of that property with the [$] or ~ syntax
 		// Need to ignore the "reserved" properties path, p and FormattedPath
 		foreach (PropertyInfo prop in typeof(MyPath).GetProperties()) {
 			if (prop.Name == "path" || prop.Name == "p" || prop.Name == "FormattedPath")
 				continue;
-			// Arguably the this in the next line could be replaced with  a new MyPath()
+			// Arguably the this in the next line could be replaced with  a new MyPath() making this a static function
 			res = rawPath.Replace((string?)prop.GetValue(this) ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
+			vars.Add(prop.Name, (string?)prop.GetValue(new MyPath()) ?? "Null");
 		}
-		return res;
+		return new(res, vars);
+	}
+
+	/// <summary>
+	///	Formats a normal path into a MyPath formatted path, using the MyPath's properties.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// 	Uses Reflection to get the values and names of this MyPath's properties, then replaces any instance of a value in <paramref name="rawPath"/> with the properties name.
+	/// </para>
+	/// <param name="rawPath"/>
+	///	The normal path, as a string, to format.
+	/// </param>
+	/// <returns>string tuple with the FormattedPath and the variables in it</returns>
+	public (string formatted, Dictionary<string, string> variables) Format(string rawPath)
+	{
+		string res = rawPath.Replace(@"\", "/");
+		Dictionary<string, string> vars = new();
+		// Iterate through properties in MyPath
+		// Replace any instances of that property with the [$] or ~ syntax
+		// Need to ignore the "reserved" properties path, p and FormattedPath
+		foreach (PropertyInfo prop in typeof(MyPath).GetProperties()) {
+			if (prop.Name == "path" || prop.Name == "p" || prop.Name == "FormattedPath")
+				continue;
+			// Arguably the this in the next line could be replaced with  a new MyPath() making this a static function
+			res = rawPath.Replace((string?)prop.GetValue(this) ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
+			vars.Add(prop.Name, (string?)prop.GetValue(new MyPath()) ?? "Null");
+		}
+		return (res, vars);
 	}
 
 
@@ -137,6 +175,58 @@ public class MyPath
 		if (index >= 0)
     		return fp.Substring(0, index);
     	return "";
+	}
+
+	public MyPath GetDirectory()
+	{
+		if (p[^1] == '/'){
+			return new(this);
+		} else {
+			// In the simplest case, [$UserDir]/Dir/file
+			// Then you can lop off up to the Dir/
+			// But if its [$UserDir]/file 
+			// Then you have to get the actual directory and try to format it again
+			string upper = p.Substring(0, p.LastIndexOf("/"));
+			if (upper[^1] == ']') {
+				// Harder case
+				// Check if it's an actual hard case then handle
+				string varPattern = @".*(\[\$.*\])";
+				Match match = Regex.Match(upper, varPattern);
+				if (match.Success) {
+					return new(upper);
+				} else {
+					// Oops
+					return new("Null");
+				}
+			} else {
+				return new(upper);
+			}
+
+		}
+	}
+
+	public MyPath GetParent()
+	{
+		// This will work in the case of [$UserDir]/Dir/file
+		// And in [$UserDir]/Dir/
+		// But not in the case of [$UserDir]/file
+		// Or just plain [$UserDir]/
+		/*
+		bool onlyVariable = (p[^1] == ']') || (p[^2] == ']')
+		
+		if (onlyVariable) {
+			string parent = Directory.GetParent(variables[^1].Value);
+			return new(parent, true);
+		} else {
+			// If it's not only a variable it could still be [$UserDir]/file
+			// Reuse this code in GetDirectory()
+
+		}
+
+		*/
+
+		string parent = p.Substring(0, p.LastIndexOf("/") - 1).Substring(0, p.LastIndexOf("/"));
+		return new();
 	}
 
 	[SetsRequiredMembers]
@@ -165,6 +255,41 @@ public class MyPath
 		ConfigDir = $"{RootDir}/Sandbox/Config";
 
 		// Must be last V
-		FormattedPath = isRaw ? this.Format(formattedPath) : formattedPath;
+		FormattedPath = isRaw ? this.Format(formattedPath).formatted : formattedPath;
+	}
+
+	[SetsRequiredMembers]
+	public MyPath(string formattedPath, Dictionary<string, string> variables)
+	{
+		UserDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).Replace(@"\", "/");
+		ScriptDir = Directory.GetCurrentDirectory().Replace(@"\", "/");
+		RootDir = Directory.GetParent(ScriptDir)?.Parent?.FullName.Replace(@"\", "/") ?? "";
+		UpperRootDir = Directory.GetParent(RootDir)?.FullName.Replace(@"\", "/") ?? "";
+		ConfigDir = $"{RootDir}/Sandbox/Config";
+		FormattedPath = formattedPath;
+		Variables = variables;
+	}
+
+	[SetsRequiredMembers]
+	public MyPath()
+	{
+		UserDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).Replace(@"\", "/");
+		ScriptDir = Directory.GetCurrentDirectory().Replace(@"\", "/");
+		RootDir = Directory.GetParent(ScriptDir)?.Parent?.FullName.Replace(@"\", "/") ?? "";
+		UpperRootDir = Directory.GetParent(RootDir)?.FullName.Replace(@"\", "/") ?? "";
+		ConfigDir = $"{RootDir}/Sandbox/Config";
+		FormattedPath = "";
+	}
+
+
+	[SetsRequiredMembers]
+	public MyPath(MyPath original)
+	{
+		UserDir = original.UserDir;
+		ScriptDir = original.ScriptDir;
+		RootDir = original.RootDir;
+		UpperRootDir = original.UpperRootDir;
+		ConfigDir = original.ConfigDir;
+		FormattedPath = original.FormattedPath;
 	}
 }

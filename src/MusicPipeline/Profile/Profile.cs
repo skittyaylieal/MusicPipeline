@@ -30,7 +30,7 @@ public class Profile
 	public MyPath YTDLPConfigFileOriginal {get; set;} = new("Null");
 	public MyPath YTDLPConfigFile {get; set;} = new("Null");
 	public string CheckURL {get; set;} = "Null";
-	public string? ShellShortcut {get; set;} = null; // Nullable because this can't be assumed by default Profile
+	public MyPath? ShellShortcut {get; set;} = null; // Nullable because this can't be assumed by default Profile
 	public string? ShellCommandFlag {get; set;} = null; // Ditto
 	//public string CustomYTDLPArguments {get; set;} = "Null";
 	public string SongFileSearchPattern {get; set;} = "Null";

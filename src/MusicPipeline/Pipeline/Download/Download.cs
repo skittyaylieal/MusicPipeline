@@ -26,7 +26,7 @@ class Downloader
 	private string downloadArguments = "Null";
 	private string YTDLPConfigFile = "Null";
 	private string customArguments = "Null";
-	private string shellShortcut = "Null";
+	private MyPath shellShortcut = new("Null");
 	private string shellCommandFlag = "Null";
 	//private int sleepInterval = 0;
 	//private int maxSleepInterval = 0;
