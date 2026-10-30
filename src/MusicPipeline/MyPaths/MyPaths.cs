@@ -4,6 +4,9 @@ using System.Text.Json.Serialization;
 using System.Reflection;
 namespace MusicPipeline;
 
+// TODO: Make some kind of update function which is called whenever a function modifys something like the path
+// So that the parent etc fields can stay up to date
+// Hm i cant make those fields default to null
 
 
 /// <summary>
@@ -41,9 +44,9 @@ public class MyPath
 	[JsonIgnore]
 	public string p {get => ToString(); set => (FormattedPath, Variables) = Format(value);}
 	[JsonIgnore]
-	public MyPath dir {get => GetDirectory();}
+	public MyPath? dir {get => dir ?? GetDirectory();}
 	[JsonIgnore]
-	public MyPath parent {get => GetParent();}
+	public MyPath? parent {get => dir ?? GetParent();}
 
 	[JsonIgnore]
 	public Dictionary<string, string>? Variables {get; set;}
