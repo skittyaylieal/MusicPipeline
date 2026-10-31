@@ -40,13 +40,13 @@ public class MyPath
 	// Root script and config can be done from the running directory
 	// And ConfigDir is being kept as a variable so that I can make it use sandbox right now and move it to main repo later.
 	[JsonIgnore]
-	public string path {get => ToString(); set => (FormattedPath, Variables) = Format(value);}
+	public string path {get => field ?? (field = ToString()); set => (FormattedPath, Variables) = Format(field ?? value);}
 	[JsonIgnore]
-	public string p {get => ToString(); set => (FormattedPath, Variables) = Format(value);}
+	public string p {get => field ?? (field = ToString()); set => (FormattedPath, Variables) = Format(field ?? value);}
 	[JsonIgnore]
-	public MyPath? dir {get => dir ?? GetDirectory();}
+	public MyPath? dir {get => field ?? (field = GetDirectory()); internal set;}
 	[JsonIgnore]
-	public MyPath? parent {get => dir ?? GetParent();}
+	public MyPath? parent {get => field ?? (field = GetParent()); internal set;}
 
 	[JsonIgnore]
 	public Dictionary<string, string>? Variables {get; set;}
@@ -79,6 +79,7 @@ public class MyPath
 	/// </summary>
 	public override string ToString()
 	{
+		this.Update();
 		return TakeFullPathWithMyPathSyntaxAndTurnItIntoAStringUsingTheGivenPathObjectForDirectoryReferences(this);
 	}
 
@@ -114,6 +115,15 @@ public class MyPath
 		// Perfect
 	}
 
+	internal void Update()
+	{
+		// Set all the nullable properties
+		path = path ?? ToString();
+		p = p ?? path;
+		dir = dir ?? GetDirectory();
+		parent = parent ?? GetParent();
+	}
+
 	/// <summary>
 	///	Formats a normal path into a MyPath formatted path, using the MyPath's properties.
 	/// </summary>
@@ -139,6 +149,7 @@ public class MyPath
 			res = rawPath.Replace((string?)prop.GetValue(this) ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
 			vars.Add(prop.Name, (string?)prop.GetValue(new MyPath()) ?? "Null");
 		}
+		this.Update();
 		return new(res, vars);
 	}
 
@@ -167,6 +178,7 @@ public class MyPath
 			res = rawPath.Replace((string?)prop.GetValue(this) ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
 			vars.Add(prop.Name, (string?)prop.GetValue(new MyPath()) ?? "Null");
 		}
+		this.Update();
 		return (res, vars);
 	}
 
@@ -175,8 +187,11 @@ public class MyPath
 	{
 		string fp = this.FormattedPath;
 		int index = fp.LastIndexOf("/");
-		if (index >= 0)
+		if (index >= 0) {
+			this.Update();
     		return fp.Substring(0, index);
+		}
+		this.Update();
     	return "";
 	}
 
@@ -219,11 +234,18 @@ public class MyPath
 		
 		if (onlyVariable) {
 			string parent = Directory.GetParent(variables[^1].Value);
-			return new(parent, true);
+			this.update();
+			this.parent = new(parent, true)
+			return this.parent;
 		} else {
 			// If it's not only a variable it could still be [$UserDir]/file
 			// Reuse this code in GetDirectory()
+			
 
+			// Steps:
+			// Get the directory (dir)
+			// Get the parent of that directory (either by string manipulation or by Directory.GetParent)
+			// Make a new path from it
 		}
 
 		*/
@@ -259,6 +281,7 @@ public class MyPath
 
 		// Must be last V
 		FormattedPath = isRaw ? this.Format(formattedPath).formatted : formattedPath;
+		this.Update();
 	}
 
 	[SetsRequiredMembers]
@@ -269,8 +292,12 @@ public class MyPath
 		RootDir = Directory.GetParent(ScriptDir)?.Parent?.FullName.Replace(@"\", "/") ?? "";
 		UpperRootDir = Directory.GetParent(RootDir)?.FullName.Replace(@"\", "/") ?? "";
 		ConfigDir = $"{RootDir}/Sandbox/Config";
+		// Supposedly can replace the duplicated setup with just
+		// MyPath();
+		// However sublime doesn't like that
 		FormattedPath = formattedPath;
 		Variables = variables;
+		this.Update();
 	}
 
 	[SetsRequiredMembers]
@@ -282,6 +309,7 @@ public class MyPath
 		UpperRootDir = Directory.GetParent(RootDir)?.FullName.Replace(@"\", "/") ?? "";
 		ConfigDir = $"{RootDir}/Sandbox/Config";
 		FormattedPath = "";
+		this.Update();
 	}
 
 
@@ -294,5 +322,6 @@ public class MyPath
 		UpperRootDir = original.UpperRootDir;
 		ConfigDir = original.ConfigDir;
 		FormattedPath = original.FormattedPath;
+		this.Update();
 	}
 }
