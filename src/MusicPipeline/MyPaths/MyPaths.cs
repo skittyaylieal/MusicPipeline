@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
 using System.Text.Json.Serialization;
 using System.Reflection;
 namespace MusicPipeline;
@@ -49,7 +49,7 @@ public class MyPath
 	public MyPath? parent {get => field ?? (field = GetParent()); internal set;}
 
 	[JsonIgnore]
-	public Dictionary<string, string>? Variables {get; set;}
+	public Dictionary<string, Preset>? Variables {get; set;}
 
 	public required string FormattedPath {get; set;}
 
@@ -63,15 +63,15 @@ public class MyPath
 	//I like this change, empty strings are easier to work with than nulls.
 
 	[JsonIgnore]
-	public string UserDir {get; set;} = ""; // C:/Users/Test/
+	public Preset UserDir {get; set;} = new(""); // C:/Users/Test/
 	[JsonIgnore]
-	public string UpperRootDir {get; set;} = ""; // UserDir/MusicTools
+	public Preset UpperRootDir {get; set;} = new(""); // UserDir/MusicTools
 	[JsonIgnore]
-	public string RootDir {get; set;} = ""; // UpperRootDir/MusicPipeline
+	public Preset RootDir {get; set;} = new(""); // UpperRootDir/MusicPipeline
 	[JsonIgnore]
-	public string ConfigDir {get; set;} = ""; // RootDir/Config
+	public Preset ConfigDir {get; set;} = new(""); // RootDir/Config
 	[JsonIgnore]
-	public string ScriptDir {get; set;} = ""; // RootDir/src/MusicPipeline
+	public Preset ScriptDir {get; set;} = new(""); // RootDir/src/MusicPipeline
 
 
 	/// <summary>
@@ -105,7 +105,7 @@ public class MyPath
 		// Find every thing between [$ and ] and replace the whole thing with that property in this class. same logic as the parser
 		Match match = Regex.Match(path.FormattedPath, @"\[\$(\w+)\]");
 		if (!match.Success)
-			return path.FormattedPath.Replace("~", path.UserDir);
+			return path.FormattedPath.Replace("~", path.UserDir.Path);
 		string? replace = typeof(MyPath)?.GetProperty(match.Groups[1].Value)?.GetValue(path)?.ToString();
 		if (replace is null) {
 			Console.WriteLine("Oh dear");
@@ -143,11 +143,11 @@ public class MyPath
 		// Replace any instances of that property with the [$] or ~ syntax
 		// Need to ignore the "reserved" properties path, p and FormattedPath
 		foreach (PropertyInfo prop in typeof(MyPath).GetProperties()) {
-			if (prop.Name == "path" || prop.Name == "p" || prop.Name == "FormattedPath")
+			if (prop.PropertyType != typeof(Preset))
 				continue;
 			// Arguably the this in the next line could be replaced with  a new MyPath() making this a static function
-			res = rawPath.Replace((string?)prop.GetValue(this) ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
-			vars.Add(prop.Name, (string?)prop.GetValue(new MyPath()) ?? "Null");
+			res = rawPath.Replace((string?)prop.GetValue(this)?.ToString() ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
+			vars.Add(prop.Name, (string?)prop.GetValue(new MyPath())?.ToString() ?? "Null");
 		}
 		this.Update();
 		return new(res, vars);
@@ -164,19 +164,19 @@ public class MyPath
 	///	The normal path, as a string, to format.
 	/// </param>
 	/// <returns>string tuple with the FormattedPath and the variables in it</returns>
-	public (string formatted, Dictionary<string, string> variables) Format(string rawPath)
+	public (string formatted, Dictionary<string, Preset> variables) Format(string rawPath)
 	{
 		string res = rawPath.Replace(@"\", "/");
-		Dictionary<string, string> vars = new();
+		Dictionary<string, Preset> vars = new();
 		// Iterate through properties in MyPath
 		// Replace any instances of that property with the [$] or ~ syntax
 		// Need to ignore the "reserved" properties path, p and FormattedPath
 		foreach (PropertyInfo prop in typeof(MyPath).GetProperties()) {
-			if (prop.Name == "path" || prop.Name == "p" || prop.Name == "FormattedPath")
+			if (prop.PropertyType != typeof(Preset))
 				continue;
 			// Arguably the this in the next line could be replaced with  a new MyPath() making this a static function
-			res = rawPath.Replace((string?)prop.GetValue(this) ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
-			vars.Add(prop.Name, (string?)prop.GetValue(new MyPath()) ?? "Null");
+			res = rawPath.Replace((string?)prop.GetValue(this)?.ToString() ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
+			vars.Add(prop.Name, (Preset?)prop.GetValue(new MyPath()) ?? new("Null"));
 		}
 		this.Update();
 		return (res, vars);
@@ -200,6 +200,44 @@ public class MyPath
 		if (p[^1] == '/'){
 			return new(this);
 		} else {
+			// So
+			// This block handles anything which isn't automatically a directory
+			// which is anything not ending in '/'. Ideally, any path which is just [$var] should end in a / if that [$var] is a directory.
+			/*
+			CASES:
+			[$UserDir]/file
+			[$UserDir]/Dir/file
+			[$ConfigFile] (hypothetical preset which isn't a directory)
+			*/
+			// First, we need to handle the case of 
+			// just a variable file
+			// [$ConfigFile]
+			if (p[^1] == ']') {
+				string varPattern = @".*(\[\$.*\])";
+				var match = Regex.Match(p, varPattern);
+				var temp = Variables?[match.Value] ?? new Preset();
+				if (temp.Folder) {
+					p += '/';
+					this.Update();
+					return new($"{match.Value}/");
+				} else {
+					// Not a folder, gotta get the actual directory
+					return new(temp.Path.Substring(temp.Path.LastIndexOf('/')), true);
+				}
+			} 
+			// If it doesn't end in a '/' or a ']' then it must be one of
+			/*
+			[$UserDir]/file
+			[$UserDir]/Dir/file
+			*/
+			else {
+				return new(p.Substring(p.LastIndexOf('/')));
+			}
+
+
+
+			/*
+			REWORKING ALL OF THIS
 			// In the simplest case, [$UserDir]/Dir/file
 			// Then you can lop off up to the Dir/
 			// But if its [$UserDir]/file 
@@ -218,7 +256,7 @@ public class MyPath
 				}
 			} else {
 				return new(upper);
-			}
+			}*/
 
 		}
 	}
@@ -244,7 +282,9 @@ public class MyPath
 
 			// Steps:
 			// Get the directory (dir)
+
 			// Get the parent of that directory (either by string manipulation or by Directory.GetParent)
+			if (dir)
 			// Make a new path from it
 		}
 
