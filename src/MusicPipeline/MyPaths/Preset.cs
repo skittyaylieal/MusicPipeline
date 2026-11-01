@@ -15,17 +15,17 @@ public class Preset
 	
 	public Preset(string path)
 	{
-		Path = path;
-		if (Path[^1] == '/')
+		if (path[^1] == '/')
 		{
 			Folder = true;
-
+			Path = path.Substring(0, path.Length - 1); // Remove the /
 		} else {
 			Folder = false;
+			Path = path;
 		}
 	}
 
-	// Hey Chris whats that way of doing this all in one lambda thing?
+	// Hey Chris what's that way of doing this all in one lambda thing?
 	
 	public Preset(string path, bool folder)
 	{

@@ -138,7 +138,7 @@ public class MyPath
 	public MyPath FormatToMyPath(string rawPath)
 	{
 		string res = rawPath.Replace(@"\", "/");
-		Dictionary<string, string> vars = new();
+		Dictionary<string, Preset> vars = new();
 		// Iterate through properties in MyPath
 		// Replace any instances of that property with the [$] or ~ syntax
 		// Need to ignore the "reserved" properties path, p and FormattedPath
@@ -147,7 +147,7 @@ public class MyPath
 				continue;
 			// Arguably the this in the next line could be replaced with  a new MyPath() making this a static function
 			res = rawPath.Replace((string?)prop.GetValue(this)?.ToString() ?? "Null", prop.Name != "UserDir" ? $"[${prop.Name}]" : "~");
-			vars.Add(prop.Name, (string?)prop.GetValue(new MyPath())?.ToString() ?? "Null");
+			vars.Add(prop.Name, (Preset?)prop.GetValue(new MyPath()) ?? new("Null"));
 		}
 		this.Update();
 		return new(res, vars);
@@ -200,7 +200,6 @@ public class MyPath
 		if (p[^1] == '/'){
 			return new(this);
 		} else {
-			// So
 			// This block handles anything which isn't automatically a directory
 			// which is anything not ending in '/'. Ideally, any path which is just [$var] should end in a / if that [$var] is a directory.
 			/*
@@ -209,8 +208,7 @@ public class MyPath
 			[$UserDir]/Dir/file
 			[$ConfigFile] (hypothetical preset which isn't a directory)
 			*/
-			// First, we need to handle the case of 
-			// just a variable file
+			// First, we need to handle the case of just a variable file
 			// [$ConfigFile]
 			if (p[^1] == ']') {
 				string varPattern = @".*(\[\$.*\])";
@@ -222,7 +220,7 @@ public class MyPath
 					return new($"{match.Value}/");
 				} else {
 					// Not a folder, gotta get the actual directory
-					return new(temp.Path.Substring(temp.Path.LastIndexOf('/')), true);
+					return new(temp.Path.Substring(0, temp.Path.LastIndexOf('/')), true);
 				}
 			} 
 			// If it doesn't end in a '/' or a ']' then it must be one of
@@ -230,34 +228,7 @@ public class MyPath
 			[$UserDir]/file
 			[$UserDir]/Dir/file
 			*/
-			else {
-				return new(p.Substring(p.LastIndexOf('/')));
-			}
-
-
-
-			/*
-			REWORKING ALL OF THIS
-			// In the simplest case, [$UserDir]/Dir/file
-			// Then you can lop off up to the Dir/
-			// But if its [$UserDir]/file 
-			// Then you have to get the actual directory and try to format it again
-			string upper = p.Substring(0, p.LastIndexOf("/"));
-			if (upper[^1] == ']') {
-				// Harder case
-				// Check if it's an actual hard case then handle
-				string varPattern = @".*(\[\$.*\])";
-				Match match = Regex.Match(upper, varPattern);
-				if (match.Success) {
-					return new(upper);
-				} else {
-					// Oops
-					return new("Null");
-				}
-			} else {
-				return new(upper);
-			}*/
-
+			return new(p.Substring(0, p.LastIndexOf('/')));
 		}
 	}
 
@@ -296,9 +267,7 @@ public class MyPath
 
 	[SetsRequiredMembers]
 	[JsonConstructor]
-	public MyPath(string formattedPath) : this(formattedPath, isRaw: false)
-	{
-	}
+	public MyPath(string formattedPath) : this(formattedPath, isRaw: false) {}
 
 	[SetsRequiredMembers]
 	/// <summary>
@@ -310,14 +279,8 @@ public class MyPath
 	/// <param name="isRaw">
 	/// Optional other argument, if new MyPath(C:/Users/Test/") is used it will format automatically. True must be manually specified for raw paths.
 	/// </param>
-	public MyPath(string formattedPath, bool isRaw = false)
+	public MyPath(string formattedPath, bool isRaw = false) : this()
 	{
-		// Returns C:\Users\(Username) on my machine
-		UserDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).Replace(@"\", "/");
-		ScriptDir = Directory.GetCurrentDirectory().Replace(@"\", "/");
-		RootDir = Directory.GetParent(ScriptDir)?.Parent?.FullName.Replace(@"\", "/") ?? "";
-		UpperRootDir = Directory.GetParent(RootDir)?.FullName.Replace(@"\", "/") ?? "";
-		ConfigDir = $"{RootDir}/Sandbox/Config";
 
 		// Must be last V
 		FormattedPath = isRaw ? this.Format(formattedPath).formatted : formattedPath;
@@ -325,13 +288,8 @@ public class MyPath
 	}
 
 	[SetsRequiredMembers]
-	public MyPath(string formattedPath, Dictionary<string, string> variables)
+	public MyPath(string formattedPath, Dictionary<string, Preset> variables) : this()
 	{
-		UserDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).Replace(@"\", "/");
-		ScriptDir = Directory.GetCurrentDirectory().Replace(@"\", "/");
-		RootDir = Directory.GetParent(ScriptDir)?.Parent?.FullName.Replace(@"\", "/") ?? "";
-		UpperRootDir = Directory.GetParent(RootDir)?.FullName.Replace(@"\", "/") ?? "";
-		ConfigDir = $"{RootDir}/Sandbox/Config";
 		// Supposedly can replace the duplicated setup with just
 		// MyPath();
 		// However sublime doesn't like that
@@ -343,11 +301,11 @@ public class MyPath
 	[SetsRequiredMembers]
 	public MyPath()
 	{
-		UserDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).Replace(@"\", "/");
-		ScriptDir = Directory.GetCurrentDirectory().Replace(@"\", "/");
-		RootDir = Directory.GetParent(ScriptDir)?.Parent?.FullName.Replace(@"\", "/") ?? "";
-		UpperRootDir = Directory.GetParent(RootDir)?.FullName.Replace(@"\", "/") ?? "";
-		ConfigDir = $"{RootDir}/Sandbox/Config";
+		UserDir = new(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).Replace(@"\", "/"), true);
+		ScriptDir = new(Directory.GetCurrentDirectory().Replace(@"\", "/"), true);
+		RootDir = new(Directory.GetParent(ScriptDir.Path)?.Parent?.FullName.Replace(@"\", "/") ?? "", true);
+		UpperRootDir = new(Directory.GetParent(RootDir.Path)?.FullName.Replace(@"\", "/") ?? "", true);
+		ConfigDir = new($"{RootDir}/Sandbox/Config", true);
 		FormattedPath = "";
 		this.Update();
 	}
