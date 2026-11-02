@@ -118,7 +118,7 @@ public class MyPath
 	internal void Update()
 	{
 		// Set all the nullable properties
-		path = path ?? ToString();
+		path = path;
 		p = p ?? path;
 		dir = dir; // Getting the dir should handle it
 		parent = parent;
