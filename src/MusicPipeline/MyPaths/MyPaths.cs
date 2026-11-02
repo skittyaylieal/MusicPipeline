@@ -238,14 +238,14 @@ public class MyPath
 		// And in [$UserDir]/Dir/
 		// But not in the case of [$UserDir]/file
 		// Or just plain [$UserDir]/
-		/*
-		bool onlyVariable = (p[^1] == ']') || (p[^2] == ']')
+		
+		bool onlyVariable = (p[^1] == ']') || (p[^2] == ']');
 		
 		if (onlyVariable) {
-			string parent = Directory.GetParent(variables[^1].Value);
-			this.update();
-			this.parent = new(parent, true)
-			return this.parent;
+			string par = Directory.GetParent(Variables?.ElementAt(0).Value.Path ?? "")?.FullName ?? "";
+			this.Update();
+			//this.parent = new(par, true); // unnecessary
+			return new(par, true);
 		} else {
 			// If it's not only a variable it could still be [$UserDir]/file
 			// Reuse this code in GetDirectory()
@@ -254,12 +254,22 @@ public class MyPath
 			// Steps:
 			// Get the directory (dir)
 
+			string fp = dir?.FormattedPath ?? "";
 			// Get the parent of that directory (either by string manipulation or by Directory.GetParent)
-			if (dir)
+			if (fp[^2] != ']') {
+				// Could be [$UserDir]/file
+				/*
+				string par = fp.Substring(0, fp.LastIndexOf("/") - 1).Substring(0, fp.LastIndexOf("/"));
+				return new(dir?.FormattedPath.Substring(0, dir.FormattedPath.Length - 1) ?? "");
+				*/
+			} else {
+				// oh no hard
+
+			}
 			// Make a new path from it
 		}
 
-		*/
+		
 
 		string parent = p.Substring(0, p.LastIndexOf("/") - 1).Substring(0, p.LastIndexOf("/"));
 		return new();
