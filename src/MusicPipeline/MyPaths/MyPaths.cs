@@ -119,7 +119,7 @@ public class MyPath
 	{
 		// Set all the nullable properties
 		path = path;
-		p = p ?? path;
+		p = p;
 		dir = dir; // Getting the dir should handle it
 		parent = parent;
 	}
