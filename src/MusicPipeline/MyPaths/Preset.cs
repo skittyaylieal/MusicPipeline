@@ -15,6 +15,11 @@ public class Preset
 	
 	public Preset(string path)
 	{
+		if (path == "") {
+			Path = path;
+			Folder = false;
+			return;
+		}
 		if (path[^1] == '/')
 		{
 			Folder = true;
