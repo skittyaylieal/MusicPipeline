@@ -238,35 +238,51 @@ public class MyPath
 		// And in [$UserDir]/Dir/
 		// But not in the case of [$UserDir]/file
 		// Or just plain [$UserDir]/
-		
-		bool onlyVariable = (p[^1] == ']') || (p[^2] == ']');
+
+		/*
+		CASES:
+		.../Dir/file
+		.../Dir/
+		[$UserDir]/
+		[$UserDir]/Dir/
+		[$UserDir]/Dir/file
+		[$UserDir]/file
+		[$ConfigFile]
+		Getting the directory will narrow cases to
+		.../Dir/
+		[$UserDir]/
+		[$UserDir]/Dir/
+		(Dir of [$ConfigFile] will be one of the above cases)
+
+		*/
+
+		// Operating on dir for everything
+		dir = GetDirectory();
+		var fp = dir.FormattedPath;
+
+		bool onlyVariable = (fp[^1] == ']') || (fp[^2] == ']');
 		
 		if (onlyVariable) {
-			string par = Directory.GetParent(Variables?.ElementAt(0).Value.Path ?? "")?.FullName ?? "";
+			string par = Directory.GetParent(dir.Variables?.ElementAt(0).Value.Path ?? "")?.FullName ?? "";
 			this.Update();
 			//this.parent = new(par, true); // unnecessary
 			return new(par, true);
 		} else {
-			// If it's not only a variable it could still be [$UserDir]/file
-			// Reuse this code in GetDirectory()
-			
+			// If it's not only a variable then it's .../Dir/ or [$UserDir]/Dir/
+			// We want to strip the /Dir/ from the end
+			// RegEx it!
+			string parentPattern = @".*\/(.+\/)"; // .* is any char repeated any times. To catch /Dir/
+			// \/ matches the literal '/'
+			// () is a capturing group capturing just the .+\/
+			// .+ matches any char at least once
+			// \/ another literal '/'
+			// This regex matches the Dir/ of those 2 paths
 
-			// Steps:
-			// Get the directory (dir)
-
-			string fp = dir?.FormattedPath ?? "";
-			// Get the parent of that directory (either by string manipulation or by Directory.GetParent)
-			if (fp[^2] != ']') {
-				// Could be [$UserDir]/file
-				/*
-				string par = fp.Substring(0, fp.LastIndexOf("/") - 1).Substring(0, fp.LastIndexOf("/"));
-				return new(dir?.FormattedPath.Substring(0, dir.FormattedPath.Length - 1) ?? "");
-				*/
-			} else {
-				// oh no hard
-
-			}
-			// Make a new path from it
+			// Extract the group
+			// Remove it
+			var match = Regex.Match(fp, parentPattern);
+			string val = match.Groups[0].Value;
+			return new(fp.Remove(fp.LastIndexOf(val)), true);
 		}
 
 		
