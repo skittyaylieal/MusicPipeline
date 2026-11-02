@@ -46,20 +46,20 @@ public class Parser
 				continue;
 			} 
 			string variable = match.Groups[1].Value;
-			string? replace = "";
+			string replace = "";
 			await l.Out($"variable = {variable}", DefaultColours.Debug);
 			if (variable == "RootDir") {
-				replace = new MyPath("").RootDir;
+				replace = (new MyPath("")).RootDir.Path;
 			}
 			// Uses Reflection somehow idfk
 			// TODO: Write a better explanation
-			replace = replace == "" ? typeof(Profile)?.GetProperty(variable)?.GetValue(context)?.ToString() : replace;
-			await l.Out($"typeof(Profile) = {typeof(Profile)}, Property = {typeof(Profile)?.GetProperty(variable)}, Value = {typeof(Profile)?.GetProperty(variable)?.GetValue(context)}, To String = {typeof(Profile)?.GetProperty(variable)?.GetValue(context).ToString()}. replace = {replace}", DefaultColours.Debug);
+			replace = replace == "" ? typeof(Profile)?.GetProperty(variable)?.GetValue(context)?.ToString() ?? "" : replace;
+			await l.Out($"typeof(Profile) = {typeof(Profile)}, Property = {typeof(Profile)?.GetProperty(variable)}, Value = {typeof(Profile)?.GetProperty(variable)?.GetValue(context)}, To String = {typeof(Profile)?.GetProperty(variable)?.GetValue(context)?.ToString()}. replace = {replace}", DefaultColours.Debug);
 			string updatedLine = Regex.Replace(line, @"\{(\w+)\}", replace);
 			parsedLines.Add(updatedLine);
 		}
 
-		string parentDir = Path.GetDirectoryName(YTDLPOriginalConfigFilePath.p) ?? "Null";
+		//string parentDir = YTDLPOriginalConfigFilePath.dir?.p ?? "Null";
 		MyPath tempFilePath = new($"[$ConfigDir]/yt-dlp{Guid.NewGuid()}.conf");
 		await File.WriteAllTextAsync(tempFilePath.p, String.Join("\n", parsedLines));
 		Profile activeProfile = await ProfileManager.LoadActiveProfileAsync();

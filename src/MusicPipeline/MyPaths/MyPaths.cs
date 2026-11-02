@@ -284,11 +284,6 @@ public class MyPath
 			string val = match.Groups[0].Value;
 			return new(fp.Remove(fp.LastIndexOf(val)), true);
 		}
-
-		
-
-		string parent = p.Substring(0, p.LastIndexOf("/") - 1).Substring(0, p.LastIndexOf("/"));
-		return new();
 	}
 
 	[SetsRequiredMembers]

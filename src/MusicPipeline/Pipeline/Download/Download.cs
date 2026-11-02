@@ -78,7 +78,7 @@ class Downloader
 		await ClearOutErrorFiles(l);
 		await WriteBanner(l);
 		await CreateBackupDirectory(l);
-		await SetCleanSweep(l, new MyPath("null").ConfigDir, cleanSweep);
+		await SetCleanSweep(l, configDir, cleanSweep);
 		//v From JleruOHeP on https://stackoverflow.com/questions/23419396/can-you-assign-a-value-only-if-its-greater-less-than-the-current-value#comment35888947_23419396
 		SetMaxDownloadThreads();
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
@@ -124,7 +124,7 @@ class Downloader
 			maxDownloadThreads = playlists.Length;
 	}
 
-	private async Task SetCleanSweep(LogEngine l, string configDir, bool isCleanSweep)
+	private async Task SetCleanSweep(LogEngine l, MyPath configDir, bool isCleanSweep)
 	{
 		if (isCleanSweep)
 		{
@@ -160,10 +160,11 @@ class Downloader
 
 	private async Task ClearOutErrorFiles(LogEngine l)
 	{
-		if (!Directory.Exists(configDir.ConfigDir)) {
+		var configDirPath = configDir.ConfigDir.Path;
+		if (!Directory.Exists(configDirPath)) {
 			return;	
 		}
-		IEnumerable<string> errorFiles = Directory.EnumerateFiles(configDir.ConfigDir, "run_errors_playlist*.txt", SearchOption.AllDirectories); // Find error files. Not sure why I called it sub?
+		IEnumerable<string> errorFiles = Directory.EnumerateFiles(configDirPath, "run_errors_playlist*.txt", SearchOption.AllDirectories); // Find error files. Not sure why I called it sub?
 		foreach (string file in errorFiles) {
 			await l.Out($"File found {file}", DefaultColours.Debug); // Debugging
 																	 // Temporary debug to check that it's finding the right files
