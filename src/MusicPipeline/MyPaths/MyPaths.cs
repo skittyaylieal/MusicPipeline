@@ -120,8 +120,8 @@ public class MyPath
 		// Set all the nullable properties
 		path = path ?? ToString();
 		p = p ?? path;
-		dir = dir ?? GetDirectory();
-		parent = parent ?? GetParent();
+		dir = dir; // Getting the dir should handle it
+		parent = parent;
 	}
 
 	/// <summary>
