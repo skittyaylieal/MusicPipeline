@@ -111,7 +111,7 @@ public class SafetyCheck
 
 		switch (name) {
 			case "ShellShortcut":
-				return new(true, windows ? (COMSPEC ?? @"C:\Windows\System32\cmd.exe") : (string.IsNullOrEmpty(SHELL) ? (File.Exists("/bin/zsh") ? "/bin/zsh" : File.Exists("/bin/bash") ? "/bin/bash" : "/bin/sh") : SHELL));
+				return new(true, windows ? new MyPath(COMSPEC ?? @"C:\Windows\System32\cmd.exe") : new MyPath(string.IsNullOrEmpty(SHELL) ? (File.Exists("/bin/zsh")) ? new MyPath("/bin/zsh") : File.Exists("/bin/bash") ? new MyPath("/bin/bash") : new MyPath("/bin/sh") : new MyPath(SHELL)));
 
 			case "ShellCommandFlag":
 				return new(true, windows ? "/" : "-");
