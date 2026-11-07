@@ -62,7 +62,7 @@ class Cookies(/*Profile activeProfile, LogEngine logEngine*/)
 		// pip install --upgrade certifi
 		// Getting new root certificates for the python enviroment, just in case.
 		await l.Out("Updating Certificates");
-		res.Append(await Helper.RunSilentAsync("python.exe", "-m pip install --upgrade certifi", "Certificate Update", "PythonProcess"));
+		res.Append(await Helper.RunSilentAsync("python", "-m pip install --upgrade certifi", "Certificate Update", "PythonProcess"));
 
 		await l.Out("Cookie and YTDLP files located successfully!", DefaultColours.Success, true);
 		await l.Out("Testing cookies on YouTube.");
