@@ -91,7 +91,7 @@ public class MyPath
 	{
 		//this.Update();
 		Console.WriteLine("ToString would overflow here");
-		return TakeFullPathWithMyPathSyntaxAndTurnItIntoAStringUsingTheGivenPathObjectForDirectoryReferences(this);
+		return TakeFullPathWithMyPathSyntaxAndTurnItIntoAStringUsingTheGivenPathObjectForDirectoryReferences(this) ?? "Null";
 	}
 
 
@@ -114,6 +114,8 @@ public class MyPath
 
 		// Find every ~ and replace with UserDir
 		// Find every thing between [$ and ] and replace the whole thing with that property in this class. same logic as the parser
+		if (path.FormattedPath == "")
+			return null;
 		Match match = Regex.Match(path.FormattedPath, @"\[\$(\w+)\]");
 		if (!match.Success)
 			return path.FormattedPath.Replace("~", path.UserDir.Path);
@@ -212,6 +214,8 @@ public class MyPath
 
 	public MyPath GetDirectory()
 	{
+		if (FormattedPath == "")
+			return new();
 		if (p[^1] == '/'){
 			return new(this);
 		} else {
