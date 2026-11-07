@@ -106,7 +106,7 @@ public class MyPath
 	/// </remarks>
 	/// <param name="path"> The MyPath object to be used for replacement variables. </param>
 	/// <returns>A string representing the full path expanded using MyPath formatting.</returns>
-	internal static string TakeFullPathWithMyPathSyntaxAndTurnItIntoAStringUsingTheGivenPathObjectForDirectoryReferences(MyPath path)
+	internal static string? TakeFullPathWithMyPathSyntaxAndTurnItIntoAStringUsingTheGivenPathObjectForDirectoryReferences(MyPath path)
 	{
 		// I don't even know how the path syntax works yet so um
 		// Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
