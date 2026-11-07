@@ -49,7 +49,7 @@ public class Parser
 			string replace = "";
 			await l.Out($"variable = {variable}", DefaultColours.Debug);
 			if (variable == "RootDir") {
-				replace = (new MyPath("")).RootDir.Path;
+				replace = (new MyPath()).RootDir.Path;
 			}
 			// Uses Reflection somehow idfk
 			// TODO: Write a better explanation
