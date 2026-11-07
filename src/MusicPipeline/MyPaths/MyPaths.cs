@@ -321,7 +321,7 @@ public class MyPath
 	{
 
 		// Must be last V
-		FormattedPath = isRaw ? this.Format(formattedPath).formatted : formattedPath;
+		(FormattedPath, Variables) = isRaw ? this.Format(formattedPath) : (formattedPath, null);
 		this.Update();
 	}
 
