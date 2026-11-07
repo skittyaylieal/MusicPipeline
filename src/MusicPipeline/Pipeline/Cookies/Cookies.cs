@@ -46,12 +46,12 @@ class Cookies(/*Profile activeProfile, LogEngine logEngine*/)
 		await l.BuildBanner("Cookie Checker");
 
 		if (!File.Exists(cookieFile.p)){
-			await l.Out("Cookie File could not be found. Please export one.", DefaultColours.Error, true);
+			await l.Out($"Cookie File {cookieFile.p} could not be found. Please export one.", DefaultColours.Error, true);
 			res.Append(CookieDefaults.FileError(false, start));
 			return res;
 		}
 		if (!File.Exists(YTDLPPath.p)){
-			await l.Out("YTDLP Executable could not be found.", DefaultColours.Error, true);
+			await l.Out($"YTDLP Executable {YTDLPPath.p} could not be found.", DefaultColours.Error, true);
 			res.Append(CookieDefaults.FileError(true, start));
 			return res;
 		}
