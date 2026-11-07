@@ -90,7 +90,7 @@ public class MyPath
 	public override string ToString()
 	{
 		//this.Update();
-		Console.WriteLine("ToString would overflow here");
+		//Console.WriteLine("ToString would overflow here");
 		return TakeFullPathWithMyPathSyntaxAndTurnItIntoAStringUsingTheGivenPathObjectForDirectoryReferences(this) ?? "Null";
 	}
 
@@ -163,7 +163,7 @@ public class MyPath
 			vars.Add(prop.Name, (Preset?)prop.GetValue(new MyPath()) ?? new("Null"));
 		}
 		//this.Update();
-		Console.WriteLine("FormatToMyPath would overflow here");
+		//Console.WriteLine("FormatToMyPath would overflow here");
 		return new(res, vars);
 	}
 
@@ -193,7 +193,7 @@ public class MyPath
 			vars.Add(prop.Name, (Preset?)prop.GetValue(new MyPath()) ?? new("Null"));
 		}
 		//this.Update();
-		Console.WriteLine("Format would overflow here");
+		//Console.WriteLine("Format would overflow here");
 		return (res, vars);
 	}
 
@@ -204,11 +204,11 @@ public class MyPath
 		int index = fp.LastIndexOf("/");
 		if (index >= 0) {
 			//this.Update();
-			Console.WriteLine("GetExtensionLess would overflow here");
+			//Console.WriteLine("GetExtensionLess would overflow here");
     		return fp.Substring(0, index);
 		}
 		//this.Update();
-		Console.WriteLine("GetExtensionLess would overflow here");
+		//Console.WriteLine("GetExtensionLess would overflow here");
     	return "";
 	}
 
@@ -236,7 +236,7 @@ public class MyPath
 				if (temp.Folder) {
 					p += '/';
 					//this.Update();
-					Console.WriteLine("GetDirectory would overflow here");
+					//Console.WriteLine("GetDirectory would overflow here");
 					return new($"{match.Value}/");
 				} else {
 					// Not a folder, gotta get the actual directory
@@ -285,7 +285,7 @@ public class MyPath
 		if (onlyVariable) {
 			string par = Directory.GetParent(dir.Variables?.ElementAt(0).Value.Path ?? "")?.FullName ?? "";
 			//this.Update();
-			Console.WriteLine("GetParent would overflow here");
+			//Console.WriteLine("GetParent would overflow here");
 			//this.parent = new(par, true); // unnecessary
 			return new(par, true);
 		} else {
