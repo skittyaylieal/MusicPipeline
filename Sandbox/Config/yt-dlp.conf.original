@@ -42,7 +42,8 @@
 --parse-metadata uploader:%(artist)s 
 # Sets the artist to the uploader
 
---replace-in-metadata thumbnail "^(https://yt3\.googleusercontent\.com/[^=]+)=.*$" "\1=s5000-rj"
+--parse-metadata "%(thumbnails)s:https://yt3\.googleusercontent\.com/(?P<ytmusic_thumb_id>[^'\"=]+)"
+--parse-metadata "https://yt3.googleusercontent.com/%(ytmusic_thumb_id)s=s5000-rj:%(thumbnail)s"
 # TOOD: Replace this with data-driven
 #^ If the song has official yt3 album art then it gets the highest res possible (5000 is way higher than most art so it garuntees the highest available)
 
