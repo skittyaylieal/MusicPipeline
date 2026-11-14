@@ -1,6 +1,8 @@
 from yt_dlp.postprocessor.common import PostProcessor
 
 class FixYTMusicThumbPP(PostProcessor):
+    WHEN = 'pre_process'
+
     def run(self, info):
         thumbnails = info.get('thumbnails') or []
         for t in thumbnails:
