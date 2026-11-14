@@ -44,7 +44,7 @@
 
 --plugin-dirs "/Users/skitty/Music/MusicPipeline/Plugins"
 # Set the plugin directory (hard coded for now)
---use-postprocessor FixYTMusicThumb
+--use-postprocessor pre_process:FixYTMusicThumb
 # Uses our custom FixYTMusic postprocessor which gets the proper thumbnails
 
 --no-keep-video 
