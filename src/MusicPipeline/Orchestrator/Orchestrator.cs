@@ -19,7 +19,7 @@ public class Orchestrator
 	// Class Colour code is 213
 	public async Task Start()
 	{	
-		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile;
+		//Profile oldActiveProfile = DefaultProfiles.DefaultProfile; // We need a better system for handling updates to the profile class
 		//Console.WriteLine($"Loading profile");
 		/* First use of Profiles*/ Profile oldActiveProfile = await ProfileManager.LoadActiveProfileAsync();
 		await SafetyCheck.HandleNullProfileFields(oldActiveProfile);

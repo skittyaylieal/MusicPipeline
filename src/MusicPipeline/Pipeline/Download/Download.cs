@@ -17,7 +17,8 @@ class Downloader
 	private Profile? activeProfile = null;
 	public LogEngine l = new("Null"); //I like this change too, good idea!
 	private string backupDir = "Null";
-	private string YTDLPPath = "Null";
+	private MyPath YTDLPPath = new();
+	private MyPath pluginDir = new();
 	private string cookiePath = "Null";
 	private string historyPath = "Null";
 	private string[] playlists = ["Null"];
@@ -26,7 +27,7 @@ class Downloader
 	private string downloadArguments = "Null";
 	private string YTDLPConfigFile = "Null";
 	private string customArguments = "Null";
-	private MyPath shellShortcut = new("Null");
+	private MyPath shellShortcut = new();
 	private string shellCommandFlag = "Null";
 	//private int sleepInterval = 0;
 	//private int maxSleepInterval = 0;
@@ -51,10 +52,11 @@ class Downloader
 		l = activeProfile.LogEngine ?? new(activeProfile.DiagLogFile);
 		//for logging, I think while we're in the Downloader, it should get its own logger.
 		l.UserName = "Downloader";
-		YTDLPPath = activeProfile.YTDLPExe.p;
+		YTDLPPath = activeProfile.YTDLPExe;
 		cookiePath = activeProfile.CookieFile.p;
 		historyPath = activeProfile.HistoryFile.p;		
 		playlists = activeProfile.Playlists;
+		pluginDir = activeProfile.PluginDir;
 		//location of these above files all also relating to directory, probably should belong to profile? (like they already do)
 		cacheDir = new MyPath("[$ConfigDir]/.cache").p;
 		//these two above take root dir from profile, but then change it to be their own thing.
@@ -222,7 +224,7 @@ class Downloader
 
 		// Just found out that it supports putting all this in a file so :eyes:
 		//downloadArguments = $"--config-locations {YTDLPConfigFile}  \"{customArguments}\"  --download-archive \"{historyPath}\"  {playlists[index]}";
-		downloadArguments = $"--config-locations \'{YTDLPConfigFile}\'  --download-archive \'{historyPath}\'  \'{playlists[index]}\'";
+		downloadArguments = $"--config-locations \'{YTDLPConfigFile}\'  --download-archive \'{historyPath}\' --plugin-dirs \'{pluginDir}\' \'{playlists[index]}\'";
 		/*
 		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring

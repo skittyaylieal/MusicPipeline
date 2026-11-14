@@ -14,21 +14,22 @@ namespace MusicPipeline.Profiles;
 public class Profile
 {
 	public string Name {get; set;} = "Null";
-	public MyPath BackupDir {get; set;} = new("Null");
-	public List<MyPath> CompressedDirs {get; set;} = [new("Null")];
-	public MyPath BrokenSongsFile {get; set;} = new("Null");
-	public MyPath DiagLogFile {get; set;} = new("Null");
-	public MyPath CacheFile {get; set;} = new("Null");
-	public MyPath TimingFile {get; set;} = new("Null");
-	public MyPath CookieFile {get; set;} = new("Null");
-	public MyPath HistoryFile {get; set;} = new("Null");
-	public MyPath ProfileFile {get; set;} = new("Null");
-	public MyPath YTDLPExe {get; set;} = new("Null");
-	public MyPath FFmpegExe {get; set;} = new("Null");
-	public MyPath FFmpegBinDir {get; set;} = new("Null");
-	public MyPath FirefoxExe {get; set;} = new("Null");
-	public MyPath YTDLPConfigFileOriginal {get; set;} = new("Null");
-	public MyPath YTDLPConfigFile {get; set;} = new("Null");
+	public MyPath BackupDir {get; set;} = new();
+	public List<MyPath> CompressedDirs {get; set;} = [new()];
+	public MyPath BrokenSongsFile {get; set;} = new();
+	public MyPath DiagLogFile {get; set;} = new();
+	public MyPath CacheFile {get; set;} = new();
+	public MyPath TimingFile {get; set;} = new();
+	public MyPath CookieFile {get; set;} = new();
+	public MyPath HistoryFile {get; set;} = new();
+	public MyPath ProfileFile {get; set;} = new();
+	public MyPath YTDLPExe {get; set;} = new();
+	public MyPath PluginDir {get; set;} = new();
+	public MyPath FFmpegExe {get; set;} = new();
+	public MyPath FFmpegBinDir {get; set;} = new();
+	public MyPath FirefoxExe {get; set;} = new();
+	public MyPath YTDLPConfigFileOriginal {get; set;} = new();
+	public MyPath YTDLPConfigFile {get; set;} = new();
 	public string CheckURL {get; set;} = "Null";
 	public MyPath? ShellShortcut {get; set;} = null; // Nullable because this can't be assumed by default Profile
 	public string? ShellCommandFlag {get; set;} = null; // Ditto

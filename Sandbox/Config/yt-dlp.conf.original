@@ -42,8 +42,7 @@
 --parse-metadata uploader:%(artist)s 
 # Sets the artist to the uploader
 
---plugin-dirs "/Users/skitty/Music/MusicPipeline/Plugins"
-# Set the plugin directory (hard coded for now)
+
 --use-postprocessor FixYTMusicThumb
 # Uses our custom FixYTMusic postprocessor which gets the proper thumbnails
 
