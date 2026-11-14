@@ -280,6 +280,7 @@ class Downloader
 
 		// Should probably move this whole run with shell thing into the execute helpers
 		string YTDLPArgs = $"{shellCommandFlag}c \"{YTDLPPath} {downloadArguments} 2>&1\"";
+		await log.Out($"YTDLPArgs = {YTDLPArgs}", DefaultColours.Debug);
 		try
 		{
 			using (Process? YTDLPProcess = await Helper.Execute(shellShortcut, YTDLPArgs))
