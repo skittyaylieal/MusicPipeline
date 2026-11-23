@@ -1,19 +1,17 @@
 from yt_dlp.postprocessor.common import PostProcessor
 
 class FixYTMusicThumbPP(PostProcessor):
-    def __init__(self, downloader=None, **kwargs):
-        super().__init__(downloader)
-        self._when = 'pre_process'
-
     def run(self, info):
         thumbnails = info.get('thumbnails') or []
         for t in thumbnails:
             url = t.get('url', '')
             if 'yt3.googleusercontent.com' in url:
                 high_res_url = url.split('=')[0] + '=s5000-rj'
+                
+                # Rewrite top-level fallback string
                 info['thumbnail'] = high_res_url
                 
-                # Replace list with single s5000 entry carrying high preference
+                # Replace thumbnails array with high-preference s5000 master
                 info['thumbnails'] = [{
                     'url': high_res_url,
                     'width': 5000,
