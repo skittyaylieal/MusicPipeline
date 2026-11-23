@@ -6,8 +6,7 @@ L profile files store EVERYTHING and new ones arent blank but instead copies of 
 multipage maybe? maybe use online tool
 split out css html and js
 better variable names, more concise
-Art.ps1 which crops the album art to the central square by removing the large blocks of colour then re-embeds the album art
-BETTER SYSTEM THAT MAKES YT-DLP DO IT
+FIXED THE BARRING YESSSS
 make every playlist go through vpn by default
 gadgets page in website
 	L allows uploading scripts and different languages to run them with
