@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using MusicPipeline.Results;
 using MusicPipeline.Profiles;
 using MusicPipeline.Pipeline.Helpers.Execute;
@@ -11,21 +12,20 @@ using MusicPipeline.Colours;
 using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Pipeline;
 
-//TODO: Use concurrent dictionary for res
 
 class Downloader
 {
 	#region private fields
 	private Profile? activeProfile = null;
 	public LogEngine l = new("Null"); //I like this change too, good idea!
-	private string backupDir = "Null";
+	private MyPath backupDir = new("Null");
 	private MyPath YTDLPPath = new();
 	private MyPath pluginDir = new();
-	private string cookiePath = "Null";
-	private string historyPath = "Null";
+	private MyPath cookiePath = new("Null");
+	private MyPath historyPath = new("Null");
 	private string[] playlists = ["Null"];
-	private MyPath configDir = new("[$ConfigDir]");
-	private string cacheDir = "Null";
+	//private MyPath configDir = new("[$ConfigDir]");
+	private MyPath cacheDir = new("Null");
 	private string downloadArguments = "Null";
 	private string YTDLPConfigFile = "Null";
 	private string customArguments = "Null";
@@ -35,9 +35,10 @@ class Downloader
 	//private int maxSleepInterval = 0;
 	//private int sleepRequests = 0;
 	private int maxDownloadThreads = 0;
+	private int dictTimeOut = 50; // TODO: Add to profile
 	private bool cleanSweep = false;
 	private DateTime start = new DateTime();
-	private Dictionary<int, Result> res = new();
+	private ConcurrentDictionary<int, Result> res = new();
 	private Dictionary<int, List<SongIdentifier>> songs = new(); // TODO: Finish up the SongInfo classes
 	#endregion private fields
 
@@ -49,18 +50,18 @@ class Downloader
 		//	^ downloader can access it just like how it's happening in the lines below.
 		//	it doesn't need to be assigned to these new private fields.
 		//	question though: who SHOULD own what? right now profile owns everything.
-		backupDir = activeProfile.BackupDir.p;
+		backupDir = activeProfile.BackupDir;
 		//directory information: do you want profile managing that?
 		l = activeProfile.LogEngine ?? new(activeProfile.DiagLogFile);
 		//for logging, I think while we're in the Downloader, it should get its own logger.
 		l.UserName = "Downloader";
 		YTDLPPath = activeProfile.YTDLPExe;
-		cookiePath = activeProfile.CookieFile.p;
-		historyPath = activeProfile.HistoryFile.p;		
+		cookiePath = activeProfile.CookieFile;
+		historyPath = activeProfile.HistoryFile;		
 		playlists = activeProfile.Playlists;
 		pluginDir = activeProfile.PluginDir;
 		//location of these above files all also relating to directory, probably should belong to profile? (like they already do)
-		cacheDir = new MyPath("[$ConfigDir]/.cache").p;
+		cacheDir = new MyPath("[$ConfigDir]/.cache");
 		//these two above take root dir from profile, but then change it to be their own thing.
 		//i'm thinking if root directory really belongs to profile, these two should too.
 		//sleepInterval = activeProfile.SleepInterval;
@@ -82,7 +83,7 @@ class Downloader
 		await ClearOutErrorFiles(l);
 		await WriteBanner(l);
 		await CreateBackupDirectory(l);
-		await SetCleanSweep(l, configDir, cleanSweep);
+		await SetCleanSweep(l, cleanSweep);
 		//v From JleruOHeP on https://stackoverflow.com/questions/23419396/can-you-assign-a-value-only-if-its-greater-less-than-the-current-value#comment35888947_23419396
 		SetMaxDownloadThreads();
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
@@ -132,25 +133,25 @@ class Downloader
 			maxDownloadThreads = playlists.Length;
 	}
 
-	private async Task SetCleanSweep(LogEngine l, MyPath configDir, bool isCleanSweep)
+	private async Task SetCleanSweep(LogEngine l, bool isCleanSweep)
 	{
 		if (isCleanSweep)
 		{
 			// If cleanSweep then fake file
 			//activeProfile.HistoryFile = historyPath;
 			//await ProfileManager.SaveProfile(profileFile, activeProfile);
-			historyPath = $@"{configDir}/pipeline_null_history_{Guid.NewGuid()}.txt";
+			historyPath = new($"[$ConfigDir]/pipeline_null_history_{Guid.NewGuid()}.txt");
 			await l.Out("Clean sweep active"); // Logging
 		}
 	}
 
 	private async Task CreateBackupDirectory(LogEngine l)
 	{
-		if (Directory.Exists(backupDir))
+		if (Directory.Exists(backupDir.p))
 			return;
 
 		await l.Out($"Main backup directory {backupDir} doesn't exist. Creating.");
-		Directory.CreateDirectory(backupDir);
+		Directory.CreateDirectory(backupDir.p);
 	}
 
 	private async Task LogStartTime(LogEngine l, bool IAmDebugging, DateTime officialStartTime)
@@ -168,7 +169,7 @@ class Downloader
 
 	private async Task ClearOutErrorFiles(LogEngine l)
 	{
-		var configDirPath = configDir.ConfigDir.Path;
+		var configDirPath = new MyPath().ConfigDir.Path;
 		if (!Directory.Exists(configDirPath)) {
 			return;	
 		}
@@ -221,10 +222,10 @@ class Downloader
 				break;
 		}
 
-		string errorLogPath = $@"{configDir}playlist${index}_run_errors.txt";
+		MyPath errorLogPath = new($"[$ConfigDir]/playlist${index}_run_errors.txt");
 
-		if (File.Exists(errorLogPath)) 
-			File.Delete(errorLogPath);
+		if (errorLogPath.exists)
+			File.Delete(errorLogPath.p);
 
 		await log.Out($"Processing Playlist URL: {playlists[index]}", colourCode);
 
@@ -295,7 +296,13 @@ class Downloader
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - threadStart;
 					await log.Out($"elapsed = {elapsedError}, end = {endError}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
-					res.Add(index, new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
+					bool addedError = res.TryAdd(index, new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
+					if (!addedError) {
+						do {
+							Thread.Sleep(dictTimeOut);
+							addedError = res.TryAdd(index, new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
+						} while (!addedError);
+					}
 					return;
 				}
 
@@ -347,8 +354,8 @@ class Downloader
 						// Will do that if I ever run into issues with the program crashing and only having the log output
 					}
 				}
-				string errorFile = $@"{configDir}/run_errors_playlist{index+1}.txt";
-				await File.AppendAllTextAsync(errorFile, String.Join("\n", lines));
+				MyPath errorFile = new($"[$ConfigDir]/run_errors_playlist{index+1}.txt");
+				await File.AppendAllTextAsync(errorFile.p, String.Join("\n", lines));
 				
 
 				await YTDLPProcess.WaitForExitAsync();
@@ -356,7 +363,13 @@ class Downloader
 				TimeSpan elapsed = end - threadStart;
 				await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
 				KeyValuePair<bool, string> errors = await GetErrorsInThread(index);
-				res.Add(index, new Result("DownloaderThread", errors.Key, elapsed, errors.Value));
+				bool added = res.TryAdd(index, new Result("DownloaderThread", errors.Key, elapsed, errors.Value));
+				if (!added) {
+					do {
+						Thread.Sleep(dictTimeOut);
+						added = res.TryAdd(index, new Result("DownloaderThread", errors.Key, elapsed, errors.Value));
+					} while (!added);
+				}
 				return;
 			}
 		}
@@ -365,11 +378,17 @@ class Downloader
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - threadStart;
 			await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
-			res.Add(index, new Result("DownloaderThread", elapsed, $"Win32Exception thrown: {ex.Message}"));
+			bool added = res.TryAdd(index, new Result("DownloaderThread", elapsed, $"Win32Exception thrown: {ex.Message}"));
+			if (!added) {
+				do {
+					Thread.Sleep(dictTimeOut);
+					added = res.TryAdd(index, new Result("DownloaderThread", elapsed, $"Win32Exception thrown: {ex.Message}"));
+				} while (!added);
+			}
 		}
 		finally
 		{
-			if (cleanSweep) File.Delete(historyPath);
+			if (cleanSweep) File.Delete(historyPath.p);
 		}
 	}
 
