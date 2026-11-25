@@ -4,9 +4,6 @@ using System.Text.Json.Serialization;
 using System.Reflection;
 namespace MusicPipeline;
 
-// TODO: Make some kind of update function which is called whenever a function modifys something like the path
-// So that the parent etc fields can stay up to date
-// Hm i cant make those fields default to null
 
 
 /// <summary>
@@ -47,6 +44,9 @@ public class MyPath
 	public MyPath? dir {get => field = field ?? GetDirectory(); internal set;}
 	[JsonIgnore]
 	public MyPath? parent {get => field = field ?? GetParent(); internal set;}
+
+	[JsonIgnore]
+	public bool exists {get => Exists();}
 
 	[JsonIgnore]
 	public Dictionary<string, Preset>? Variables {get; set;}
@@ -92,6 +92,11 @@ public class MyPath
 		//this.Update();
 		//Console.WriteLine("ToString would overflow here");
 		return TakeFullPathWithMyPathSyntaxAndTurnItIntoAStringUsingTheGivenPathObjectForDirectoryReferences(this) ?? "Null";
+	}
+
+	private bool Exists()
+	{
+		return Directory.Exists(dir?.p) && File.Exists(p);
 	}
 
 
