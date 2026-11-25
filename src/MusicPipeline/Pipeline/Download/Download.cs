@@ -11,6 +11,8 @@ using MusicPipeline.Colours;
 using MusicPipeline.Tools.LogEngine;
 namespace MusicPipeline.Pipeline;
 
+//TODO: Use concurrent dictionary for res
+
 class Downloader
 {
 	#region private fields
@@ -86,7 +88,7 @@ class Downloader
 		// Won't be bothering with the vpn stuff, I want to carefully consider how to do it, and whether it's even needed first
 		// URLs should be sanitised already
 	
-		Task? j = null; // Initialise a blank task to be assigned by each thread
+		//Task? j = null; // Initialise a blank task to be assigned by each thread
 						// I don't know if this works with multiple threads lol it probably doesn't
 						// Ey looks like it does! sweet!
 		
@@ -95,8 +97,12 @@ class Downloader
 		await Parser.ParseYTDLPConfigFile(); // Parse the config file, adding variables into the {} text
 		activeProfile = await ProfileManager.LoadActiveProfileAsync(); // Get the new config file (If we move to the contained approach this will be reworked ofc)
 		YTDLPConfigFile = activeProfile.YTDLPConfigFile.p; // Set the new value
-		Parallel.For(0, maxDownloadThreads, i => j = DownloadThread(i)); // Run the parallel for
-		await (j ?? DownloadThread(0)); // Await the task
+		//Parallel.For(0, maxDownloadThreads, i => j = DownloadThread(i)); // Run the parallel for
+		//await (j ?? DownloadThread(0)); // Await the task
+
+		// EXPERIMENTAL REPLACEMENT
+		var DownloadThreads = Enumerable.Range(0, maxDownloadThreads).Select(i => DownloadThread(i)); // YAY FUNCTION LITERAL YAY
+		await Task.WhenAll(DownloadThreads);		
 		List<Result> results = new List<Result>(); // An intermediary list
 		foreach (KeyValuePair<int, Result> r in res)
 		{ // Go through each result from each thread
@@ -224,7 +230,7 @@ class Downloader
 
 		// Just found out that it supports putting all this in a file so :eyes:
 		//downloadArguments = $"--config-locations {YTDLPConfigFile}  \"{customArguments}\"  --download-archive \"{historyPath}\"  {playlists[index]}";
-		downloadArguments = $"--config-locations \'{YTDLPConfigFile}\'  --download-archive \'{historyPath}\' --plugin-dirs \'{pluginDir}\' \'{playlists[index]}\'";
+		downloadArguments = $"--config-locations \"{YTDLPConfigFile}\"  --download-archive \"{historyPath}\" --plugin-dirs \"{pluginDir}\" \"{playlists[index]}\"";
 		/*
 		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring
