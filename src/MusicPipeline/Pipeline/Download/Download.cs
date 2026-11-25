@@ -299,6 +299,7 @@ class Downloader
 					DateTime endError = DateTime.UtcNow;
 					TimeSpan elapsedError = endError - threadStart;
 					await log.Out($"elapsed = {elapsedError}, end = {endError}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
+					await log.Out("YTDLPProcess is null", DefaultColours.Error, true);
 					bool addedError = res.TryAdd(index, new Result("DownloaderThread", false, elapsedError, "YTDLPProcess is Null"));
 					if (!addedError) {
 						do {
@@ -381,6 +382,7 @@ class Downloader
 			DateTime end = DateTime.UtcNow;
 			TimeSpan elapsed = end - threadStart;
 			await log.Out($"elapsed = {elapsed}, end = {end}, start = {start}, threadStart = {threadStart}", DefaultColours.Debug);
+			await log.Out(ex.Message, DefaultColours.Error, true);
 			bool added = res.TryAdd(index, new Result("DownloaderThread", elapsed, $"Win32Exception thrown: {ex.Message}"));
 			if (!added) {
 				do {
