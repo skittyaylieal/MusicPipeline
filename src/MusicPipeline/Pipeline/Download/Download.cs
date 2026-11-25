@@ -231,7 +231,10 @@ class Downloader
 
 		// Just found out that it supports putting all this in a file so :eyes:
 		//downloadArguments = $"--config-locations {YTDLPConfigFile}  \"{customArguments}\"  --download-archive \"{historyPath}\"  {playlists[index]}";
-		downloadArguments = $"--config-locations \"{YTDLPConfigFile}\"  --download-archive \"{historyPath}\" --plugin-dirs \"{pluginDir}\" \"{playlists[index]}\"";
+		// I can't make this work nicely 
+		string q = OperatingSystem.IsWindows() ? "\"" : "\\\"";
+
+		downloadArguments = $"--config-locations {q}{YTDLPConfigFile}{q}  --download-archive {q}{historyPath}{q} --plugin-dirs {q}{pluginDir}{q} {q}{playlists[index]}{q}";
 		/*
 		downloadArguments = string.Concat(
 			$" --no-colors ", // Removes colouring from the output, as it would likely mess with the logEngine colouring
