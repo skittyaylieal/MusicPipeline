@@ -95,7 +95,17 @@ public class SafetyCheck
 		foreach (PropertyInfo p in profileFields) {
 			if (p.GetValue(profile) is null) {
 				handleable = await HandleNullValue(p.Name);
-				if (handleable.HasValue && handleable.Value.Key == true) p.SetValue(profile, handleable.Value.Value); // KeyValuePairs are wack
+				if (handleable.HasValue && handleable.Value.Key == true) p.SetValue(profile, handleable.Value.Value); // Nullable KeyValuePairs are wack
+				else {
+					await (profile.LogEngine ?? new LogEngine.LogEngine(profile.DiagLogFile)).Out($"Profile field {p.Name} was null and couldn't be handled.", DefaultColours.Error, true);
+					p.SetValue(profile, p.GetValue(DefaultProfiles.DefaultProfile));
+					// What do I want
+					// A null normally means it couldn't be read from the file
+					// So should I set it to the defaultProfile version?
+					// I think I'll do that
+					// Or should it be the default for it's type?
+					// I want a profile version thinggggg
+				}
 			}
 		}
 		// Well that was easy
@@ -115,7 +125,6 @@ public class SafetyCheck
 
 			case "ShellCommandFlag":
 				return new(true, windows ? "/" : "-");
-
 		}
 		return new(false, new());
 	}
